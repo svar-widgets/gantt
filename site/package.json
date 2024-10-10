@@ -1,0 +1,15 @@
+{
+	"name": "wx-site-svelte-gantt",
+	"version": "1.2.0",
+	"type": "module",
+	"scripts": {
+		"build": "vite build",
+		"lint": "yarn eslint ./src --ext .svelte,.ts,.js",
+		"start": "yarn vite --open"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"wx-svelte-core": "*",
+		"wx-svelte-gantt": "*"
+	}
+}

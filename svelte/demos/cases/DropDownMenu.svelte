@@ -1,0 +1,57 @@
+<script>
+	import { getData } from "../data";
+	import { Gantt, ContextMenu } from "../../src/";
+	import { Button } from "wx-svelte-core";
+
+	export let skinSettings;
+
+	let api, handler, selected;
+	const data = getData();
+
+	$: {
+		if (api) selected = api.getReactiveState().selected;
+	}
+
+	const resolver = () => {
+		const id = $selected.length ? $selected[$selected.length - 1] : null;
+		return id ? api.getTask(id) : null;
+	};
+</script>
+
+<ContextMenu {api} {resolver} at="right" bind:handler />
+
+<div class="rows">
+	<div class="bar">
+		<Button type="primary" click={handler}>Task action</Button>
+	</div>
+
+	<div class="gtcell">
+		<Gantt
+			bind:api
+			{...skinSettings}
+			tasks={data.tasks}
+			links={data.links}
+			scales={data.scales}
+		/>
+	</div>
+</div>
+
+<style>
+	.rows {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+	}
+
+	.bar {
+		padding: 12px;
+	}
+	.gtcell {
+		position: relative;
+		height: calc(100% - 56px);
+		border-top: var(--wx-gantt-border);
+	}
+</style>

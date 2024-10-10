@@ -1,0 +1,25 @@
+{
+	"compilerOptions": {
+		"moduleResolution": "node",
+		"module": "esnext",
+		"lib": ["ESNext", "DOM"],
+		"target": "ESNext",
+
+		"isolatedModules": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"allowJs": true,
+		"checkJs": false,
+
+		"noImplicitAny": true,
+		"sourceMap": true,
+
+		"baseUrl": ".",
+		"declaration": true,
+		"outDir": "dist/"
+	},
+	"watchOptions": {},
+	"include": ["src/**/*.ts"]
+}

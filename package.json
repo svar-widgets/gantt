@@ -1,0 +1,72 @@
+{
+	"private": true,
+	"name": "wx-gantt",
+	"workspaces": [
+		"svelte",
+		"store",
+		"provider",
+		"locales",
+		"site"
+	],
+	"scripts": {
+		"test": "vitest --run",
+		"prepare": "husky",
+		"build": "cd svelte && yarn build",
+		"build:deps": "run-s build:store build:provider",
+		"build:store": "cd store && shx rm -f ./dist/index.js && yarn build",
+		"build:provider": "cd provider && shx rm -f ./dist/index.js && yarn build",
+		"watch:deps": "run-p watch:store watch:provider",
+		"watch:store": "cd store && shx rm -f ./dist/index.js && yarn watch",
+		"watch:provider": "cd provider && shx rm -f ./dist/index.js && yarn watch",
+		"build:site": "cd site && yarn build",
+		"build:tests": "cd svelte && yarn build:tests",
+		"start": "run-s build:deps start:demos",
+		"start:demos": "cd svelte && yarn start",
+		"start:site": "cd site && yarn start",
+		"start:tests": "cd svelte && yarn start:tests",
+		"watch": "run-p watch:deps start:demos",
+		"watch:site": "run-p watch:deps start:site",
+		"watch:tests": "run-p watch:deps start:tests",
+		"lint": "yarn eslint ./svelte/src ./svelte/demos ./store/src ./provider/src --ext .svelte,.js,.ts",
+		"test:cypress": "cd svelte && yarn test:cypress"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "3.0.2",
+		"@typescript-eslint/eslint-plugin": "7.0.2",
+		"@typescript-eslint/parser": "7.0.2",
+		"@vitest/coverage-v8": "1.6.0",
+		"autoprefixer": "10.4.13",
+		"cypress": "13.6.4",
+		"eslint": "8.56.0",
+		"eslint-config-prettier": "9.1.0",
+		"eslint-plugin-cypress": "2.12.1",
+		"eslint-plugin-svelte3": "4.0.0",
+		"husky": "9.0.10",
+		"lint-staged": "15.2.2",
+		"npm-run-all": "4.1.5",
+		"postcss": "8.4.35",
+		"prettier": "3.2.5",
+		"prettier-plugin-svelte": "3.2.0",
+		"rollup-plugin-visualizer": "5.12.0",
+		"shx": "0.3.4",
+		"svelte": "4.2.9",
+		"svelte-spa-router": "4.0.1",
+		"typescript": "5.3.3",
+		"unplugin-preprocessor-directives": "1.0.3",
+		"vite": "5.1.1",
+		"vite-plugin-conditional-compile": "1.4.5",
+		"vite-plugin-dts": "3.7.2",
+		"vitest": "1.5.0",
+		"wait-on": "7.2.0",
+		"wx-vite-tools": "1.0.5"
+	},
+	"lint-staged": {
+		"*.{ts,js,svelte}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{css,md,json}": [
+			"prettier --write"
+		]
+	}
+}

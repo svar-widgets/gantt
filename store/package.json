@@ -1,0 +1,24 @@
+{
+	"name": "wx-gantt-store",
+	"version": "1.2.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/types/index.d.ts",
+	"license": "GPL-3.0",
+	"scripts": {
+		"build": "vite build",
+		"watch": "vite build --mode development -w",
+		"lint": "yarn eslint ./src --ext .ts,.js",
+		"test": "vitest --run",
+		"coverage": "vitest --run --coverage"
+	},
+	"files": [
+		"dist",
+		"license.txt"
+	],
+	"dependencies": {
+		"wx-lib-state": "1.9.0",
+		"date-fns": "3.6.0"
+	}
+}

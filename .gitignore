@@ -1,0 +1,11 @@
+node_modules
+package-lock.json
+
+*.zip
+.Ds_store
+*.tgz
+*.log
+.vscode
+.idea
+
+.env.local

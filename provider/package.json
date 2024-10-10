@@ -1,0 +1,22 @@
+{
+	"name": "wx-gantt-data-provider",
+	"version": "1.2.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/types/index.d.ts",
+	"license": "MIT",
+	"scripts": {
+		"build": "vite build",
+		"watch": "vite build --mode development -w",
+		"lint": "yarn eslint ./src --ext .ts,.js",
+		"test": "vitest --run",
+		"coverage": "vitest --run --coverage"
+	},
+	"files": [
+		"dist"
+	],
+	"dependencies": {
+		"wx-lib-data-provider": "1.4.0"
+	}
+}

@@ -1,0 +1,59 @@
+<script>
+	import { Cell } from "wx-svelte-grid";
+
+	export let row;
+	export let col;
+	export let columnStyle;
+	export let cellStyle;
+
+	function getStyle(row, col) {
+		return `justify-content:${col.align};padding-left: ${
+			(row.$level - 1) * 20
+		}px`;
+	}
+</script>
+
+<Cell {row} {col} {columnStyle} {cellStyle}>
+	<div class="wx-content" style={getStyle(row, col)}>
+		{#if row.data || row.lazy}
+			<i
+				class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
+				data-action="open-task"
+			/>
+		{:else}<i class="wx-toggle-placeholder" />{/if}
+		<div class="wx-text">{row.text}</div>
+	</div>
+</Cell>
+
+<style>
+	.wx-content {
+		width: 100%;
+		white-space: nowrap;
+		display: flex;
+		align-items: center;
+	}
+
+	.wx-toggle-icon {
+		width: var(--wx-icon-size);
+		min-width: 12px;
+		height: 16px;
+		line-height: 16px;
+		margin: 0 5px;
+		font-size: var(--wx-icon-size);
+		color: var(--wx-gantt-icon-color);
+		cursor: pointer;
+	}
+	.wx-toggle-placeholder {
+		width: var(--wx-icon-size);
+		height: 16px;
+		line-height: 16px;
+		margin: 0 5px;
+		flex: 0 0 var(--wx-icon-size);
+	}
+
+	.wx-text {
+		text-overflow: ellipsis;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+</style>
