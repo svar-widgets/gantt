@@ -50,7 +50,7 @@ To use the widget, simply import the package and include the component in your S
 			text: "Project planning",
 			progress: 30,
 			parent: 0,
-			type: "project",
+			type: "summary",
 			open: true,
 			details: "Outline the project's scope and resources.",
 		},
