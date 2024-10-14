@@ -20,6 +20,11 @@
 
 SVAR Svelte Gantt is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form. 
 
+<div align="center">
+  <img src="https://cdn.svar.dev/public/gantt-chart-ui.png" alt="UI of SVAR Svelte Gantt Chart - Screenshot">
+</div>
+
+
 ### ✨ Key Features
 
 - Interactive drag-and-drop interface
