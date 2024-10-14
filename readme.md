@@ -1,4 +1,22 @@
-### :star: SVAR Gantt for Svelte
+<div align="center">
+	
+# SVAR Svelte Gantt Chart
+
+</div>
+
+<div align="center">
+
+:globe_with_meridians: [Website](https://svar.dev/svelte/gantt/) • :bulb: [Getting Started](https://docs.svar.dev/svelte/gantt/getting_started/) • :eyes: [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
+
+</div>
+
+<div align="center">
+
+[![npm](https://img.shields.io/npm/v/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![License](https://img.shields.io/github/license/svar-widgets/gantt)](https://github.com/svar-widgets/gantt/blob/main/license.txt)
+[![npm downloads](https://img.shields.io/npm/dm/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+
+</div>
 
 SVAR Svelte Gantt is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form. 
 
@@ -15,16 +33,6 @@ SVAR Svelte Gantt is a customizable, easy-to-use, and interactive Gantt chart co
 - Toolbar and context menu
 - Tooltips for taskbars
 - Fast performance with big data sets
-
-### :link: Useful Links
-
--   [Documentation](https://docs.svar.dev/svelte/gantt/overview)
--   [How to start guide](https://docs.svar.dev/svelte/gantt/getting_started/)
--   [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
-
-### :page_with_curl: License
-
-SVAR Gantt for Svelte is available under GPLv3 license.
 
 ### 🛠️ How to Use
 
@@ -56,6 +64,7 @@ To use the widget, simply import the package and include the component in your S
 
 <Gantt {tasks} {links} {scales} />
 ```
+For further instructions, follow the deatailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
 ###  💻 How to Modify
 
