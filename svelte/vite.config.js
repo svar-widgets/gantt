@@ -3,7 +3,6 @@ import { resolve } from "path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { visualizer } from "rollup-plugin-visualizer";
 import { waitChanges, waitOn } from "wx-vite-tools";
-import conditionalCompile from "vite-plugin-conditional-compile";
 import pkg from "./package.json";
 
 export default async ({ mode }) => {
@@ -18,7 +17,6 @@ export default async ({ mode }) => {
 				];
 
 	const plugins = [waitChanges({ files })];
-	if (mode !== "development") plugins.push(conditionalCompile());
 	plugins.push(svelte({}));
 
 	let build,

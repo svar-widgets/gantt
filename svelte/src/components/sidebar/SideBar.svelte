@@ -82,6 +82,8 @@
 
 <div class="wx-sidebar" class:wx-compact={compactMode}>
 	<div class="wx-header">
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<i class="wxi-close" on:click={hide} />
 		<div>
 			<Button type="danger" click={deleteTask}>{_("Delete")}</Button>

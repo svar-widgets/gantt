@@ -340,7 +340,9 @@
 		class:wx-scroll-y={scrollY && !showFull}
 		on:scroll={onScroll}
 	>
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div style={tableOuterStyle}>
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
 			<div
 				bind:this={table}
 				style={tableStyle}

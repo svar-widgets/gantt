@@ -124,6 +124,7 @@
 </script>
 
 <div class="wx-gantt">
+	<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 	<div tabindex="0" class="wx-layout" bind:offsetWidth={layoutWidth}>
 		{#if $rColumns.length}
 			<Grid

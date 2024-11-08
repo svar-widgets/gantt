@@ -30,16 +30,17 @@
 	});
 
 	$: toggleFullscreen(mode);
-
 </script>
 
+<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 <div tabindex="0" class="wx-fullscreen" bind:this={node}>
 	<slot />
 	<div class="wx-fullscreen-icon">
 		<IconButton
-			appearance={'transparent'}
+			appearance={"transparent"}
 			icon="wxi-{inFullscreen ? 'collapse' : 'expand'}"
-			on:click={() => toggleFullscreen()} />
+			on:click={() => toggleFullscreen()}
+		/>
 	</div>
 </div>
 
@@ -58,5 +59,4 @@
 		right: 3px;
 		bottom: 16px;
 	}
-
 </style>

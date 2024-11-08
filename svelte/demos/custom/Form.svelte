@@ -54,6 +54,8 @@
 		<div class="modal" style="left:{left}px;top:{top}px" bind:this={node}>
 			<div class="header">
 				<h3 class="title">Edit task</h3>
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
 				<i class="close wxi-close" on:click={onClose} />
 			</div>
 			<div class="body">

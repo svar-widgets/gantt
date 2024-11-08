@@ -51,7 +51,10 @@
 {#each linksData as links}
 	{#if links.data.length}
 		<div class="wx-links">
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
+			<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 			<Field label={links.title} position="top">
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
 				<table on:click={onClick}>
 					{#each links.data as obj}
 						<tr>

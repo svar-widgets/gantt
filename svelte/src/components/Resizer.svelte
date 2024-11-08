@@ -72,6 +72,7 @@
 	}
 </script>
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
 	class="wx-resizer wx-resizer-{dir}"
 	class:wx-resizer-active={active}

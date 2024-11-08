@@ -356,6 +356,8 @@
 
 <svelte:window on:mouseup={mouseup} />
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
 	class="wx-bars"
 	style="line-height: {tasks.length ? tasks[0].$h : 0}px"

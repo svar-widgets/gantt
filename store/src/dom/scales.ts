@@ -1,4 +1,3 @@
-
 export function grid(
 	width: number,
 	height: number,
@@ -7,7 +6,7 @@ export function grid(
 ): string {
 	const canvas = document.createElement("canvas");
 
-	let fillMode = true;
+	const fillMode = true;
 
 	if (fillMode) {
 		const ctx = canvasSize(canvas, width, height, 1, color);

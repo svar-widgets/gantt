@@ -44,6 +44,8 @@
 
 <div class="layout" class:no-sidebar={noSidebar}>
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
+	<!-- svelte-ignore a11y-unknown-role -->
 	<div class="sidebar" class:move={show} role="sidebar" on:click={onClick}>
 		{#if show}
 			<div class="title">Gantt Demos</div>
@@ -52,6 +54,7 @@
 			</div>
 		{/if}
 
+		<!-- svelte-ignore a11y-interactive-supports-focus -->
 		<div
 			role="toolbar"
 			class="skins"
@@ -80,7 +83,6 @@
 		{/if}
 	</div>
 
-	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<div
 		use:popupContainer
 		class="content wx-{skin}-theme"

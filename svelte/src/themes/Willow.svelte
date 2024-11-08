@@ -1,9 +1,8 @@
 <script>
 	import { Willow } from "wx-svelte-core";
-	const SLOTS = $$props.$$slots;
 </script>
 
-{#if SLOTS && SLOTS.default}
+{#if $$slots.default}
 	<Willow>
 		<slot />
 	</Willow>

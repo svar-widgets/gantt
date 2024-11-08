@@ -119,6 +119,7 @@
 	{at}
 	bind:handler
 />
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <span on:contextmenu={handler} data-menu-ignore="true">
 	<slot />
 </span>

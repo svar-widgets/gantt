@@ -93,15 +93,16 @@
 		const numId = parseInt(id);
 		return isNaN(numId) ? id : numId;
 	}
-
 </script>
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="wx-tooltip-area" bind:this={area} on:mousemove={move}>
 	{#if pos && (pos.text || content)}
 		<div
 			class="wx-gantt-tooltip"
 			bind:this={tooltipNode}
-			style="top:{pos.top}px;left:{pos.left}px">
+			style="top:{pos.top}px;left:{pos.left}px"
+		>
 			{#if content}
 				<svelte:component this={content} data={tooltipData} />
 			{:else if pos.text}
@@ -135,5 +136,4 @@
 		font: var(--wx-tooltip-font);
 		color: var(--wx-tooltip-font-color);
 	}
-
 </style>
