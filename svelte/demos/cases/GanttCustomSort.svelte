@@ -1,14 +1,16 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData } from "../data";
 	import { Gantt } from "../../src/";
 	import { Button } from "wx-svelte-core";
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 
-	let api;
-	let sortConfig = {};
-	let icons = getIcons();
+	let api = $state();
+	let sortConfig = $state({});
+	let icons = $state(getIcons());
 
 	function getIcons() {
 		const obj = { text: "", start: "", duration: "" };
@@ -26,33 +28,33 @@
 		api.exec("sort-tasks", { key: id, order: newOrder });
 	}
 
-	$: {
+	run(() => {
 		if (api) {
 			api.on("sort-tasks", config => {
 				sortConfig = config;
 				icons = getIcons();
 			});
 		}
-	}
+	});
 </script>
 
 <div class="rows">
 	<div class="bar">
 		<div class="label">Sort by</div>
-		<Button click={() => sort("text")}
-			>Task Name <i class={icons.text} /></Button
+		<Button onclick={() => sort("text")}
+			>Task Name <i class={icons.text}></i></Button
 		>
-		<Button click={() => sort("start")}
-			>Start Date <i class={icons.start} /></Button
+		<Button onclick={() => sort("start")}
+			>Start Date <i class={icons.start}></i></Button
 		>
-		<Button click={() => sort("duration")}
-			>Duration <i class={icons.duration} /></Button
+		<Button onclick={() => sort("duration")}
+			>Duration <i class={icons.duration}></i></Button
 		>
 	</div>
 
 	<div class="gtcell">
 		<Gantt
-			bind:api
+			bind:this={api}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

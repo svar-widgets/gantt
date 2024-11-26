@@ -2,16 +2,18 @@
 	import { createEventDispatcher } from "svelte";
 	import { uid } from "wx-lib-state";
 
-	export let label = "";
-	export let value = 0;
-	export let step = 1;
-	export let min = 1;
-	export let max = Infinity;
+	let {
+		label = "",
+		value = $bindable(0),
+		step = 1,
+		min = 1,
+		max = Infinity,
+	} = $props();
 
 	const dispatch = createEventDispatcher();
 	const digits = new RegExp("^[0-9]+$");
 
-	let error = false;
+	let error = $state(false);
 
 	function dec() {
 		if (value <= min) return;
@@ -47,7 +49,7 @@
 <div class="wx-counter">
 	<label class="wx-label" for={id}>{label}</label>
 	<div class="wx-controls">
-		<button class="wx-btn wx-btn-dec" on:click={dec}>
+		<button aria-label="-" class="wx-btn wx-btn-dec" onclick={dec}>
 			<svg
 				class="wx-dec"
 				width="12"
@@ -66,10 +68,10 @@
 			class:wx-error={error}
 			required
 			bind:value
-			on:blur={blur}
-			on:input={input}
+			onblur={blur}
+			oninput={input}
 		/>
-		<button class="wx-btn wx-btn-inc" on:click={inc}>
+		<button aria-label="+" class="wx-btn wx-btn-inc" onclick={inc}>
 			<svg
 				class="wx-inc"
 				width="12"

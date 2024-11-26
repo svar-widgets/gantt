@@ -1,9 +1,11 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData, bigScales } from "../data";
 	import { Gantt } from "../../src/";
 	import { Select } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 	const options = [
@@ -14,10 +16,10 @@
 		{ id: "quarter", label: "Quarter" },
 	];
 
-	let lengthUnit = "day";
-	let scales;
+	let lengthUnit = $state("day");
+	let scales = $state();
 
-	$: {
+	run(() => {
 		switch (lengthUnit) {
 			case "hour":
 				scales = [
@@ -49,7 +51,7 @@
 			default:
 				scales = bigScales;
 		}
-	}
+	});
 </script>
 
 <div class="demo">

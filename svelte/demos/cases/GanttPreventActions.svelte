@@ -1,19 +1,21 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData } from "../data";
 	import { Gantt, defaultColumns } from "../../src/";
 	import { Field, Switch } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 
-	let edit = true; // if false - cannot add and edit task
-	let drag = true; // if false - cannot drag tasks on scale
-	let order = true; // if false - cannot reorder tasks in grid
-	let newLink = true; // if false - cannot create new links
+	let edit = $state(true); // if false - cannot add and edit task
+	let drag = $state(true); // if false - cannot drag tasks on scale
+	let order = $state(true); // if false - cannot reorder tasks in grid
+	let newLink = $state(true); // if false - cannot create new links
 
-	let ignore = false;
-	let gapi;
+	let ignore = $state(false);
+	let gapi = $state();
 
 	function init(api) {
 		gapi = api;
@@ -25,33 +27,41 @@
 		});
 	}
 
-	$: columns = edit
-		? defaultColumns
-		: defaultColumns.filter(a => a.id != "action");
+	let columns = $derived(
+		edit ? defaultColumns : defaultColumns.filter(a => a.id != "action")
+	);
 
 	// for demo purposes: close editor when checkbox is unchecked
-	$: {
+	run(() => {
 		if (!edit) {
 			ignore = true;
 			gapi.exec("show-editor", { id: null });
 			ignore = false;
 		}
-	}
+	});
 </script>
 
 <div class="rows">
 	<div class="bar">
-		<Field label="Adding and editing" position={"left"} let:id>
-			<Switch bind:value={edit} {id} />
+		<Field label="Adding and editing" position={"left"}>
+			{#snippet children({ id })}
+				<Switch bind:value={edit} {id} />
+			{/snippet}
 		</Field>
-		<Field label="Creating links" position={"left"} let:id>
-			<Switch bind:value={newLink} {id} />
+		<Field label="Creating links" position={"left"}>
+			{#snippet children({ id })}
+				<Switch bind:value={newLink} {id} />
+			{/snippet}
 		</Field>
-		<Field label="Dragging tasks" position={"left"} let:id>
-			<Switch bind:value={drag} {id} />
+		<Field label="Dragging tasks" position={"left"}>
+			{#snippet children({ id })}
+				<Switch bind:value={drag} {id} />
+			{/snippet}
 		</Field>
-		<Field label="Reordering tasks" position={"left"} let:id>
-			<Switch bind:value={order} {id} />
+		<Field label="Reordering tasks" position={"left"}>
+			{#snippet children({ id })}
+				<Switch bind:value={order} {id} />
+			{/snippet}
 		</Field>
 	</div>
 	<div

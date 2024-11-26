@@ -1,16 +1,13 @@
 <script>
 	import { Cell } from "wx-svelte-grid";
 
-	export let row;
-	export let col;
-	export let columnStyle;
-	export let cellStyle;
+	let { row, col, columnStyle, cellStyle } = $props();
 </script>
 
 <Cell {row} {col} {columnStyle} {cellStyle}>
 	{#if col.action == "add-task"}
 		<div style="text-align:{col.align}">
-			<i class="wx-add-icon wxi-plus" data-action={col.action} />
+			<i class="wx-add-icon wxi-plus" data-action={col.action}></i>
 		</div>
 	{/if}
 </Cell>

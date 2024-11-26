@@ -4,8 +4,7 @@
 	import { locate, locateID } from "wx-lib-dom";
 	import { getID } from "../../helpers/locate";
 
-	export let readonly;
-	export let taskTemplate;
+	let { readonly, taskTemplate } = $props();
 
 	const api = getContext("gantt-store");
 
@@ -18,18 +17,22 @@
 		baselines,
 	} = api.getReactiveState();
 
-	let tasks;
-	$: tasks = $rTasks.slice($area.start, $area.end);
-	$: lengthUnitWidth = $scales.lengthUnitWidth;
+	// let tasks = $derived($rTasks.slice($area.start, $area.end));
+	// FIXME:SVELTE5
+	let tasks = $derived(
+		$rTasks.slice($area.start, $area.end).map(a => ({ ...a }))
+	);
+
+	let lengthUnitWidth = $derived($scales.lengthUnitWidth);
 	let ignoreNextClick = false;
 
 	// link creation
-	let linkFrom;
+	let linkFrom = $state();
 	// task moving
-	let taskMove = null;
+	let taskMove = $state(null);
 	let progressFrom = null;
 
-	let touched;
+	let touched = $state();
 	let touchTimer;
 
 	function mousedown(e) {
@@ -351,24 +354,26 @@
 		api.exec(ev.detail.action, ev.detail.data);
 	}
 
-	let totalWidth = 0;
+	let totalWidth = $state(0);
 </script>
 
-<svelte:window on:mouseup={mouseup} />
+<svelte:window onmouseup={mouseup} />
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="wx-bars"
 	style="line-height: {tasks.length ? tasks[0].$h : 0}px"
 	bind:offsetWidth={totalWidth}
-	on:contextmenu={contextmenu}
-	on:mousedown={mousedown}
-	on:mousemove={mousemove}
-	on:touchstart={touchstart}
-	on:touchmove={touchmove}
-	on:touchend={touchend}
-	on:click={onClick}
-	on:dblclick={onDblClick}
-	on:dragstart={() => false}
+	oncontextmenu={contextmenu}
+	onmousedown={mousedown}
+	onmousemove={mousemove}
+	ontouchstart={touchstart}
+	ontouchmove={touchmove}
+	ontouchend={touchend}
+	onclick={onClick}
+	ondblclick={onDblClick}
+	ondragstart={() => false}
 >
 	{#each tasks as task (task.id)}
 		{#if !task.$skip}
@@ -391,7 +396,7 @@
 							linkFrom.id === task.id &&
 							linkFrom.start}
 					>
-						<div class="wx-inner" />
+						<div class="wx-inner"></div>
 					</div>
 				{/if}
 
@@ -401,7 +406,7 @@
 							<div
 								class="wx-progress-percent"
 								style="width:{task.progress}%"
-							/>
+							></div>
 						</div>
 					{/if}
 					{#if !readonly}
@@ -413,22 +418,16 @@
 						</div>
 					{/if}
 					{#if taskTemplate}
-						<svelte:component
-							this={taskTemplate}
-							data={task}
-							on:action={forward}
-						/>
+						{@const SvelteComponent = taskTemplate}
+						<SvelteComponent data={task} on:action={forward} />
 					{:else}
 						<div class="wx-content">{task.text || ""}</div>
 					{/if}
 				{:else}
-					<div class="wx-content" />
+					<div class="wx-content"></div>
 					{#if taskTemplate}
-						<svelte:component
-							this={taskTemplate}
-							data={task}
-							on:action={forward}
-						/>
+						{@const SvelteComponent_1 = taskTemplate}
+						<SvelteComponent_1 data={task} on:action={forward} />
 					{:else}
 						<div class="wx-text-out">{task.text}</div>
 					{/if}
@@ -444,7 +443,7 @@
 							linkFrom.id === task.id &&
 							!linkFrom.start}
 					>
-						<div class="wx-inner" />
+						<div class="wx-inner"></div>
 					</div>
 				{/if}
 			</div>
@@ -454,7 +453,7 @@
 				class="wx-baseline"
 				class:wx-milestone={task.type === "milestone"}
 				style={baselineStyle(task)}
-			/>
+			></div>
 		{/if}
 	{/each}
 </div>

@@ -1,4 +1,6 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { createEventDispatcher, onMount } from "svelte";
 
 	import {
@@ -11,12 +13,13 @@
 	} from "wx-svelte-core";
 	import { en } from "wx-gantt-locales";
 
-	export let task = {};
-	export let taskTypes;
+	let { task = $bindable({}), taskTypes } = $props();
 
 	const dispatch = createEventDispatcher();
 
-	let node, left, top;
+	let node = $state(),
+		left = $state(),
+		top = $state();
 
 	onMount(() => {
 		left = (window.innerWidth - node.offsetWidth) / 2;
@@ -32,7 +35,7 @@
 		dispatch("action", { action: "close-form" });
 	}
 
-	$: {
+	run(() => {
 		if (task.type === "milestone") {
 			delete task.end;
 			task.duration = 0;
@@ -46,15 +49,17 @@
 			action: "update-task",
 			data: { id: task.id, task },
 		});
-	}
+	});
 </script>
 
 <Locale words={en} optional={true}>
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="backdrop">
 		<div class="modal" style="left:{left}px;top:{top}px" bind:this={node}>
 			<div class="header">
 				<h3 class="title">Edit task</h3>
-				<i class="close wxi-close" on:click={onClose} />
+				<i class="close wxi-close" onclick={onClose}></i>
 			</div>
 			<div class="body">
 				<p class="label">Name</p>
@@ -80,7 +85,7 @@
 					/>
 				{/if}
 
-				<button class="button danger" on:click={deleteTask}
+				<button class="button danger" onclick={deleteTask}
 					>Delete</button
 				>
 			</div>

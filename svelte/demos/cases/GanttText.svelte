@@ -3,10 +3,10 @@
 	import { Gantt } from "../../src/";
 	import MyTaskContent from "../custom/MyTaskContent.svelte";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let api;
+	let api = $state();
 
 	function doClick(ev) {
 		const data = ev.detail;
@@ -21,7 +21,7 @@
 
 <Gantt
 	{...skinSettings}
-	bind:api
+	bind:this={api}
 	on:custom-click={doClick}
 	taskTemplate={MyTaskContent}
 	tasks={data.tasks}

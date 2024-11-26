@@ -1,9 +1,11 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData } from "../data";
 	import { Gantt } from "../../src/";
 	import Form from "../custom/Form.svelte";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 	const taskTypes = [
@@ -12,11 +14,11 @@
 		{ id: "summary", label: "Summary task" },
 	];
 
-	let task;
-	let api;
-	let tasks;
+	let task = $state();
+	let api = $state();
+	let tasks = $state();
 
-	$: {
+	run(() => {
 		if (api) {
 			tasks = api.getState().tasks;
 
@@ -25,7 +27,7 @@
 				return false;
 			});
 		}
-	}
+	});
 
 	function formAction(ev) {
 		const { action, data } = ev.detail;
@@ -44,7 +46,7 @@
 
 <div class="wrapper">
 	<Gantt
-		bind:api
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}

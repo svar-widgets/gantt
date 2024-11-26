@@ -5,8 +5,9 @@
 	const restProvider = new RestDataProvider(
 		"https://master--svar-gantt-go--dev.webix.io"
 	);
-	let api;
-	let tasks, links;
+	let api = $state();
+	let tasks = $state(),
+		links = $state();
 	restProvider.getData().then(({ tasks: t, links: l }) => {
 		tasks = t;
 		links = l;
@@ -30,5 +31,5 @@
 </script>
 
 <ContextMenu {api}>
-	<Gantt bind:api {init} {tasks} {links} />
+	<Gantt bind:this={api} {init} {tasks} {links} />
 </ContextMenu>

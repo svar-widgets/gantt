@@ -5,11 +5,11 @@
 	import { getContext } from "svelte";
 	const helpers = getContext("wx-helpers");
 
-	export let skinSettings;
-	let api;
+	let { skinSettings } = $props();
+	let api = $state();
 	const data = getData();
 
-	let options;
+	let options = $state();
 	const ids = ["cut-task", "copy-task", "paste-task", "delete-task"];
 	let arr = [{ id: "add-task:after", text: " Add below", icon: "wxi-plus" }];
 	arr = arr.concat(defaultMenuOptions.filter(op => ids.indexOf(op.id) >= 0));
@@ -36,7 +36,7 @@
 
 <ContextMenu {api} {options} on:click={onClick}>
 	<Gantt
-		bind:api
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}

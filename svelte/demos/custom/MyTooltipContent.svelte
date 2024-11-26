@@ -1,6 +1,6 @@
 <script>
 	import { format } from "date-fns";
-	export let data;
+	let { data } = $props();
 
 	const mask = "yyyy.MM.dd";
 </script>

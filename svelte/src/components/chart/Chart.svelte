@@ -1,23 +1,20 @@
 <script>
-	import {
-		afterUpdate,
-		onMount,
-		getContext,
-		createEventDispatcher,
-	} from "svelte";
+	import { onMount, getContext, createEventDispatcher } from "svelte";
 	import { getAdder, getUnitStart } from "wx-gantt-store";
 
 	import CellGrid from "./CellGrid.svelte";
 	import Bars from "./Bars.svelte";
 	import Links from "./Links.svelte";
 
-	export let readonly;
-	export let markers;
-	export let fullWidth;
-	export let fullHeight;
-	export let taskTemplate;
-	export let cellBorders;
-	export let highlightTime;
+	let {
+		readonly,
+		markers,
+		fullWidth,
+		fullHeight,
+		taskTemplate,
+		cellBorders,
+		highlightTime,
+	} = $props();
 
 	const dispatch = createEventDispatcher();
 	const api = getContext("gantt-store");
@@ -35,42 +32,46 @@
 		_scrollSelected: scrollSelected,
 	} = api.getReactiveState();
 
-	let scrollLeft, scrollTop;
-	$: lengthUnitWidth = $scales.lengthUnitWidth;
-	$: scrollLeft = $rScrollLeft;
-	$: scrollTop = $rScrollTop;
+	let scrollLeft = $state(),
+		scrollTop = $state();
+	rScrollLeft.subscribe(value => (scrollLeft = value));
+	rScrollTop.subscribe(value => (scrollTop = value));
 
 	let chart = {};
 	let extraRows = 0;
-	let markersHeight = 0;
-	let selectStyle = [];
-	let lastSelectedId;
 	let timer;
 
-	$: if ($selected.length && $cellHeight) {
-		selectStyle = [];
-		$selected.forEach(obj => {
-			selectStyle.push([`height: ${$cellHeight}px;top: ${obj.$y - 3}px`]);
-		});
-		if ($scrollSelected) {
-			const selectedTask = $selected[$selected.length - 1];
-			if (lastSelectedId !== selectedTask.id) {
-				lastSelectedId = selectedTask.id;
-				scrollToTask(selectedTask);
-			}
+	const selectStyle = $derived.by(() => {
+		const t = [];
+		if ($selected.length && $cellHeight) {
+			$selected.forEach(obj => {
+				t.push([`height: ${$cellHeight}px;top: ${obj.$y - 3}px`]);
+			});
 		}
-	}
 
-	$: if ($cellHeight) dataRequest();
+		return t;
+	});
 
-	$: markersHeight =
-		fullHeight > chart.clientHeight ? chart.clientHeight : fullHeight;
+	const selectedTask = $derived(
+		$scrollSelected ? $selected[$selected.length - 1] : null
+	);
+	// const lastSelectedId = $derived(selectedTasks ? selectedTasks.id : null);
+
+	$effect(() => {
+		if (selectedTask) scrollToTask(selectedTask.id);
+	});
+
+	// $: if ($cellHeight) dataRequest();
+
+	const markersHeight = $derived(
+		fullHeight > chart.clientHeight ? chart.clientHeight : fullHeight
+	);
 
 	onMount(() => {
 		dataRequest();
 	});
 
-	afterUpdate(() => {
+	$effect(() => {
 		chart.scrollTop = scrollTop;
 		chart.scrollLeft = scrollLeft;
 		if (scrollTop != chart.scrollTop) setScroll({ top: true });
@@ -141,8 +142,8 @@
 	function calcDate(x) {
 		const width =
 			$scales.lengthUnit === "day"
-				? lengthUnitWidth / 24
-				: lengthUnitWidth;
+				? $scales.lengthUnitWidth / 24
+				: $scales.lengthUnitWidth;
 		return getAdder("hour")(
 			getUnitStart($scales.minUnit, $start),
 			Math.floor(x / width)
@@ -175,16 +176,17 @@
 		return null;
 	}
 
-	$: holidays =
-		($scales.minUnit === "hour" || $scales.minUnit === "day") &&
-		highlightTime
+	const holidays = $derived.by(() => {
+		return ($scales.minUnit === "hour" || $scales.minUnit === "day") &&
+			highlightTime
 			? $scales.rows[$scales.rows.length - 1].cells.map(getHoliday)
 			: null;
+	});
 </script>
 
 <svelte:window on:resize={dataRequest} />
 
-<div class="wx-chart" bind:this={chart} on:scroll={onScroll} on:wheel={onWheel}>
+<div class="wx-chart" bind:this={chart} onscroll={onScroll} onwheel={onWheel}>
 	{#if markers.length}
 		<div
 			class="wx-markers"
@@ -210,7 +212,7 @@
 							class={holiday.css}
 							style="width: {holiday.width}px; left:{i *
 								holiday.width}px"
-						/>
+						></div>
 					{/if}
 				{/each}
 			</div>
@@ -225,7 +227,7 @@
 						class="wx-selected"
 						data-id={obj.id}
 						style={selectStyle[index]}
-					/>
+					></div>
 				{/if}
 			{/each}
 		{/if}

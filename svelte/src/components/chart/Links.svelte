@@ -1,11 +1,9 @@
 <script>
 	import { getContext } from "svelte";
-	export let width;
-	export let height;
+	let { width, height } = $props();
 
 	const api = getContext("gantt-store");
 	const links = api.getReactiveState()._links;
-
 </script>
 
 <svg class="wx-links" width="{width}px" height="{height}px">
@@ -31,5 +29,4 @@
 		z-index: 0;
 		fill: transparent;
 	}
-
 </style>

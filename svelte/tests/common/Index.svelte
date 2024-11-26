@@ -11,7 +11,7 @@
 	import { Globals, Locale, popupContainer } from "wx-svelte-core";
 
 	const defRoute = links[0][0].replace(/\/:skin$/, "/willow");
-	const routes = {
+	const routes = $state({
 		"/": wrap({
 			component: {},
 			conditions: () => {
@@ -23,9 +23,9 @@
 			component: ListRoutes,
 			props: { routes: links.map(x => x[0]) },
 		}),
-	};
+	});
 
-	let skin = "willow";
+	let skin = $state("willow");
 	const skinSettings = {};
 	function onRouteChange(path) {
 		const parts = path.split("/");

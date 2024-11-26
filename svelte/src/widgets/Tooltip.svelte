@@ -1,15 +1,11 @@
 <script>
-	import { afterUpdate } from "svelte";
+	const { api, content: Content, data = getTaskObj, children } = $props();
 
-	export let content = null;
-	export let api = null;
-
-	export let data = getTaskObj;
-
-	let tooltipData, tooltipNode, tooltipCoords;
-	let targetCoords;
-	let area, areaCoords;
-	let pos;
+	let area,
+		areaCoords = $state({});
+	let tooltipData = $state(null);
+	let tooltipNode = $state(null);
+	let pos = $state({});
 
 	function findAttribute(node) {
 		while (node) {
@@ -25,9 +21,9 @@
 		return { id: null, tooltip: null, target: null, at: null };
 	}
 
-	afterUpdate(() => {
+	$effect(() => {
 		if (tooltipNode) {
-			tooltipCoords = tooltipNode.getBoundingClientRect();
+			const tooltipCoords = tooltipNode.getBoundingClientRect();
 			if (tooltipCoords.right >= areaCoords.right) {
 				pos.left = areaCoords.width - tooltipCoords.width - 5;
 			}
@@ -65,7 +61,7 @@
 				tooltipData = data(prepareId(id));
 			}
 
-			targetCoords = target.getBoundingClientRect();
+			const targetCoords = target.getBoundingClientRect();
 			areaCoords = area.getBoundingClientRect();
 
 			let top, left;
@@ -93,24 +89,26 @@
 		const numId = parseInt(id);
 		return isNaN(numId) ? id : numId;
 	}
-
 </script>
 
-<div class="wx-tooltip-area" bind:this={area} on:mousemove={move}>
-	{#if pos && (pos.text || content)}
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="wx-tooltip-area" bind:this={area} onmousemove={move}>
+	{#if pos && (pos.text || Content)}
 		<div
 			class="wx-gantt-tooltip"
 			bind:this={tooltipNode}
-			style="top:{pos.top}px;left:{pos.left}px">
-			{#if content}
-				<svelte:component this={content} data={tooltipData} />
+			style="top:{pos.top}px;left:{pos.left}px"
+		>
+			{#if Content}
+				<Content data={tooltipData} />
 			{:else if pos.text}
 				<div class="wx-gantt-tooltip-text">{pos.text}</div>
 			{/if}
 		</div>
 	{/if}
 
-	<slot />
+	{@render children()}
 </div>
 
 <style>
@@ -135,5 +133,4 @@
 		font: var(--wx-tooltip-font);
 		color: var(--wx-tooltip-font-color);
 	}
-
 </style>

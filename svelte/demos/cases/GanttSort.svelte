@@ -1,25 +1,27 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData, zoomConfig } from "../data";
 	import { Gantt } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let api;
-	$: {
+	let api = $state();
+	run(() => {
 		if (api) {
 			api.intercept("sort-tasks", config => {
 				return config.key == "text";
 			});
 		}
-	}
+	});
 </script>
 
 <div class="demo">
 	<h4>Sorting by the "Task Name" column only</h4>
 	<div class="gtcell">
 		<Gantt
-			bind:api
+			bind:this={api}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

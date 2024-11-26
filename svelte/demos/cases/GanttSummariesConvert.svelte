@@ -1,11 +1,13 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let api;
+	let api = $state();
 
 	function toSummary(id, self) {
 		const task = api.getTask(id);
@@ -29,35 +31,37 @@
 		}
 	}
 
-	$: if (api) {
-		// convert parent tasks to summary
-		// will load data and then explicitely update summary tasks
-		api.getState().tasks.forEach(task => {
-			if (task.data?.length) {
-				toSummary(task.id, true);
-			}
-		});
+	run(() => {
+		if (api) {
+			// convert parent tasks to summary
+			// will load data and then explicitely update summary tasks
+			api.getState().tasks.forEach(task => {
+				if (task.data?.length) {
+					toSummary(task.id, true);
+				}
+			});
 
-		api.on("add-task", ({ id, mode }) => {
-			if (mode === "child") toSummary(id);
-		});
+			api.on("add-task", ({ id, mode }) => {
+				if (mode === "child") toSummary(id);
+			});
 
-		api.on("move-task", ({ id, source, mode, inProgress }) => {
-			if (inProgress) return;
-			if (mode == "child") toSummary(id);
-			else toTask(source);
-		});
+			api.on("move-task", ({ id, source, mode, inProgress }) => {
+				if (inProgress) return;
+				if (mode == "child") toSummary(id);
+				else toTask(source);
+			});
 
-		api.on("delete-task", ({ source }) => {
-			toTask(source);
-		});
-	}
+			api.on("delete-task", ({ source }) => {
+				toTask(source);
+			});
+		}
+	});
 </script>
 
 <div class="gt-cell">
 	<ContextMenu {api}>
 		<Gantt
-			bind:api
+			bind:this={api}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

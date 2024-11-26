@@ -3,9 +3,9 @@
 
 	const server = "https://master--svar-gantt-go--dev.webix.io";
 
-	let api;
-	let tasks = [];
-	let links = [];
+	let api = $state();
+	let tasks = $state([]);
+	let links = $state([]);
 
 	Promise.all([
 		fetch(server + "/tasks")
@@ -46,5 +46,5 @@
 </script>
 
 <ContextMenu {api}>
-	<Gantt bind:api {init} {tasks} {links} />
+	<Gantt bind:this={api} {init} {tasks} {links} />
 </ContextMenu>

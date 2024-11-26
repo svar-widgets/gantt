@@ -3,14 +3,14 @@
 	import { hotkeys } from "../helpers/hotkey";
 	import { onDestroy } from "svelte";
 
-	export let mode = false;
-	export let hotkey = null;
+	let { mode = false, hotkey = null, children } = $props();
 
 	if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
 
-	let node;
-	let inFullscreen = false;
+	let node = null;
+	let inFullscreen = $state(false);
 	function toggleFullscreen(mode) {
+		console.log(mode);
 		if (typeof mode === "undefined") mode = !inFullscreen;
 
 		if (mode && node) {
@@ -29,17 +29,20 @@
 		document.removeEventListener("fullscreenchange", setFullscreenState);
 	});
 
-	$: toggleFullscreen(mode);
-
+	$effect(() => {
+		toggleFullscreen(mode);
+	});
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div tabindex="0" class="wx-fullscreen" bind:this={node}>
-	<slot />
+	{@render children?.()}
 	<div class="wx-fullscreen-icon">
 		<IconButton
-			appearance={'transparent'}
+			appearance={"transparent"}
 			icon="wxi-{inFullscreen ? 'collapse' : 'expand'}"
-			on:click={() => toggleFullscreen()} />
+			on:click={() => (mode = !mode)}
+		/>
 	</div>
 </div>
 
@@ -58,5 +61,4 @@
 		right: 3px;
 		bottom: 16px;
 	}
-
 </style>

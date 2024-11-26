@@ -5,9 +5,9 @@
 	import { cn } from "wx-gantt-locales";
 	import { cn as cnCore } from "wx-core-locales";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
-	let api;
+	let api = $state();
 
 	const data = getData();
 
@@ -15,7 +15,7 @@
 		{ id: "en", name: "EN" },
 		{ id: "cn", name: "CN" },
 	];
-	let lang = "en";
+	let lang = $state("en");
 </script>
 
 <div class="rows">
@@ -31,7 +31,7 @@
 					tasks={data.tasks}
 					links={data.links}
 					scales={data.scales}
-					bind:api
+					bind:this={api}
 				/>
 			</ContextMenu>
 		</div>
@@ -47,7 +47,7 @@
 						tasks={data.tasks}
 						links={data.links}
 						scales={data.scales}
-						bind:api
+						bind:this={api}
 					/>
 				</ContextMenu>
 			</div>

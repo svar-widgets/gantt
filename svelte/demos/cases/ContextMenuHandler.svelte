@@ -2,8 +2,8 @@
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
 
-	export let skinSettings;
-	let api;
+	let { skinSettings } = $props();
+	let api = $state();
 	const data = getData();
 
 	// show menu for certain tasks
@@ -26,7 +26,7 @@
 
 <ContextMenu {api} {resolver} {filter}>
 	<Gantt
-		bind:api
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}

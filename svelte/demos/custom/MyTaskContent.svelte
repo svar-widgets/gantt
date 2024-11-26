@@ -1,7 +1,9 @@
 <script>
+	import { stopPropagation } from "svelte/legacy";
+
 	import { createEventDispatcher } from "svelte";
 
-	export let data;
+	let { data } = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -18,7 +20,7 @@
 
 {#if data.type !== "milestone"}
 	<div class="wx-text-out text-right">{data.text || ""}</div>
-	<button on:click|stopPropagation={doClick}>
+	<button onclick={stopPropagation(doClick)}>
 		{#if data.clicked}Was clicked{:else}Click Me{/if}
 	</button>
 {:else}

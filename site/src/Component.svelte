@@ -4,10 +4,10 @@
 	import TooltipContent from "./customGantt/TooltipContent.svelte";
 
 	const data = getData();
-	export let api;
+	let { api = $bindable() } = $props();
 
 	const markers = [
-		{
+		/*{
 			start: new Date(2024, 3, 2),
 			text: "Start",
 		},
@@ -20,7 +20,7 @@
 			start: new Date(2024, 4, 25),
 			text: "End",
 			css: "myEndClass",
-		},
+		},*/
 	];
 
 	function isDayOff(date) {
@@ -42,7 +42,7 @@
 	<ContextMenu {api}>
 		<Tooltip {api} content={TooltipContent}>
 			<Gantt
-				bind:api
+				bind:this={api}
 				{markers}
 				{highlightTime}
 				zoom

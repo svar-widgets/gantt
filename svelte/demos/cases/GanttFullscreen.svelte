@@ -2,7 +2,7 @@
 	import { getData } from "../data";
 	import { Gantt, Fullscreen } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 	const data = getData();
 </script>
 

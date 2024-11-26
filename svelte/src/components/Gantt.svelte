@@ -18,42 +18,83 @@
 	//views
 	import Layout from "./Layout.svelte";
 
-	// incoming parameters
-	export let taskTemplate = null;
-	export let markers = [];
-	export let taskTypes = [
-		{ id: "task", label: "Task" },
-		{ id: "summary", label: "Summary task" },
-		{ id: "milestone", label: "Milestone" },
-	];
-	export let tasks = [];
-	export let selected = [];
-	export let activeTask = null;
-	export let links = [];
-	export let scales = [
-		{ unit: "month", step: 1, format: "MMMM yyy" },
-		{ unit: "day", step: 1, format: "d" },
-	];
-	export let columns = defaultColumns;
-	export let start = null;
-	export let end = null;
-	export let lengthUnit = "day";
-	export let cellWidth = 100;
-	export let cellHeight = 38;
-	export let scaleHeight = 36;
-	export let readonly = false;
-	export let cellBorders = "full";
-	export let editorShape = defaultEditorShape;
-	export let zoom = false;
-	export let baselines = false;
-	export let highlightTime = null;
-
-	export let init = null;
+	let {
+		taskTemplate = null,
+		markers = [],
+		taskTypes = [
+			{ id: "task", label: "Task" },
+			{ id: "summary", label: "Summary task" },
+			{ id: "milestone", label: "Milestone" },
+		],
+		tasks = [],
+		selected = [],
+		activeTask = null,
+		links = [],
+		scales = [
+			{ unit: "month", step: 1, format: "MMMM yyy" },
+			{ unit: "day", step: 1, format: "d" },
+		],
+		columns = defaultColumns,
+		start = null,
+		end = null,
+		lengthUnit = "day",
+		cellWidth = 100,
+		cellHeight = 38,
+		scaleHeight = 36,
+		readonly = false,
+		cellBorders = "full",
+		editorShape = defaultEditorShape,
+		zoom = false,
+		baselines = false,
+		highlightTime = null,
+		init = $bindable(null),
+	} = $props();
 	const dispatch = createEventDispatcher();
 
 	// init stores
 	const dataStore = new DataStore(writable);
-	$: {
+
+	// define event route
+	let lastInRoute = new EventBusRouter(dispatch);
+	let firstInRoute = dataStore.in;
+
+	firstInRoute.setNext(lastInRoute);
+
+	// public API
+	export const // state
+		getState = dataStore.getState.bind(dataStore),
+		getReactiveState = dataStore.getReactive.bind(dataStore),
+		getStores = () => ({ data: dataStore }),
+		// events
+		exec = firstInRoute.exec,
+		setNext = ev => (lastInRoute = lastInRoute.setNext(ev)),
+		intercept = firstInRoute.intercept.bind(firstInRoute),
+		on = firstInRoute.on.bind(firstInRoute),
+		detach = firstInRoute.detach.bind(firstInRoute),
+		//specific
+		getTask = id => dataStore.getTask(id);
+
+	const api = {
+		getState,
+		getReactiveState,
+		getStores,
+		exec,
+		setNext,
+		intercept,
+		on,
+		detach,
+		getTask,
+	};
+
+	// common API available in components
+	setContext("gantt-store", {
+		getReactiveState: dataStore.getReactive.bind(dataStore),
+		exec: firstInRoute.exec.bind(firstInRoute),
+		getTask: dataStore.getTask.bind(dataStore),
+	});
+
+	let init_once = true;
+	const reinitStore = () => {
 		dataStore.init({
 			tasks,
 			links,
@@ -71,42 +112,15 @@
 			activeTask,
 			baselines,
 		});
-		if (init) {
+
+		if (init_once && init) {
 			init(api);
-			init = null;
+			init_once = false;
 		}
-	}
-
-	// define event route
-	let lastInRoute = new EventBusRouter(dispatch);
-	let firstInRoute = dataStore.in;
-
-	firstInRoute.setNext(lastInRoute);
-
-	// public API
-	export const api = {
-		// state
-		getState: dataStore.getState.bind(dataStore),
-		getReactiveState: dataStore.getReactive.bind(dataStore),
-		getStores: () => ({ data: dataStore }),
-
-		// events
-		exec: firstInRoute.exec,
-		setNext: ev => (lastInRoute = lastInRoute.setNext(ev)),
-		intercept: firstInRoute.intercept.bind(firstInRoute),
-		on: firstInRoute.on.bind(firstInRoute),
-		detach: firstInRoute.detach.bind(firstInRoute),
-
-		//specific
-		getTask: id => dataStore.getTask(id),
 	};
 
-	// common API available in components
-	setContext("gantt-store", {
-		getReactiveState: dataStore.getReactive.bind(dataStore),
-		exec: firstInRoute.exec.bind(firstInRoute),
-		getTask: dataStore.getTask.bind(dataStore),
-	});
+	reinitStore();
+	$effect(reinitStore);
 </script>
 
 <Locale words={en} optional={true}>

@@ -2,7 +2,7 @@
 	import { getData, simpleColumns } from "../data";
 	import { Gantt } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 </script>

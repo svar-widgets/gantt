@@ -1,18 +1,46 @@
-### SVAR Gantt for Svelte
+<div align="center">
+	
+# SVAR Svelte Gantt Chart
 
-SVAR Gantt provides ready to use control for file uploading
+</div>
 
-### Useful Links
+<div align="center">
 
--   [Documentation](https://docs.svar.dev/svelte/gantt/overview)
--   [How to start guide](https://docs.svar.dev/svelte/gantt/getting_started/)
--   [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
+[Website](https://svar.dev/svelte/gantt/) • [Getting Started](https://docs.svar.dev/svelte/gantt/getting_started/) • [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
 
-### License
+</div>
 
-SVAR Gantt for Svelte is available under GPLv3 license.
+<div align="center">
 
-### How to Use
+[![npm](https://img.shields.io/npm/v/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![License](https://img.shields.io/github/license/svar-widgets/gantt)](https://github.com/svar-widgets/gantt/blob/main/license.txt)
+[![npm downloads](https://img.shields.io/npm/dm/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![Last Commit](https://img.shields.io/github/last-commit/svar-widgets/gantt)](https://github.com/svar-widgets/gantt)
+
+</div>
+
+[SVAR Svelte Gantt](https://svar.dev/svelte/gantt/) is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form. 
+
+<div align="center">
+  <img src="https://cdn.svar.dev/public/gantt-chart-ui.png" alt="UI of SVAR Svelte Gantt Chart - Screenshot">
+</div>
+
+
+# :sparkles: Key Features
+
+- Interactive drag-and-drop interface
+- Intuitive and customizable task edit form
+- Set task dependencies on the timeline or in a popup form
+- Hierarchical view of sub tasks
+- Reordering tasks in grid with drag-and-drop
+- Configurable timeline (hours, days, weeks)
+- Zooming with scroll
+- Showing task progress on the taskbar
+- Toolbar and context menu
+- Tooltips for taskbars
+- Fast performance with big data sets
+
+# :hammer_and_wrench: How to Use
 
 To use the widget, simply import the package and include the component in your Svelte file:
 
@@ -28,7 +56,7 @@ To use the widget, simply import the package and include the component in your S
 			text: "Project planning",
 			progress: 30,
 			parent: 0,
-			type: "project",
+			type: "summary",
 			open: true,
 			details: "Outline the project's scope and resources.",
 		},
@@ -42,15 +70,16 @@ To use the widget, simply import the package and include the component in your S
 
 <Gantt {tasks} {links} {scales} />
 ```
+For further instructions, follow the deatailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
-### How to Modify
+###  :computer: How to Modify
 
 Typically, you don't need to modify the code. However, if you wish to do so, follow these steps:
 
 1. Run `yarn` to install dependencies. Note that this project is a monorepo using `yarn` workspaces, so npm will not work
 2. Start the project in development mode with `yarn start`
 
-### Run Tests
+### :white_check_mark: Run Tests
 
 To run the test:
 
@@ -62,3 +91,8 @@ To run the test:
     ```sh
     yarn test:cypress
     ```
+
+### :speech_balloon: Need Help?
+
+Join our [community forum](https://forum.svar.dev) to get help and submit feature requests. 
+

@@ -1,15 +1,15 @@
 <script>
-	import { afterUpdate, getContext } from "svelte";
+	import { getContext } from "svelte";
 	import { grid } from "wx-gantt-store";
 
-	export let borders = "";
+	const { borders = "" } = $props();
 
 	const api = getContext("gantt-store");
 	const { cellWidth, cellHeight } = api.getReactiveState();
 
 	let node;
-	let color = "#e4e4e4";
-	afterUpdate(() => {
+	let color = $state("#e4e4e4");
+	$effect(() => {
 		if (typeof getComputedStyle !== "undefined") {
 			const border =
 				getComputedStyle(node).getPropertyValue("--wx-gantt-border");
@@ -26,4 +26,4 @@
 		color,
 		borders
 	)}); position: absolute;"
-/>
+></div>

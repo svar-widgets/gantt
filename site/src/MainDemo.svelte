@@ -3,12 +3,12 @@
 	import Component from "./Component.svelte";
 	import Toolbar from "./Toolbar.svelte";
 
-	export let skin;
+	let { skin = $bindable() } = $props();
 	function selectSkin(ev) {
 		skin = ev.detail.selected.id;
 	}
 
-	let api;
+	let api = $state();
 </script>
 
 <div class="demo" style="padding: 10px 20px;">
@@ -23,7 +23,7 @@
 	</div>
 	<div class="bottom">
 		{#key skin}
-			<Component bind:api />
+			<Component bind:this={api} />
 		{/key}
 	</div>
 </div>

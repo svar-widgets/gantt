@@ -6,8 +6,7 @@
 	import { locale } from "wx-lib-dom";
 	import { en } from "wx-gantt-locales";
 
-	export let api = null;
-	export let items = [...defaultToolbarButtons];
+	let { api = null, items = [...defaultToolbarButtons] } = $props();
 
 	// set locale
 	let l = getContext("wx-i18n");
@@ -17,51 +16,40 @@
 	}
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
-	items = items.map(b => {
-		b = { ...b };
-		b.handler = item => {
-			handleAction(api, item.id, null, _);
-			filterButtons();
-		};
-		if (b.text) b.text = _(b.text);
-		if (b.menuText) b.menuText = _(b.menuText);
-		return b;
+	const finalItems = $derived.by(() => {
+		return items.map(b => {
+			b = { ...b, disabled: false };
+			b.handler = item => {
+				handleAction(api, item.id, null, _);
+			};
+			if (b.text) b.text = _(b.text);
+			if (b.menuText) b.menuText = _(b.menuText);
+			return b;
+		});
 	});
 
-	let rState, rSelected, buttons, rTasks;
-	$: {
+	let rSelected, rTasks;
+	const buttons = $derived.by(() => {
 		if (api) {
-			rState = api.getReactiveState();
+			const rState = api.getReactiveState();
 			rSelected = rState._selected;
 			rTasks = rState._tasks;
 
-			filterButtons();
-		} else {
-			buttons = [items[0]];
+			if ($rSelected?.length) {
+				return finalItems.map(item => {
+					if (!item.check) return item;
+
+					const isDisabled = $rSelected.some(
+						task => !item.check(task, $rTasks)
+					);
+
+					return { ...item, disabled: isDisabled };
+				});
+			}
 		}
-	}
 
-	$: $rSelected, filterButtons();
-
-	function filterButtons() {
-		items = items.map(item => {
-			return { ...item, disabled: false };
-		});
-
-		if ($rSelected?.length) {
-			buttons = items.map(item => {
-				if (!item.check) return item;
-
-				const isDisabled = $rSelected.some(
-					task => !item.check(task, $rTasks)
-				);
-
-				return { ...item, disabled: isDisabled };
-			});
-		} else {
-			buttons = [items[0]];
-		}
-	}
+		return [{ ...finalItems[0], disabled: false }];
+	});
 </script>
 
 <Toolbar items={buttons} />

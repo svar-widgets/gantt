@@ -1,5 +1,5 @@
 <script>
-	export let routes;
+	let { routes } = $props();
 </script>
 
 <code

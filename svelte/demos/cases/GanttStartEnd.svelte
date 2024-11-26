@@ -4,21 +4,25 @@
 
 	import { DatePicker, Field, Locale } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let start = new Date(2024, 3, 5),
-		end = new Date(2024, 4, 1);
+	let start = $state(new Date(2024, 3, 5)),
+		end = $state(new Date(2024, 4, 1));
 </script>
 
 <div class="demo">
 	<Locale>
 		<div class="bar">
-			<Field label="Start" let:id>
-				<DatePicker bind:value={start} {id} />
+			<Field label="Start">
+				{#snippet children({ id })}
+					<DatePicker bind:value={start} {id} />
+				{/snippet}
 			</Field>
-			<Field label="End" let:id>
-				<DatePicker bind:value={end} {id} />
+			<Field label="End">
+				{#snippet children({ id })}
+					<DatePicker bind:value={end} {id} />
+				{/snippet}
 			</Field>
 		</div>
 	</Locale>

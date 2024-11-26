@@ -1,16 +1,20 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
 	import { Button } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
-	let api, handler, selected;
+	let api = $state(),
+		handler = $state(),
+		selected = $state();
 	const data = getData();
 
-	$: {
+	run(() => {
 		if (api) selected = api.getReactiveState().selected;
-	}
+	});
 
 	const resolver = () => {
 		const id = $selected.length ? $selected[$selected.length - 1] : null;
@@ -22,12 +26,12 @@
 
 <div class="rows">
 	<div class="bar">
-		<Button type="primary" click={handler}>Task action</Button>
+		<Button type="primary" onclick={handler}>Task action</Button>
 	</div>
 
 	<div class="gtcell">
 		<Gantt
-			bind:api
+			bind:this={api}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

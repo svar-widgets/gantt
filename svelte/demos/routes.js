@@ -14,7 +14,8 @@ import GanttForm from "./cases/GanttForm.svelte";
 import GanttSizes from "./cases/GanttSizes.svelte";
 import GanttMultiple from "./cases/GanttMultiple.svelte";
 import GanttPerformance from "./cases/GanttPerformance.svelte";
-import GanttMarkers from "./cases/GanttMarkers.svelte";
+
+
 import GanttTooltips from "./cases/GanttTooltips.svelte";
 import GanttToolbar from "./cases/GanttToolbar.svelte";
 import GanttToolbarCustom from "./cases/GanttToolbarCustom.svelte";
@@ -47,7 +48,8 @@ export const links = [
 	["/cell-borders/:skin", "Chart cell borders", ChartCellBorders],
 	["/scales/:skin", "Custom scales", GanttScales],
 	["/start-end/:skin", "Start/end dates", GanttStartEnd],
-	["/markers/:skin", "Markers", GanttMarkers],
+
+
 	["/holidays/:skin", "Holidays", GanttHolidays],
 	["/baseline/:skin", "Baselines", GanttBaseline],
 	["/templates/:skin", "Custom text", GanttText],

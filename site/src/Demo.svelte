@@ -1,4 +1,6 @@
 <script>
+	import { run } from "svelte/legacy";
+
 	import {
 		Globals,
 		Willow,
@@ -8,7 +10,10 @@
 	} from "wx-svelte-core";
 	import MainDemo from "./MainDemo.svelte";
 
-	let skin = "willow";
+	let skin = $state("willow");
+	run(() => {
+		document.body.className = `wx-${skin}-theme`;
+	});
 </script>
 
 <Material />

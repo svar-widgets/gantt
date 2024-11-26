@@ -1,6 +1,6 @@
 <script>
 	import { Toolbar } from "wx-svelte-gantt";
-	export let api;
+	let { api } = $props();
 </script>
 
 <Toolbar {api} />

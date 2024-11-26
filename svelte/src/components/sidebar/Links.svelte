@@ -7,8 +7,7 @@
 
 	const { _activeTask: task, _links: links } = api.getReactiveState();
 
-	let linksData;
-	$: {
+	let linksData = $derived.by(() => {
 		if ($task) {
 			const inLinks = $links
 				.filter(a => a.target == $task.id)
@@ -18,12 +17,12 @@
 				.filter(a => a.source == $task.id)
 				.map(link => ({ link, task: api.getTask(link.target) }));
 
-			linksData = [
+			return [
 				{ title: _("Predecessors"), data: inLinks },
 				{ title: _("Successors"), data: outLinks },
 			];
 		}
-	}
+	});
 
 	const list = [
 		{ id: "e2s", label: _("End-to-start") },
@@ -52,39 +51,44 @@
 	{#if links.data.length}
 		<div class="wx-links">
 			<Field label={links.title} position="top">
-				<table on:click={onClick}>
-					{#each links.data as obj}
-						<tr>
-							<td class="wx-cell">
-								<div class="wx-task-name">
-									{obj.task.text || ""}
-								</div>
-							</td>
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+				<table onclick={onClick}>
+					<tbody>
+						{#each links.data as obj}
+							<tr>
+								<td class="wx-cell">
+									<div class="wx-task-name">
+										{obj.task.text || ""}
+									</div>
+								</td>
 
-							<td class="wx-cell">
-								<div class="wx-wrapper">
-									<Combo
-										let:option
-										value={obj.link.type}
-										placeholder={_("Select link type")}
-										options={list}
-										on:select={e =>
-											onSelect(e, obj.link.id)}
-									>
-										{option.label}
-									</Combo>
-								</div>
-							</td>
+								<td class="wx-cell">
+									<div class="wx-wrapper">
+										<Combo
+											value={obj.link.type}
+											placeholder={_("Select link type")}
+											options={list}
+											on:select={e =>
+												onSelect(e, obj.link.id)}
+										>
+											{#snippet children({ option })}
+												{option.label}
+											{/snippet}
+										</Combo>
+									</div>
+								</td>
 
-							<td class="wx-cell">
-								<i
-									class="wxi-delete wx-delete-icon"
-									data-action="delete-link"
-									data-id={obj.link.id}
-								/>
-							</td>
-						</tr>
-					{/each}
+								<td class="wx-cell">
+									<i
+										class="wxi-delete wx-delete-icon"
+										data-action="delete-link"
+										data-id={obj.link.id}
+									></i>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
 				</table>
 			</Field>
 		</div>

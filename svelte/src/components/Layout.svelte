@@ -10,13 +10,14 @@
 	import IconButton from "../widgets/IconButton.svelte";
 	import Resizer from "./Resizer.svelte";
 
-	// parameters
-	export let taskTemplate;
-	export let markers;
-	export let readonly;
-	export let cellBorders;
-	export let editorShape;
-	export let highlightTime;
+	let {
+		taskTemplate,
+		markers,
+		readonly,
+		cellBorders,
+		editorShape,
+		highlightTime,
+	} = $props();
 
 	const api = getContext("gantt-store");
 	const _ = getContext("wx-i18n").getGroup("gantt");
@@ -30,12 +31,9 @@
 		columns: rColumns,
 	} = api.getReactiveState();
 
-	let gridWidth, gridColumnWidth;
-	let fullWidth, fullHeight, ganttWidth, layoutWidth;
-
 	// resize
 	let compactWidth = 650;
-	let compactMode = false;
+	let compactMode = $state(false);
 
 	const ro = new ResizeObserver(resize);
 
@@ -54,22 +52,6 @@
 		ro.disconnect();
 	});
 
-	let markersData;
-	$: {
-		const { start, diff } = $rScales;
-		markersData = markers.map(marker => {
-			marker.left = diff(marker.start, start) * $rCellWidth;
-			return marker;
-		});
-	}
-
-	$: {
-		fullWidth = $rScales.width;
-		fullHeight = $rTasks.length * $rCellHeight;
-		ganttWidth = gridWidth + fullWidth;
-
-		expandScale();
-	}
 	let initialCall = true;
 	let scaleDate, scalePos;
 	async function expandScale() {
@@ -94,35 +76,54 @@
 		scalePos = p.detail.offset;
 	}
 
-	$: gridWidth = calcGridWidth(compactMode, $rColumns);
+	function addTask() {
+		api.exec("add-task", { task: { text: _("New Task") } });
+	}
 
-	function calcGridWidth(compactMode, columns) {
+	function resizeGrid() {
+		// const newWidth = ev.detail;
+		// gridWidth = newWidth;
+	}
+
+	const markersData = $derived.by(() => {
+		const { start, diff } = $rScales;
+		return markers.map(marker => {
+			marker.left = diff(marker.start, start) * $rCellWidth;
+			return marker;
+		});
+	});
+
+	let layoutWidth = $state();
+
+	const gridColumnWidth = $derived.by(() => {
 		let w;
-		if (columns.every(c => c.width && !c.flexgrow)) {
-			w = columns.reduce((acc, c) => {
+		if ($rColumns.every(c => c.width && !c.flexgrow)) {
+			w = $rColumns.reduce((acc, c) => {
 				acc += parseInt(c.width);
 				return acc;
 			}, 0);
 		} else w = 440;
 
-		gridColumnWidth = w;
-
+		return w;
+	});
+	const gridWidth = $derived.by(() => {
+		let w = gridColumnWidth;
 		if (compactMode) {
-			w = parseInt(columns.find(c => c.id === "action")?.width) || 50;
+			w = parseInt($rColumns.find(c => c.id === "action")?.width) || 50;
 		}
 		return w;
-	}
+	});
 
-	function addTask() {
-		api.exec("add-task", { task: { text: _("New Task") } });
-	}
+	const fullWidth = $derived($rScales.width);
+	const fullHeight = $derived($rTasks.length * $rCellHeight);
+	const ganttWidth = $derived(gridWidth + fullWidth);
 
-	function resizeGrid(ev) {
-		const newWidth = ev.detail;
-		gridWidth = newWidth;
-	}
+	// expandScale();
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div class="wx-gantt">
 	<div tabindex="0" class="wx-layout" bind:offsetWidth={layoutWidth}>
 		{#if $rColumns.length}
