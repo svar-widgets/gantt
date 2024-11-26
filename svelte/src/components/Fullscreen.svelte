@@ -1,11 +1,12 @@
 <script>
 	import IconButton from "../widgets/IconButton.svelte";
 	import { hotkeys } from "../helpers/hotkey";
-	import { onDestroy } from "svelte";
 
 	let { mode = false, hotkey = null, children } = $props();
 
-	if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
+	$effect(() => {
+		if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
+	});
 
 	let node = null;
 	let inFullscreen = $state(false);
@@ -24,9 +25,15 @@
 	const setFullscreenState = () => {
 		inFullscreen = document.fullscreenElement === node;
 	};
-	document.addEventListener("fullscreenchange", setFullscreenState);
-	onDestroy(() => {
-		document.removeEventListener("fullscreenchange", setFullscreenState);
+
+	$effect(() => {
+		document.addEventListener("fullscreenchange", setFullscreenState);
+		return () => {
+			document.removeEventListener(
+				"fullscreenchange",
+				setFullscreenState
+			);
+		};
 	});
 
 	$effect(() => {
@@ -41,7 +48,7 @@
 		<IconButton
 			appearance={"transparent"}
 			icon="wxi-{inFullscreen ? 'collapse' : 'expand'}"
-			on:click={() => (mode = !mode)}
+			onclick={() => (mode = !mode)}
 		/>
 	</div>
 </div>
@@ -58,7 +65,5 @@
 		right: 25px;
 		bottom: 35px;
 		z-index: 4;
-		right: 3px;
-		bottom: 16px;
 	}
 </style>

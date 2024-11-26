@@ -13,7 +13,9 @@
 		if (typeof getComputedStyle !== "undefined") {
 			const border =
 				getComputedStyle(node).getPropertyValue("--wx-gantt-border");
-			color = border.substring(border.indexOf("#"));
+			color = border
+				? border.substring(border.indexOf("#"))
+				: "#1d1e261a";
 		}
 	});
 </script>

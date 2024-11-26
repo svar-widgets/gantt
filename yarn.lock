@@ -4697,22 +4697,22 @@ wx-core-locales@2.0.0-beta-2:
   resolved "https://registry.yarnpkg.com/wx-core-locales/-/wx-core-locales-2.0.0-beta-2.tgz#5ab65ddb3512e542896bad3722bc17099ac4626c"
   integrity sha512-UCvNOULooLXcV2mh4j9T7zwqzFY5Q1uqkafN1ud5SjmL+VW1VKdMZLhst5gAs0FB/zQ3h1mHhUkv7MjtxyUI0Q==
 
-wx-grid-data-provider@2.0.0-beta-2:
-  version "2.0.0-beta-2"
-  resolved "https://registry.yarnpkg.com/wx-grid-data-provider/-/wx-grid-data-provider-2.0.0-beta-2.tgz#5d144b57e73cd71cebd1e84529be87cb90a4b4f2"
-  integrity sha512-Rjs81smucfY6Tq8SGmcyBwoW3RrwFoUzN3uJcd/Q8/XG0Ykh58Fyq3NlV09u2JWTClUQHOEQuukYHrGQk5QDKg==
+wx-grid-data-provider@2.0.0-beta-3:
+  version "2.0.0-beta-3"
+  resolved "https://registry.yarnpkg.com/wx-grid-data-provider/-/wx-grid-data-provider-2.0.0-beta-3.tgz#d2e043d172880ba76a00ac654740492d680b6728"
+  integrity sha512-MXks7x4DRQWBp+uS2t0JKhrAsemu3ScP+IHfUQZRUkeB6uh3h/o9bUpFVWT6dr441MZYDCCnFP0b1GsJAS/Ksw==
   dependencies:
     wx-lib-data-provider "1.4.0"
 
-wx-grid-locales@2.0.0-beta-2:
-  version "2.0.0-beta-2"
-  resolved "https://registry.yarnpkg.com/wx-grid-locales/-/wx-grid-locales-2.0.0-beta-2.tgz#d31ac007b59b365cb1a6a53903b13e1cae707fb6"
-  integrity sha512-9v8uA27DwR8qoQxZ522qpkKyycJtQ/ilxgKo+M9v+ITKKvw/opGSpBun2Kd5ZMvicSpnr7UrWumVQzMpIfZvdw==
+wx-grid-locales@2.0.0-beta-3:
+  version "2.0.0-beta-3"
+  resolved "https://registry.yarnpkg.com/wx-grid-locales/-/wx-grid-locales-2.0.0-beta-3.tgz#9e9b490edb98fe67d1ee6c45bbee98c63132a06b"
+  integrity sha512-0ZIQU2YmYOGc0lpCmdxm4Srr+N54+NDP400Sp2yVr0GlUNA7JHatqk4EgKHjdVONdQF0a+YRKiHGWpUHKaLMyA==
 
-wx-grid-store@2.0.0-beta-2:
-  version "2.0.0-beta-2"
-  resolved "https://registry.yarnpkg.com/wx-grid-store/-/wx-grid-store-2.0.0-beta-2.tgz#5da82216a96178e1ab1c37c327ded91563fda733"
-  integrity sha512-nAz5NJgZDGpgejAX+2QZT/6TcAxEyshWoq6epQHTOnEmxEYKsYjUaCqL9YKwJm0tZu3wOMK/RHYlAG/sD+FDbA==
+wx-grid-store@2.0.0-beta-3:
+  version "2.0.0-beta-3"
+  resolved "https://registry.yarnpkg.com/wx-grid-store/-/wx-grid-store-2.0.0-beta-3.tgz#511592df610528b255d5e83e1ed2e24a637cbaf1"
+  integrity sha512-1u1eQwHuWiJfCTKYViHsbFwhwxdLJX3Feh/ITrCB+X6S36nn/h/oI/u+eSlYegKy8nAvvHoP+aLByYhw9FfTZA==
   dependencies:
     wx-lib-state "1.9.0"
 
@@ -4744,14 +4744,14 @@ wx-svelte-core@2.0.0-beta-2:
     wx-core-locales "2.0.0-beta-2"
     wx-lib-dom "0.6.0"
 
-wx-svelte-grid@2.0.0-beta-2:
-  version "2.0.0-beta-2"
-  resolved "https://registry.yarnpkg.com/wx-svelte-grid/-/wx-svelte-grid-2.0.0-beta-2.tgz#3724d18007cf3d8252094563defe2e90612bc271"
-  integrity sha512-73SfehF5olM+dzqqOA/euaJ8lbEJbxhgj5+XLrU/1auxmqWG82poFHgB+oJShxJkTVVYrtVIMAA9vTUdQ5++kQ==
+wx-svelte-grid@2.0.0-beta-3:
+  version "2.0.0-beta-3"
+  resolved "https://registry.yarnpkg.com/wx-svelte-grid/-/wx-svelte-grid-2.0.0-beta-3.tgz#763eaec3fb81485de2f06c3520869e9f4002a3b8"
+  integrity sha512-P3owyykiQx8xnOIPQAv+5+aL00ZivQ4FuGpAkmo6Ku7YB6iK2LB5jyq5zFmfs442ejMkp0qD+D8BW3FUUCv2Rw==
   dependencies:
-    wx-grid-data-provider "2.0.0-beta-2"
-    wx-grid-locales "2.0.0-beta-2"
-    wx-grid-store "2.0.0-beta-2"
+    wx-grid-data-provider "2.0.0-beta-3"
+    wx-grid-locales "2.0.0-beta-3"
+    wx-grid-store "2.0.0-beta-3"
     wx-lib-dom "0.6.0"
     wx-lib-state "1.9.0"
     wx-lib-svelte "0.4.0"

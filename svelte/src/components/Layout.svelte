@@ -1,6 +1,6 @@
 <script>
 	// svelte core
-	import { onDestroy, tick, getContext } from "svelte";
+	import { tick, getContext } from "svelte";
 
 	// views
 	import TimeScales from "./TimeScale.svelte";
@@ -35,9 +35,14 @@
 	let compactWidth = 650;
 	let compactMode = $state(false);
 
-	const ro = new ResizeObserver(resize);
+	$effect(() => {
+		const ro = new ResizeObserver(resize);
+		ro.observe(document.body);
 
-	ro.observe(document.body);
+		return () => {
+			ro.disconnect();
+		};
+	});
 
 	function resize(data) {
 		for (let obj of data) {
@@ -47,10 +52,6 @@
 			}
 		}
 	}
-
-	onDestroy(() => {
-		ro.disconnect();
-	});
 
 	let initialCall = true;
 	let scaleDate, scalePos;

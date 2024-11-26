@@ -1,6 +1,6 @@
 {
 	"name": "wx-svelte-gantt",
-	"version": "2.0.0-beta-2",
+	"version": "2.0.0-beta-3",
 	"description": "Interactive and customizable Gantt chart component written in Svelte",
 	"productTag": "gantt",
 	"needsTrial": true,
@@ -31,15 +31,15 @@
 	},
 	"homepage": "https://svar.dev/svelte/gantt/",
 	"dependencies": {
-		"wx-gantt-data-provider": "2.0.0-beta-2",
-		"wx-gantt-locales": "2.0.0-beta-2",
-		"wx-gantt-store": "2.0.0-beta-2",
+		"wx-gantt-data-provider": "2.0.0-beta-3",
+		"wx-gantt-locales": "2.0.0-beta-3",
+		"wx-gantt-store": "2.0.0-beta-3",
 		"wx-lib-dom": "0.6.0",
 		"wx-lib-state": "1.9.0",
 		"wx-lib-svelte": "0.4.0",
 		"wx-svelte-core": "2.0.0-beta-2",
 		"wx-svelte-menu": "2.0.0-beta-2",
-		"wx-svelte-grid": "2.0.0-beta-2",
+		"wx-svelte-grid": "2.0.0-beta-3",
 		"wx-svelte-toolbar": "2.0.0-beta-2"
 	},
 	"files": [

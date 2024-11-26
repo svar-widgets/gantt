@@ -150,6 +150,8 @@
 	}
 
 	let showFullToggle = $state(false);
+	const showFull = $derived(compactMode ? false : showFullToggle);
+
 	let w = $state(0); // clientWidth
 	let h = $state(0); // clientHeight
 
@@ -246,7 +248,6 @@
 
 	// COLUMNS
 	// --------
-	const showFull = $derived(compactMode ? false : showFullToggle);
 	const hasFlexCol = $derived($columns.some(c => c.flexgrow));
 	const cols = $derived.by(() => {
 		let cols = $columns.map(col => {
