@@ -3,31 +3,33 @@
 	import { Gantt, ContextMenu } from "../../src/";
 	import { Button } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
-	let api, handler, selected;
+	let api = $state(),
+		menu = $state();
 	const data = getData();
-
-	$: {
-		if (api) selected = api.getReactiveState().selected;
-	}
 
 	const resolver = () => {
 		const id = $selected.length ? $selected[$selected.length - 1] : null;
 		return id ? api.getTask(id) : null;
 	};
+
+	const selected = $derived.by(() => {
+		return api ? api.getReactiveState().selected : null;
+	});
 </script>
 
-<ContextMenu {api} {resolver} at="right" bind:handler />
+<ContextMenu {api} {resolver} at="right" bind:this={menu} />
 
 <div class="rows">
 	<div class="bar">
-		<Button type="primary" click={handler}>Task action</Button>
+		<Button type="primary" onclick={ev => menu.show(ev)}>Task action</Button
+		>
 	</div>
 
 	<div class="gtcell">
 		<Gantt
-			bind:api
+			bind:this={api}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

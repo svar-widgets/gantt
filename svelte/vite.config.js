@@ -1,25 +1,36 @@
 import { loadEnv } from "vite";
 import { resolve } from "path";
+import { existsSync } from "fs";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { visualizer } from "rollup-plugin-visualizer";
 import { waitChanges, waitOn } from "wx-vite-tools";
 import conditionalCompile from "vite-plugin-conditional-compile";
-import pkg from "./package.json";
+import pkg from "./package.json" with { type: "json" };
 
 export default async ({ mode }) => {
 	process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "WX") };
+	const files = [];
 
-	const files =
-		mode === "production"
-			? []
-			: [
-					resolve(__dirname, "../store/dist/index.js"),
-					resolve(__dirname, "../provider/dist/index.js"),
-				];
+	if (mode !== "production") {
+		const paths = [
+			resolve(__dirname, "../store/dist/index.js"),
+			resolve(__dirname, "../provider/dist/index.js"),
+		];
 
-	const plugins = [waitChanges({ files })];
+		paths.forEach(path => {
+			if (existsSync(path)) {
+				files.push(path);
+			}
+		});
+	}
+
+	const plugins = [];
+
+	if (files.length) plugins.push(waitChanges({ files }));
 	if (mode !== "development") plugins.push(conditionalCompile());
 	plugins.push(svelte({}));
+
+	const name = pkg.productTag;
 
 	let build,
 		publicDir = resolve(__dirname, "public"),
@@ -32,7 +43,7 @@ export default async ({ mode }) => {
 				input: { tests: resolve(__dirname, "tests/index.html") },
 			},
 		};
-		server.port = 5000;
+		server.port = 5100;
 	} else {
 		build = {
 			rollupOptions: {
@@ -45,9 +56,9 @@ export default async ({ mode }) => {
 		build = {
 			lib: {
 				entry: resolve(__dirname, "src/index.js"),
-				name: pkg.productTag,
+				name,
 				formats: ["es"],
-				fileName: format => `${pkg.productTag}.${format}.js`,
+				fileName: format => `${name}.${format}.js`,
 			},
 			outDir: "./dist",
 			sourcemap: true,
@@ -58,7 +69,7 @@ export default async ({ mode }) => {
 		plugins.push(visualizer({ filename: "dist/stats.html" }));
 	}
 
-	await waitOn({ files });
+	if (files.length) await waitOn({ files });
 
 	return {
 		base,

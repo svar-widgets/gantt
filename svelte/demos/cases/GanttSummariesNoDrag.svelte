@@ -2,24 +2,25 @@
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let api;
+	let gApi = $state();
 
-	$: if (api) {
+	function init(api) {
 		api.intercept("drag-task", ({ id, top }) => {
 			return !(
 				typeof top === "undefined" && api.getTask(id).type == "summary"
 			);
 		});
+		gApi = api;
 	}
 </script>
 
 <div class="gt-cell">
-	<ContextMenu {api}>
+	<ContextMenu api={gApi}>
 		<Gantt
-			bind:api
+			{init}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

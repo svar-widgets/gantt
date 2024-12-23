@@ -5,6 +5,8 @@ export function grid(
 	color: string,
 	mode?: "full"
 ): string {
+	// FIXME :: Svelte-kit
+	if (typeof document === "undefined") return "";
 	const canvas = document.createElement("canvas");
 
 	let fillMode = true;

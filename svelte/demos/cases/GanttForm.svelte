@@ -3,7 +3,7 @@
 	import { Gantt } from "../../src/";
 	import Form from "../custom/Form.svelte";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 	const taskTypes = [
@@ -12,39 +12,32 @@
 		{ id: "summary", label: "Summary task" },
 	];
 
-	let task;
-	let api;
-	let tasks;
+	let task = $state();
+	let gApi = $state();
 
-	$: {
-		if (api) {
-			tasks = api.getState().tasks;
-
-			api.intercept("show-editor", data => {
-				task = tasks.byId(data.id);
-				return false;
-			});
-		}
-	}
-
-	function formAction(ev) {
-		const { action, data } = ev.detail;
-
+	function formAction({ action, data }) {
 		switch (action) {
 			case "close-form":
 				task = null;
 				break;
-
 			default:
-				api.exec(action, data);
+				gApi.exec(action, data);
 				break;
 		}
+	}
+
+	function init(api) {
+		api.intercept("show-editor", data => {
+			task = api.getState().tasks.byId(data.id);
+			return false;
+		});
+		gApi = api;
 	}
 </script>
 
 <div class="wrapper">
 	<Gantt
-		bind:api
+		{init}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}
@@ -52,7 +45,7 @@
 	/>
 
 	{#if task}
-		<Form {task} {taskTypes} on:action={formAction} />
+		<Form {task} {taskTypes} onaction={formAction} />
 	{/if}
 </div>
 

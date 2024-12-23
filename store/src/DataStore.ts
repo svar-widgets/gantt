@@ -126,7 +126,6 @@ export default class DataStore extends Store<IData> {
 									baselines
 								)
 							);
-
 						this.setState({ _tasks }, ctx);
 					},
 				},
@@ -303,6 +302,7 @@ export default class DataStore extends Store<IData> {
 			if (inProgress === false) {
 				// end of dnd move
 				task.$reorder = false;
+				tasks.update(task.id, task); //[FIXME] repaint signal
 				this.setState({ tasks });
 				source = null;
 				return;
@@ -431,6 +431,13 @@ export default class DataStore extends Store<IData> {
 				const oldSummary = tasks.getSummaryId(task.id);
 
 				tasks.move(id, mode, target);
+
+				// [FIXME] in lib-state
+				// indent-outdent operations: tasks need to be
+				// explicitely updated to be re-painted in UI
+				// indent: update source task; outdent: update target
+				tasks.update(id, { $level: task.$level });
+				tasks.update(target, targetTask);
 
 				if (mode == "child") {
 					let tobj = targetTask;

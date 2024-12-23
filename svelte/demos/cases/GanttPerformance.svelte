@@ -1,17 +1,18 @@
 <script>
-	import { afterUpdate } from "svelte";
 	import { getGeneratedData, complexScales } from "../data";
 	import { Gantt } from "../../src/";
 	import { Button } from "wx-svelte-core";
 
-	export let skinSettings;
+	const { skinSettings } = $props();
 
 	const count = 10000;
 	const years = 3;
-	const data = getGeneratedData("", count, 3);
-	let start = null;
-	let outArea;
-	afterUpdate(() => {
+	const data = getGeneratedData("", count, years);
+
+	let start = $state();
+	let outArea = $state();
+
+	$effect(() => {
 		if (start && outArea) outArea.innerHTML = new Date() - start;
 	});
 </script>
@@ -22,10 +23,10 @@
 			10 000 tasks (
 			{years}
 			years ) rendered in
-			<span bind:this={outArea} />
+			<span bind:this={outArea}></span>
 			ms
 		{:else}
-			<Button type="primary" click={() => (start = new Date())}>
+			<Button type="primary" onclick={() => (start = new Date())}>
 				Press me to render Gantt chart with 10 000 tasks
 			</Button>
 		{/if}

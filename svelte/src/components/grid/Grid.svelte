@@ -7,12 +7,13 @@
 	import TextCell from "./TextCell.svelte";
 	import ActionCell from "./ActionCell.svelte";
 
-	export let readonly;
-	export let compactMode;
-	export let width = 0;
-	export let columnWidth = 0;
-
-	export let fullHeight = 0;
+	let {
+		readonly,
+		compactMode,
+		width = 0,
+		columnWidth,
+		fullHeight = 0,
+	} = $props();
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -29,24 +30,11 @@
 		_sort: sort,
 	} = api.getReactiveState();
 
-	let tasks, height;
-	$: tasks = $rTasks.slice($area.start, $area.end);
-	$: scrollDelta = $area.from;
-	$: height = $scales.height;
-	$: sel = $selected.map(o => o.id);
-
 	let touchY = null;
 	let scroll = true;
-	let dragTask = null;
-	let scrollX, scrollY;
-	let tableStyle, tableOuterStyle, scrollYStyle;
-	let scrollDiv;
-	let scrollYPos;
-
-	$: allTasks =
-		dragTask && !tasks.find(t => t.id === dragTask.id)
-			? [...tasks, dragTask]
-			: tasks;
+	let dragTask = $state(null);
+	let container = $state();
+	let innerContainer = $state();
 
 	function onClick(e) {
 		const id = locateID(e);
@@ -163,95 +151,16 @@
 		});
 	}
 
-	let cols;
-	let basis;
-	let showFull = false;
-	let hasFlexCol = false;
-	let w = 0; // clientWidth
-	let h = 0; // clientHeight
-	$: {
-		cols = $columns.map(col => {
-			col.header = _(col.header);
-			return col;
-		});
-		setFlex(cols);
+	let showFull = $state(false);
+	$effect(() => {
+		if (!compactMode) showFull = false;
+	});
 
-		const ti = cols.findIndex(c => c.id == "text");
-		const ai = cols.findIndex(c => c.id === "action");
+	let w = $state(0); // clientWidth
+	let h = $state(0); // clientHeight
 
-		cols[ti].cell = TextCell;
-		cols[ai].cell = ActionCell;
-
-		cols[ai].header = {
-			css: "wx-action " + (compactMode ? "wx-expand" : "wx-add-task"),
-			collapsible: true,
-		};
-
-		if (compactMode) {
-			if (readonly) cols[ai].action = "expand";
-			cols.unshift(cols.splice(ai, 1)[0]);
-			cols = showFull ? cols : cols.slice(0, 1);
-		} else {
-			if (readonly) cols.splice(ai, 1);
-			showFull = false;
-		}
-
-		cols[cols.length - 1].resize = false;
-
-		// recalculate columnWidth on columns or compactMode change
-		setColumnWidth();
-	}
-
-	$: {
-		const { key, order } = $sort || {};
-		// to mark sorted column with relevant icon
-		cols = cols.map(col => {
-			col.$sort = order && col.id === key ? { order } : null;
-			return col;
-		});
-	}
-
-	$: {
-		scrollX = !compactMode
-			? columnWidth > width
-			: showFull && columnWidth > w;
-		tableStyle = scrollYStyle =
-			!showFull || scrollX
-				? `width:${scrollX ? columnWidth : width}px;`
-				: "";
-		scrollY = h < height + fullHeight;
-		tableOuterStyle = "";
-		if (scrollY) {
-			tableOuterStyle = tableStyle + `height:${fullHeight + height}px;`;
-			tableStyle += `height:${h}px;`;
-			if (showFull) scrollYStyle = tableOuterStyle;
-		}
-		basis = showFull ? "100%" : `${width}px`;
-	}
-	$: {
-		// if grid width is bigger than total width of all columns,
-		// column widths are increased
-		if (columnWidth < width || (showFull && columnWidth < w)) {
-			if (!hasFlexCol) {
-				const k = (w - 50) / (columnWidth - 50);
-				cols = cols.map(c => {
-					if (c.id != "action") {
-						c = { ...c };
-						if (!c.$width) c.$width = c.width;
-						c.width = c.$width * k;
-					}
-					return c;
-				});
-			}
-		}
-	}
-
-	let table;
-	$: if (table) {
-		//hack to align scroll
-		table.querySelector(".wx-body").style.top =
-			-($scrollTop - scrollDelta) + "px";
-	}
+	let table = $state();
+	let updateFlex = $state(false);
 
 	function init(tapi) {
 		tapi.intercept("scroll", () => false);
@@ -284,61 +193,182 @@
 		});
 
 		tapi.on("resize-column", () => {
-			if (hasFlexCol) setFlex(cols);
-			setColumnWidth();
+			updateFlex = true;
+			if (!hasFlexCol) setColumnWidth();
+			updateFlex = false;
 		});
 	}
 
-	function onScroll(ev) {
-		scrollYPos = ev.target.scrollTop;
-		api.exec("scroll-chart", {
-			top: scrollYPos,
-		});
-	}
+	// SIZES
+	// --------
+	// --------
+	const scrollDelta = $derived($area.from);
+	const height = $derived($scales.height);
+	const scrollX = $derived(
+		!compactMode ? columnWidth > width : showFull && columnWidth > w
+	);
+	const scrollY = $derived(container ? h < height + fullHeight : false);
 
-	function setFlex(arr) {
-		hasFlexCol = arr.some(c => Object.hasOwn(c, "flexgrow"));
-	}
+	const basis = $derived(showFull ? "100%" : `${width}px`);
 
-	$: {
-		if (compactMode && !showFull) scrollYPos = $scrollTop;
-	}
+	const baseTableStyle = $derived(
+		!showFull || scrollX ? `width:${scrollX ? columnWidth : width}px;` : ""
+	);
+	const tableStyle = $derived(
+		scrollY
+			? baseTableStyle +
+					`height:${Math.max(container.offsetHeight, h)}px;`
+			: baseTableStyle
+	);
+	const tableOuterStyle = $derived(
+		scrollY ? baseTableStyle + `height:${fullHeight + height}px;` : ""
+	);
+	const scrollYStyle = $derived(
+		scrollY && showFull ? tableOuterStyle : baseTableStyle
+	);
 
-	$: {
-		if (scrollDiv && (showFull || !scrollY)) {
-			const y = scrollY ? scrollYPos : 0;
-			if (scrollDiv.scrollTop != y) restoreScroll(y);
-		}
-	}
+	// --------
+	// SELECTION
+	// --------
+	const sel = $derived($selected.map(o => o.id));
 
-	async function restoreScroll(y) {
-		await tick();
-		scrollDiv.scrollTop = y;
-	}
+	// --------
+	// TASKS
+	// --------
 
+	const tasks = $derived($rTasks.slice($area.start, $area.end));
+	const allTasks = $derived(
+		dragTask && !tasks.find(t => t.id === dragTask.id)
+			? [...tasks, dragTask]
+			: tasks
+	);
+
+	// COLUMNS
+	// --------
 	function setColumnWidth() {
-		columnWidth = cols.reduce((acc, col) => {
+		const newColumnWidth = fitColumns.reduce((acc, col) => {
 			if (col.$width) col.$width = col.width;
 			return acc + col.width;
 		}, 0);
+		const containerWidth = showFull ? w : width;
+		if (newColumnWidth > containerWidth || columnWidth > containerWidth)
+			columnWidth = newColumnWidth;
+	}
+
+	const hasFlexCol = $derived.by(() => {
+		return updateFlex !== null && $columns.some(c => c.flexgrow);
+	});
+
+	const cols = $derived.by(() => {
+		let cols = $columns.map(col => {
+			col.header = _(col.header);
+			return col;
+		});
+
+		const ti = cols.findIndex(c => c.id == "text");
+		const ai = cols.findIndex(c => c.id === "action");
+
+		cols[ti].cell = TextCell;
+		cols[ai].cell = ActionCell;
+
+		cols[ai].header = {
+			css: "wx-action " + (compactMode ? "wx-expand" : "wx-add-task"),
+			collapsible: true,
+		};
+
+		if (compactMode) {
+			if (readonly) cols[ai].action = "expand";
+			cols.unshift(cols.splice(ai, 1)[0]);
+			cols = showFull ? cols : cols.slice(0, 1);
+		} else {
+			if (readonly) cols.splice(ai, 1);
+		}
+
+		cols[cols.length - 1].resize = false;
+
+		return cols;
+	});
+
+	const sortedColumns = $derived.by(() => {
+		const { key, order } = $sort || {};
+		// to mark sorted column with relevant icon
+		return cols.map(col => {
+			col.$sort = order && col.id === key ? { order } : null;
+			return col;
+		});
+	});
+
+	const fitColumns = $derived.by(() => {
+		// if grid width is bigger than total width of all columns,
+		// column widths are increased
+		if (
+			!hasFlexCol &&
+			(columnWidth < width || (showFull && columnWidth < w))
+		) {
+			const k = (w - 50) / (columnWidth - 50);
+			return sortedColumns.map(c => {
+				if (c.id != "action") {
+					c = { ...c };
+					if (!c.$width) c.$width = c.width;
+					c.width = c.$width * k;
+				}
+				return c;
+			});
+		}
+
+		return sortedColumns;
+	});
+
+	// --------
+	// SCROLLS
+	// --------
+	const scrollDiv = $derived(showFull ? container : innerContainer);
+
+	function onScroll(ev) {
+		if (ev.target === scrollDiv) {
+			api.exec("scroll-chart", {
+				top: scrollDiv.scrollTop,
+			});
+		}
+	}
+
+	$effect(() => {
+		if (table)
+			setScrollOffset($scrollTop, scrollDelta, tableStyle, fitColumns);
+	});
+
+	async function setScrollOffset(y, delta, tableStyle, cols) {
+		await tick();
+		if (
+			scrollDiv &&
+			scrollDiv.scrollTop != $scrollTop &&
+			tableStyle !== null &&
+			cols
+		)
+			scrollDiv.scrollTop = $scrollTop;
+		// hack to align scroll
+		table.querySelector(".wx-body").style.top = -(y - delta) + "px";
 	}
 </script>
 
-<svelte:window on:touchend={endScroll} />
+<svelte:window ontouchend={endScroll} />
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	bind:this={scrollDiv}
+	bind:this={container}
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 	class="wx-table-wrapper"
 	class:wx-wrapper-scroll={scrollX}
 	class:wx-wrapper-scroll-y={scrollY && showFull}
-	on:scroll={onScroll}
+	onscroll={onScroll}
 	style="flex: 0 0 {basis}"
 >
 	<div
+		bind:this={innerContainer}
 		style={scrollYStyle}
 		class:wx-scroll-y={scrollY && !showFull}
-		on:scroll={onScroll}
+		onscroll={onScroll}
 	>
 		<div style={tableOuterStyle}>
 			<div
@@ -352,10 +382,10 @@
 					move: moveReorder,
 					getTask: api.getTask,
 				}}
-				on:touchstart={onTouchstart}
-				on:touchmove={onTouchmove}
-				on:click={onClick}
-				on:dblclick={onDblClick}
+				ontouchstart={onTouchstart}
+				ontouchmove={onTouchmove}
+				onclick={onClick}
+				ondblclick={onDblClick}
 			>
 				<Grid
 					{init}
@@ -363,7 +393,7 @@
 					rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
 					columnStyle={col => "wx-text-" + col.align}
 					data={allTasks}
-					columns={cols}
+					columns={fitColumns}
 					selectedRows={[...sel]}
 				/>
 			</div>
@@ -404,7 +434,7 @@
 		--wx-table-header-background: var(--wx-background);
 		--wx-table-header-border: var(--wx-gantt-border);
 		--wx-table-header-cell-border: var(--wx-gantt-border);
-		position: sticky;
+		position: sticky !important;
 		top: 0;
 	}
 	.wx-table > :global(.wx-grid .wx-table-box) {
@@ -467,10 +497,10 @@
 	}
 	/*[fixme] find some permanent way to add correct icons - SVAR-1658 */
 	.wx-table > :global(.wx-grid .wx-header .wx-add-task i:before) {
-		content: "\f148";
+		content: "\f149";
 	}
 	.wx-table > :global(.wx-grid .wx-header .wx-expand i:before) {
-		content: "\f140";
+		content: "\f141";
 	}
 	/*drag element*/
 	.wx-table > :global(.wx-grid .wx-reorder-task.wx-row) {

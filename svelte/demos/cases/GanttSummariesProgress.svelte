@@ -2,7 +2,7 @@
 	import { getData } from "../data";
 	import { Gantt, defaultEditorShape, ContextMenu } from "../../src";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const dayDiff = (next, prev) => {
 		const d = (next - prev) / 1000 / 60 / 60 / 24;
@@ -12,7 +12,8 @@
 	const data = getData();
 
 	let tasks = data.tasks;
-	let gApi;
+	let gApi = $state();
+	let editorShape = $state(defaultEditorShape);
 
 	/**
      * 
@@ -105,8 +106,6 @@
 			}
 		});
 	}
-
-	$: editorShape = defaultEditorShape;
 </script>
 
 <div class="wrapper">

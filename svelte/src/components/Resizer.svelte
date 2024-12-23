@@ -1,20 +1,13 @@
 <script>
-	import { createEventDispatcher } from "svelte";
-	export let position = "after";
-	export let size = 4;
-	export let dir = "x";
-	export let value = 0;
-	export let minValue = 0;
-	export let maxValue = 0;
-
-	const dispatch = createEventDispatcher();
-
-	let cursor;
-	let b = {};
-	$: {
-		b = getBox(value);
-		cursor = dir == "x" ? "ew-resize" : "ns-resize";
-	}
+	let {
+		position = "after",
+		size = 4,
+		dir = "x",
+		value = $bindable(0),
+		minValue = 0,
+		maxValue = 0,
+		onmove,
+	} = $props();
 
 	function getBox(value) {
 		let offset = 0;
@@ -33,7 +26,7 @@
 
 	let start = 0,
 		pos,
-		active = false;
+		active = $state(false);
 
 	function getEventPos(ev) {
 		return dir == "x" ? ev.clientX : ev.clientY;
@@ -58,28 +51,32 @@
 		) {
 			value = newPos;
 			if (timeout) clearTimeout(timeout);
-			timeout = setTimeout(dispatch("move", value), 500);
+			timeout = setTimeout(() => onmove && onmove(value), 100);
 		}
 	}
 
 	function up() {
 		document.body.style.cursor = "";
 		document.body.style.userSelect = "";
-		dispatch("finish", value);
 		active = false;
 		window.removeEventListener("mousemove", move);
 		window.removeEventListener("mouseup", up);
 	}
+
+	const b = $derived(getBox(value));
+	const cursor = $derived(dir == "x" ? "ew-resize" : "ns-resize");
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="wx-resizer wx-resizer-{dir}"
 	class:wx-resizer-active={active}
-	on:mousedown={down}
+	onmousedown={down}
 	style="left:{b.p[0]};top:{b.p[1]};width:{b.size[0]}; height: {b
 		.size[1]};right:{b.p2[0]};bottom:{b.p2[1]}; cursor:{cursor};"
 >
-	<div class="wx-resizer-line" />
+	<div class="wx-resizer-line"></div>
 </div>
 
 <style>

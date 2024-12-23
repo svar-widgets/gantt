@@ -1,20 +1,20 @@
 <script>
-	import { createEventDispatcher, onMount } from "svelte";
+	import { onMount } from "svelte";
 	import Router, { push } from "svelte-spa-router";
 	import { getRoutes, getLinks } from "./helpers";
 
-	const dispatch = createEventDispatcher();
-	export let skin;
-	export let skinSettings;
-	let page, title;
+	let { skin = $bindable(), onnewpage } = $props();
+	let page = $state(),
+		title;
 
-	$: {
+	$effect(() => {
 		if (skin && page) {
 			push(`/${page}/${skin}`);
 		}
-	}
+	});
+
 	onMount(() => {
-		dispatch("newpage", { page, skin, title });
+		onnewpage && onnewpage({ page, skin, title });
 	});
 
 	function onRouteChange(path) {
@@ -24,13 +24,11 @@
 
 		const tPage = `/${page}/:skin`;
 		title = links.find(a => a[0] === tPage)[1];
-		dispatch("newpage", { page, skin, title });
+		onnewpage && onnewpage({ page, skin, title });
 	}
 
 	const links = getLinks();
-	const routes = getRoutes(skinSettings, onRouteChange);
+	const routes = getRoutes({}, onRouteChange);
 </script>
 
-<Router {routes}>
-	<slot />
-</Router>
+<Router {routes} />

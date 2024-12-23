@@ -1,14 +1,12 @@
 <script>
 	import { Material } from "wx-svelte-core";
-	const SLOTS = $$props.$$slots;
+	let { fonts = true, children } = $props();
 </script>
 
-{#if SLOTS && SLOTS.default}
-	<Material>
-		<slot />
-	</Material>
+{#if children}
+	<Material {fonts}>{@render children()}</Material>
 {:else}
-	<Material />
+	<Material {fonts} />
 {/if}
 
 <style>

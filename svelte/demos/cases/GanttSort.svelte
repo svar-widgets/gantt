@@ -2,16 +2,14 @@
 	import { getData, zoomConfig } from "../data";
 	import { Gantt } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let api;
-	$: {
-		if (api) {
-			api.intercept("sort-tasks", config => {
-				return config.key == "text";
-			});
-		}
+
+	function init(api) {
+		api.intercept("sort-tasks", config => {
+			return config.key == "text";
+		});
 	}
 </script>
 
@@ -19,7 +17,7 @@
 	<h4>Sorting by the "Task Name" column only</h4>
 	<div class="gtcell">
 		<Gantt
-			bind:api
+			{init}
 			{...skinSettings}
 			tasks={data.tasks}
 			links={data.links}

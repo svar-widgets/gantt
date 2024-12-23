@@ -5,11 +5,11 @@
 	import { getContext } from "svelte";
 	const helpers = getContext("wx-helpers");
 
-	export let skinSettings;
-	let api;
+	let { skinSettings } = $props();
+	let api = $state();
 	const data = getData();
 
-	let options;
+	let options = $state();
 	const ids = ["cut-task", "copy-task", "paste-task", "delete-task"];
 	let arr = [{ id: "add-task:after", text: " Add below", icon: "wxi-plus" }];
 	arr = arr.concat(defaultMenuOptions.filter(op => ids.indexOf(op.id) >= 0));
@@ -25,8 +25,7 @@
 		helpers.showNotice({ text: "'My action' clicked" });
 	}
 
-	function onClick(ev) {
-		const { context, action } = ev.detail;
+	function onClick({ context, action }) {
 		if (!action.handler)
 			helpers.showNotice({
 				text: `'${action.id}' clicked for the '${context.id}' task`,
@@ -34,9 +33,9 @@
 	}
 </script>
 
-<ContextMenu {api} {options} on:click={onClick}>
+<ContextMenu {api} {options} onclick={onClick}>
 	<Gantt
-		bind:api
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}

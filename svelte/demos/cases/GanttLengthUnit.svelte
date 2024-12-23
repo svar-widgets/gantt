@@ -3,7 +3,7 @@
 	import { Gantt } from "../../src/";
 	import { Select } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 	const options = [
@@ -14,10 +14,10 @@
 		{ id: "quarter", label: "Quarter" },
 	];
 
-	let lengthUnit = "day";
-	let scales;
+	let lengthUnit = $state("day");
 
-	$: {
+	const scales = $derived.by(() => {
+		let scales;
 		switch (lengthUnit) {
 			case "hour":
 				scales = [
@@ -49,7 +49,8 @@
 			default:
 				scales = bigScales;
 		}
-	}
+		return scales;
+	});
 </script>
 
 <div class="demo">

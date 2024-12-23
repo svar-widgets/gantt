@@ -4,10 +4,10 @@
 
 	import { Button } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	let counter = 0;
-	let gantts = [];
+	let gantts = $state([]);
 	addGantt();
 	addGantt();
 
@@ -29,13 +29,13 @@
 
 <div class="rows">
 	<div class="row">
-		<Button type="primary" click={addGantt}>Add Gantt</Button>
+		<Button type="primary" onclick={addGantt}>Add Gantt</Button>
 	</div>
 
 	{#each gantts as gantt}
 		<div class="ganttCell">
 			<div class="ganttHeader">
-				<Button type="secondary" click={() => removeGantt(gantt.id)}>
+				<Button type="secondary" onclick={() => removeGantt(gantt.id)}>
 					Delete Gantt
 				</Button>
 			</div>

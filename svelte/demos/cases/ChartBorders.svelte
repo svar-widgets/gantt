@@ -2,14 +2,14 @@
 	import { getData } from "../data";
 	import { Gantt } from "../../src/";
 	import { RadioButtonGroup } from "wx-svelte-core";
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
-	let cellBorders = "full";
+	let cellBorders = $state("full");
 
 	const options = [
-		{ value: "full", label: "Full" },
-		{ value: "column", label: "Column" },
+		{ id: "full", label: "Full" },
+		{ id: "column", label: "Column" },
 	];
 </script>
 

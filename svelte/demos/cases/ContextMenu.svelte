@@ -2,14 +2,14 @@
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
 
-	export let skinSettings;
-	let api;
+	let { skinSettings } = $props();
+	let api = $state();
 	const data = getData();
 </script>
 
 <ContextMenu {api}>
 	<Gantt
-		bind:api
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}

@@ -1,8 +1,12 @@
-## 1.2
+## 2.0.1
+
+-   Svelte 5 support
+
+## 1.2.0
 
 -   [dev] public release
 
-## 1.1
+## 1.1.0
 
 ### New Functionality
 

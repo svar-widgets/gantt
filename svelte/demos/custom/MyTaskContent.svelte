@@ -1,12 +1,9 @@
 <script>
-	import { createEventDispatcher } from "svelte";
+	let { data, onaction } = $props();
 
-	export let data;
-
-	const dispatch = createEventDispatcher();
-
-	function doClick() {
-		dispatch("action", {
+	function doClick(ev) {
+		ev.stopPropagation();
+		onaction({
 			action: "custom-click",
 			data: {
 				clicked: !data.clicked,
@@ -18,7 +15,7 @@
 
 {#if data.type !== "milestone"}
 	<div class="wx-text-out text-right">{data.text || ""}</div>
-	<button on:click|stopPropagation={doClick}>
+	<button onclick={doClick}>
 		{#if data.clicked}Was clicked{:else}Click Me{/if}
 	</button>
 {:else}

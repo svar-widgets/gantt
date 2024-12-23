@@ -1,15 +1,15 @@
 <script>
 	import IconButton from "../widgets/IconButton.svelte";
 	import { hotkeys } from "../helpers/hotkey";
-	import { onDestroy } from "svelte";
 
-	export let mode = false;
-	export let hotkey = null;
+	let { mode = false, hotkey = null, children } = $props();
 
-	if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
+	$effect(() => {
+		if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
+	});
 
-	let node;
-	let inFullscreen = false;
+	let node = null;
+	let inFullscreen = $state(false);
 	function toggleFullscreen(mode) {
 		if (typeof mode === "undefined") mode = !inFullscreen;
 
@@ -24,22 +24,31 @@
 	const setFullscreenState = () => {
 		inFullscreen = document.fullscreenElement === node;
 	};
-	document.addEventListener("fullscreenchange", setFullscreenState);
-	onDestroy(() => {
-		document.removeEventListener("fullscreenchange", setFullscreenState);
+
+	$effect(() => {
+		document.addEventListener("fullscreenchange", setFullscreenState);
+		return () => {
+			document.removeEventListener(
+				"fullscreenchange",
+				setFullscreenState
+			);
+		};
 	});
 
-	$: toggleFullscreen(mode);
-
+	$effect(() => {
+		toggleFullscreen(mode);
+	});
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div tabindex="0" class="wx-fullscreen" bind:this={node}>
-	<slot />
+	{@render children?.()}
 	<div class="wx-fullscreen-icon">
 		<IconButton
-			appearance={'transparent'}
+			appearance={"transparent"}
 			icon="wxi-{inFullscreen ? 'collapse' : 'expand'}"
-			on:click={() => toggleFullscreen()} />
+			onclick={() => (mode = !mode)}
+		/>
 	</div>
 </div>
 
@@ -55,8 +64,5 @@
 		right: 25px;
 		bottom: 35px;
 		z-index: 4;
-		right: 3px;
-		bottom: 16px;
 	}
-
 </style>

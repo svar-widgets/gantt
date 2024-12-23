@@ -1,24 +1,21 @@
 <script>
-	import { createEventDispatcher } from "svelte";
-	const dispatch = createEventDispatcher();
-
-	export let appearance = "primary";
-	export let icon = "";
-
+	let { appearance = "primary", icon = "", onclick } = $props();
 </script>
 
-<button class="wx-button {appearance}" on:click={() => dispatch('click')}>
-	{#if icon}<i class="wx-button-icon {icon}" />{/if}
+<button class="wx-button {appearance}" {onclick}>
+	{#if icon}<i class="wx-button-icon {icon}"></i>{/if}
 </button>
 
 <style>
 	.wx-button {
-		width: 50px;
-		height: 50px;
+		width: 40px;
+		height: 40px;
 		border: none;
 		outline: none;
 		border-radius: 50%;
 		cursor: pointer;
+
+		padding-top: 7px;
 	}
 
 	.wx-primary {
@@ -44,6 +41,6 @@
 
 	.wx-button-icon {
 		font-size: 20px;
+		padding-top: 2px;
 	}
-
 </style>

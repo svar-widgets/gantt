@@ -1,10 +1,7 @@
 <script>
 	import { Cell } from "wx-svelte-grid";
 
-	export let row;
-	export let col;
-	export let columnStyle;
-	export let cellStyle;
+	let { row, col, columnStyle, cellStyle } = $props();
 
 	function getStyle(row, col) {
 		return `justify-content:${col.align};padding-left: ${
@@ -19,8 +16,8 @@
 			<i
 				class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
 				data-action="open-task"
-			/>
-		{:else}<i class="wx-toggle-placeholder" />{/if}
+			></i>
+		{:else}<i class="wx-toggle-placeholder"></i>{/if}
 		<div class="wx-text">{row.text}</div>
 	</div>
 </Cell>

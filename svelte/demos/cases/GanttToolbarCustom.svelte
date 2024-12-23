@@ -3,7 +3,7 @@
 	import { Gantt } from "../../src/";
 	import { Toolbar } from "wx-svelte-toolbar";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 
@@ -68,19 +68,23 @@
 		},
 	];
 
-	let api, selected, items;
+	let api = $state();
+	let selected;
 
-	$: if (api) {
-		selected = api.getReactiveState().selected;
-		items = $selected.length ? allItems : [allItems[0]];
-	}
+	const items = $derived.by(() => {
+		if (api) {
+			selected = api.getReactiveState().selected;
+			return $selected.length ? allItems : [allItems[0]];
+		}
+		return [allItems[0]];
+	});
 </script>
 
 <Toolbar {items} />
 <div class="gtcell">
 	<Gantt
 		{...skinSettings}
-		bind:api
+		bind:this={api}
 		tasks={data.tasks}
 		links={data.links}
 		scales={data.scales}

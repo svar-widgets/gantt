@@ -1,5 +1,5 @@
 <script>
-	import { createEventDispatcher, getContext, setContext } from "svelte";
+	import { getContext, setContext } from "svelte";
 	import { ContextMenu } from "wx-svelte-menu";
 	import { handleAction, defaultMenuOptions } from "wx-gantt-store";
 
@@ -7,18 +7,18 @@
 	import { en } from "wx-gantt-locales";
 	import { en as coreEn } from "wx-core-locales";
 
-	export let options = [...defaultMenuOptions];
-	export let api = null;
-	export let resolver = null;
-	export let filter = null;
-	export let handler = () => {};
-	export let at = "point";
-
-	const dispatch = createEventDispatcher();
+	let {
+		options = [...defaultMenuOptions],
+		api = null,
+		resolver = null,
+		filter = null,
+		at = "point",
+		children,
+		onclick,
+	} = $props();
 
 	let activeId = null;
 	let rState, rTaskTypes, rSelected, rTasks, rSelectedTasks;
-	let cOptions;
 	// set locale
 	let l = getContext("wx-i18n");
 	if (!l) {
@@ -26,25 +26,8 @@
 		setContext("wx-i18n", l);
 	}
 	const _ = getContext("wx-i18n").getGroup("gantt");
-	$: {
-		if (api) {
-			rState = api.getReactiveState();
-			rTaskTypes = rState.taskTypes;
-			rTasks = rState._tasks;
-			rSelected = rState.selected;
-			rSelectedTasks = rState._selected;
 
-			setOptions();
-			api.on("scroll-chart", () => scrollHandler());
-			api.on("drag-task", () => {
-				handler();
-			});
-		}
-	}
-
-	$: selectedTasks = $rSelectedTasks || [];
-
-	function setOptions() {
+	function getOptions() {
 		const convertOption = options.find(o => o.id === "convert-task");
 		if (convertOption) {
 			convertOption.data = [];
@@ -53,7 +36,7 @@
 			});
 		}
 
-		cOptions = applyLocale(options);
+		return applyLocale(options);
 	}
 
 	function applyLocale(options) {
@@ -72,41 +55,62 @@
 			task = result === true ? task : result;
 		}
 		if (task) {
-			const isSelected = $rSelected.includes(task.id);
+			//resolver runs earlier than $derived for cOptions
+			rSelected = api.getReactiveState().selected;
+			activeId = task.id;
 
-			if (!isSelected) {
-				// Manually set selectedTask for single select due to setAsyncState
-				// in handler causing _selected to lag
-				selectedTasks = [task];
+			if (!$rSelected.includes(task.id)) {
 				api.exec("select-task", { id: task.id });
 			}
-			activeId = task.id;
 		}
 
 		return task;
 	}
-	function scrollHandler() {
-		handler();
-	}
 
 	function menuAction(ev) {
-		const action = ev.detail.action;
+		const action = ev.action;
 		if (action) {
 			handleAction(api, action.id, activeId, _);
-			dispatch("click", ev.detail);
+			onclick && onclick(ev);
 		}
 	}
 
 	function filterMenu(item, task) {
+		// for single selection from resolver selectedTasks are empty
+		// due to setAsyncState causing _selected to lag
+		const tasks = selectedTasks.length ? selectedTasks : task ? [task] : [];
+
 		let result = filter ? filter(item, task) : true;
 		if (item.check && result) {
-			const isDisabled = selectedTasks.some(
-				task => !item.check(task, $rTasks)
-			);
+			const isDisabled = tasks.some(task => !item.check(task, $rTasks));
 
-			item.css = isDisabled ? "disabled" : "";
+			item.css = isDisabled ? "wx-disabled" : "";
 		}
 		return result;
+	}
+
+	const cOptions = $derived.by(() => {
+		if (api) {
+			rState = api.getReactiveState();
+			rTaskTypes = rState.taskTypes;
+			rTasks = rState._tasks;
+			rSelected = rState.selected;
+			rSelectedTasks = rState._selected;
+
+			api.on("scroll-chart", () => menu.show());
+			api.on("drag-task", () => menu.show());
+
+			return getOptions();
+		}
+
+		return null;
+	});
+
+	let selectedTasks = $derived($rSelectedTasks || []);
+
+	let menu = $state();
+	export function show(ev, obj) {
+		menu.show(ev, obj);
 	}
 </script>
 
@@ -115,20 +119,21 @@
 	options={cOptions}
 	dataKey={"id"}
 	resolver={itemResolver}
-	on:click={menuAction}
+	onclick={menuAction}
 	{at}
-	bind:handler
+	bind:this={menu}
 />
-<span on:contextmenu={handler} data-menu-ignore="true">
-	<slot />
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<span oncontextmenu={menu.show} data-menu-ignore="true">
+	{@render children?.()}
 </span>
 
 <style>
-	:global(.menu .item.disabled) {
+	:global(.wx-menu .wx-item.wx-disabled) {
 		pointer-events: none;
 	}
-	:global(.menu .item.disabled .value),
-	:global(.menu .item.disabled .icon) {
+	:global(.wx-menu .wx-item.wx-disabled .wx-value),
+	:global(.wx-menu .wx-item.wx-disabled .wx-icon) {
 		color: var(--wx-color-font-disabled);
 	}
 </style>

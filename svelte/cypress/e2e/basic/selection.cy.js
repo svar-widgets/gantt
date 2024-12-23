@@ -41,7 +41,7 @@ context("Selection", () => {
 			.find(".wx-menu")
 			.children()
 			.eq(0)
-			.should("have.class", "disabled");
+			.should("have.class", "wx-disabled");
 		cy.shot("correct-disabling-for-one-task");
 
 		cy.wxG("grid-item", 10).click({ ctrlKey: true }).rightclick();
@@ -50,10 +50,10 @@ context("Selection", () => {
 			.find(".wx-menu")
 			.children()
 			.eq(0)
-			.should("have.class", "disabled");
+			.should("have.class", "wx-disabled");
 		cy.wxG("menu-option", "indent-task:add").should(
 			"have.class",
-			"disabled"
+			"wx-disabled"
 		);
 		cy.shot("correct-disabling-for-two-tasks");
 
@@ -63,28 +63,28 @@ context("Selection", () => {
 			.find(".wx-menu")
 			.children()
 			.eq(1)
-			.should("have.class", "disabled");
+			.should("have.class", "wx-disabled");
 		cy.wxG("menu-option", "convert-task").trigger("mouseenter");
 		[0, 1].forEach(index => {
 			cy.wxG("menu")
 				.find(".wx-menu")
 				.children()
 				.eq(index)
-				.should("have.class", "disabled");
+				.should("have.class", "wx-disabled");
 		});
 		cy.wxG("menu-option", "move-task").trigger("mouseenter");
 		cy.wxG("menu")
 			.find(".wx-menu")
 			.children()
 			.eq(0)
-			.should("have.class", "disabled");
+			.should("have.class", "wx-disabled");
 		cy.wxG("menu-option", "indent-task:add").should(
 			"have.class",
-			"disabled"
+			"wx-disabled"
 		);
 		cy.wxG("menu-option", "indent-task:remove").should(
 			"have.class",
-			"disabled"
+			"wx-disabled"
 		);
 		cy.shot("correct-disabling-with-first-task");
 
@@ -95,7 +95,7 @@ context("Selection", () => {
 				.find(".wx-menu")
 				.children()
 				.eq(index)
-				.should("have.class", "disabled");
+				.should("have.class", "wx-disabled");
 		});
 		cy.wxG("menu-option", "move-task").trigger("mouseenter");
 		[0, 1].forEach(index => {
@@ -103,7 +103,7 @@ context("Selection", () => {
 				.find(".wx-menu")
 				.children()
 				.eq(index)
-				.should("have.class", "disabled");
+				.should("have.class", "wx-disabled");
 		});
 		cy.shot("correct-disabling-with-last-task");
 
@@ -115,21 +115,21 @@ context("Selection", () => {
 				.find(".wx-menu")
 				.children()
 				.eq(index)
-				.should("have.class", "disabled");
+				.should("have.class", "wx-disabled");
 		});
 		cy.wxG("menu-option", "move-task").trigger("mouseenter");
 		cy.wxG("menu")
 			.find(".wx-menu")
 			.children()
 			.eq(1)
-			.should("have.class", "disabled");
+			.should("have.class", "wx-disabled");
 		cy.wxG("menu-option", "indent-task:add").should(
 			"have.class",
-			"disabled"
+			"wx-disabled"
 		);
 		cy.wxG("menu-option", "indent-task:remove").should(
 			"have.class",
-			"disabled"
+			"wx-disabled"
 		);
 		cy.shot("correct-disabling-for-three-tasks");
 	});

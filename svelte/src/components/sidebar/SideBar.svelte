@@ -3,21 +3,19 @@
 	import { form } from "wx-lib-svelte";
 
 	import {
-		Area,
+		TextArea,
 		Button,
 		Combo,
-		/* Counter, */
+		Counter,
 		DatePicker,
 		Field,
 		Slider,
 		Text,
 	} from "wx-svelte-core";
 
-	import Counter from "../../widgets/Counter.svelte";
 	import Links from "./Links.svelte";
 
-	export let compactMode;
-	export let editorShape;
+	let { compactMode, editorShape } = $props();
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -40,10 +38,13 @@
 			inProgress,
 		});
 	});
-	$: tdata.reset({ ...$task });
 
-	$: milestone = $task?.type === "milestone";
-	$: summary = $task?.type === "summary";
+	$effect.pre(() => {
+		tdata.reset({ ...$task });
+	});
+
+	let milestone = $derived($task?.type === "milestone");
+	let summary = $derived($task?.type === "summary");
 
 	function deleteTask() {
 		api.exec("delete-task", { id: $task.id });
@@ -56,7 +57,7 @@
 
 	function onDurationChange(e) {
 		tdata.update(v => {
-			v.duration = e.detail.value;
+			v.duration = e.value;
 			v.end = null;
 			v.start = $task.start;
 			return v;
@@ -65,16 +66,16 @@
 
 	let inProgress = false;
 	function onProgressChange(e) {
-		inProgress = e.detail.input;
+		inProgress = e.input;
 		if (inProgress) {
 			tdata.update(v => {
-				v.progress = e.detail.value;
+				v.progress = e.value;
 				return v;
 			});
 		} else {
 			api.exec("update-task", {
 				id: $task.id,
-				task: { ...$task, progress: e.detail.value },
+				task: { ...$task, progress: e.value },
 			});
 		}
 	}
@@ -82,68 +83,79 @@
 
 <div class="wx-sidebar" class:wx-compact={compactMode}>
 	<div class="wx-header">
-		<i class="wxi-close" on:click={hide} />
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<i class="wxi-close" onclick={hide}></i>
 		<div>
-			<Button type="danger" click={deleteTask}>{_("Delete")}</Button>
-			<Button type="primary" click={hide}>{_("Save")}</Button>
+			<Button type="danger" onclick={deleteTask}>{_("Delete")}</Button>
+			<Button type="primary" onclick={hide}>{_("Save")}</Button>
 		</div>
 	</div>
 
 	<div class="wx-form">
 		{#each editorShape as field}
 			{#if field.type === "text"}
-				<Field label={_(field.label) || ""} position="top" let:id>
-					<Text
-						{id}
-						bind:value={$tdata[field.key]}
-						{...field.config}
-						placeholder={_(field.config.placeholder)}
-					/>
+				<Field label={_(field.label) || ""} position="top">
+					{#snippet children({ id })}
+						<Text
+							{id}
+							bind:value={$tdata[field.key]}
+							{...field.config}
+							placeholder={_(field.config.placeholder)}
+						/>
+					{/snippet}
 				</Field>
 			{:else if field.type === "date" && (!milestone || (field.key !== "end" && field.key !== "base_end")) && !summary}
-				<Field label={_(field.label) || ""} position="top" let:id>
-					<div class="input_wrapper">
-						<DatePicker {id} bind:value={$tdata[field.key]} />
-					</div>
+				<Field label={_(field.label) || ""} position="top">
+					{#snippet children({ id })}
+						<div class="input_wrapper">
+							<DatePicker {id} bind:value={$tdata[field.key]} />
+						</div>
+					{/snippet}
 				</Field>
 			{:else if field.type === "select" && field.options.length > 1}
-				<Field label={_(field.label) || ""} position="top" let:id>
-					<Combo
-						{id}
-						placeholder={_("Select type")}
-						options={field.options}
-						{...field.config}
-						bind:value={$tdata[field.key]}
-						let:option
-						title={""}
-					>
-						{option.label}
-					</Combo>
+				<Field label={_(field.label) || ""} position="top">
+					{#snippet children({ id })}
+						<Combo
+							{id}
+							placeholder={_("Select type")}
+							options={field.options}
+							{...field.config}
+							bind:value={$tdata[field.key]}
+							title={""}
+						>
+							{#snippet children({ option })}
+								{option.label}
+							{/snippet}
+						</Combo>
+					{/snippet}
 				</Field>
 			{:else if field.type === "textarea"}
-				<Field label={_(field.label) || ""} position="top" let:id>
-					<Area
-						{id}
-						bind:value={$tdata[field.key]}
-						{...field.config}
-						placeholder={_(field.config.placeholder)}
-					/>
+				<Field label={_(field.label) || ""} position="top">
+					{#snippet children({ id })}
+						<TextArea
+							{id}
+							bind:value={$tdata[field.key]}
+							{...field.config}
+							placeholder={_(field.config.placeholder)}
+						/>
+					{/snippet}
 				</Field>
 			{:else if field.type === "counter" && !summary && !milestone}
 				<Field label={_(field.label) || ""} position="top">
 					<Counter
 						value={$tdata[field.key]}
-						on:change={onDurationChange}
+						onchange={onDurationChange}
 					/>
 				</Field>
 			{:else if field.type === "slider" && !milestone}
 				<Field
-					label={`${_(field.label)} ${$tdata[field.key]}%` || ""}
+					label={`${_(field.label)} ${$tdata[field.key]}%`}
 					position="top"
 				>
 					<Slider
 						value={$tdata[field.key]}
-						on:change={onProgressChange}
+						onchange={onProgressChange}
 						{...field.config}
 					/>
 				</Field>

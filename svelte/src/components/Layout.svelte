@@ -1,6 +1,6 @@
 <script>
 	// svelte core
-	import { onDestroy, tick, getContext } from "svelte";
+	import { tick, getContext } from "svelte";
 
 	// views
 	import TimeScales from "./TimeScale.svelte";
@@ -10,13 +10,14 @@
 	import IconButton from "../widgets/IconButton.svelte";
 	import Resizer from "./Resizer.svelte";
 
-	// parameters
-	export let taskTemplate;
-	export let markers;
-	export let readonly;
-	export let cellBorders;
-	export let editorShape;
-	export let highlightTime;
+	let {
+		taskTemplate,
+		markers,
+		readonly,
+		cellBorders,
+		editorShape,
+		highlightTime,
+	} = $props();
 
 	const api = getContext("gantt-store");
 	const _ = getContext("wx-i18n").getGroup("gantt");
@@ -30,16 +31,19 @@
 		columns: rColumns,
 	} = api.getReactiveState();
 
-	let gridWidth, gridColumnWidth;
-	let fullWidth, fullHeight, ganttWidth, layoutWidth;
-
 	// resize
 	let compactWidth = 650;
-	let compactMode = false;
+	let compactMode = $state(false);
+	let gridWidth = $state(0);
 
-	const ro = new ResizeObserver(resize);
+	$effect(() => {
+		const ro = new ResizeObserver(resize);
+		ro.observe(document.body);
 
-	ro.observe(document.body);
+		return () => {
+			ro.disconnect();
+		};
+	});
 
 	function resize(data) {
 		for (let obj of data) {
@@ -50,26 +54,6 @@
 		}
 	}
 
-	onDestroy(() => {
-		ro.disconnect();
-	});
-
-	let markersData;
-	$: {
-		const { start, diff } = $rScales;
-		markersData = markers.map(marker => {
-			marker.left = diff(marker.start, start) * $rCellWidth;
-			return marker;
-		});
-	}
-
-	$: {
-		fullWidth = $rScales.width;
-		fullHeight = $rTasks.length * $rCellHeight;
-		ganttWidth = gridWidth + fullWidth;
-
-		expandScale();
-	}
 	let initialCall = true;
 	let scaleDate, scalePos;
 	async function expandScale() {
@@ -90,39 +74,54 @@
 	}
 
 	function setParams(p) {
-		scaleDate = p.detail.date;
-		scalePos = p.detail.offset;
-	}
-
-	$: gridWidth = calcGridWidth(compactMode, $rColumns);
-
-	function calcGridWidth(compactMode, columns) {
-		let w;
-		if (columns.every(c => c.width && !c.flexgrow)) {
-			w = columns.reduce((acc, c) => {
-				acc += parseInt(c.width);
-				return acc;
-			}, 0);
-		} else w = 440;
-
-		gridColumnWidth = w;
-
-		if (compactMode) {
-			w = parseInt(columns.find(c => c.id === "action")?.width) || 50;
-		}
-		return w;
+		scaleDate = p.date;
+		scalePos = p.offset;
 	}
 
 	function addTask() {
 		api.exec("add-task", { task: { text: _("New Task") } });
 	}
 
-	function resizeGrid(ev) {
-		const newWidth = ev.detail;
-		gridWidth = newWidth;
-	}
+	const markersData = $derived.by(() => {
+		const { start, diff } = $rScales;
+		return markers.map(marker => {
+			marker.left = diff(marker.start, start) * $rCellWidth;
+			return marker;
+		});
+	});
+
+	let layoutWidth = $state();
+
+	const gridColumnWidth = $derived.by(() => {
+		let w;
+		if ($rColumns.every(c => c.width && !c.flexgrow)) {
+			w = $rColumns.reduce((acc, c) => {
+				acc += parseInt(c.width);
+				return acc;
+			}, 0);
+		} else w = 440;
+
+		return w;
+	});
+
+	$effect(() => {
+		let w = gridColumnWidth;
+		if (compactMode) {
+			w = parseInt($rColumns.find(c => c.id === "action")?.width) || 50;
+		}
+		gridWidth = w;
+	});
+
+	const fullWidth = $derived($rScales.width);
+	const fullHeight = $derived($rTasks.length * $rCellHeight);
+	const ganttWidth = $derived(gridWidth + fullWidth);
+
+	// expandScale();
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div class="wx-gantt">
 	<div tabindex="0" class="wx-layout" bind:offsetWidth={layoutWidth}>
 		{#if $rColumns.length}
@@ -134,12 +133,7 @@
 				{fullHeight}
 			/>
 			{#if !compactMode}
-				<Resizer
-					value={gridWidth}
-					on:move={resizeGrid}
-					minValue="50"
-					maxValue="800"
-				/>
+				<Resizer bind:value={gridWidth} minValue="50" maxValue="800" />
 			{/if}
 		{/if}
 
@@ -147,7 +141,7 @@
 			<TimeScales {highlightTime} />
 
 			<Chart
-				on:scale-params={setParams}
+				scaleUpdate={setParams}
 				markers={markersData}
 				{readonly}
 				{fullWidth}
@@ -164,7 +158,7 @@
 
 		{#if compactMode && !$rActiveTask && !readonly}
 			<div class="wx-icon">
-				<IconButton icon="wxi-plus" on:click={addTask} />
+				<IconButton icon="wxi-plus" onclick={addTask} />
 			</div>
 		{/if}
 	</div>

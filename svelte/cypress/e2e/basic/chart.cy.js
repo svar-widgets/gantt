@@ -4,7 +4,7 @@ context("Chart", () => {
 		cy.viewport(1300, 900);
 
 		cy.get(".wx-chart").should("exist");
-		cy.wxG("chart-task-list").children().should("have.length", 20);
+		cy.wxG("chart-task-list").children().should("have.length", 19);
 		cy.wxG("chart-link-list").children().should("have.length", 7);
 		cy.shot("chart");
 	});
@@ -336,7 +336,7 @@ context("Chart", () => {
 			cy.get("@el").should("contain", "100");
 			cy.wxG("chart-item", 10)
 				.find(".wx-progress-percent")
-				.should("have.attr", "style", "width: 100%;");
+				.should("have.attr", "style", "width:100%");
 		});
 	});
 });

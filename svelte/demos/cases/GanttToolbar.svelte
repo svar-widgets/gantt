@@ -2,18 +2,18 @@
 	import { getData } from "../data";
 	import { Gantt, Toolbar } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 
-	let api;
+	let api = $state();
 </script>
 
 <Toolbar {api} />
 <div class="gtcell">
 	<Gantt
 		{...skinSettings}
-		bind:api
+		bind:this={api}
 		tasks={data.tasks}
 		links={data.links}
 		scales={data.scales}

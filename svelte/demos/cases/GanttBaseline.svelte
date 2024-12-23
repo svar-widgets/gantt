@@ -2,7 +2,7 @@
 	import { getBaselinesData } from "../data";
 	import { Gantt, defaultEditorShape } from "../../src/";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getBaselinesData();
 

@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from "svelte";
 
-	export let highlightTime;
+	let { highlightTime } = $props();
 
 	const api = getContext("gantt-store");
 	const { _scales: scales, scrollLeft } = api.getReactiveState();

@@ -3,13 +3,13 @@
 	import { Gantt } from "../../src/";
 	import { Slider } from "wx-svelte-core";
 
-	export let skinSettings;
+	let { skinSettings } = $props();
 
 	const data = getData();
 
-	let cellWidth = 100;
-	let scaleHeight = 38;
-	let cellHeight = 36;
+	let cellWidth = $state(100);
+	let scaleHeight = $state(38);
+	let cellHeight = $state(36);
 </script>
 
 <div class="rows">
