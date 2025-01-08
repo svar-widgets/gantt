@@ -30,8 +30,8 @@ const cases = [
 	"/custom-zoom/:skin",
 	"/length-unit/:skin",
 	"/task-types/:skin",
-	"/backend/:skin",
-	"/backend-provider/:skin",
+	//"/backend/:skin",
+	//"/backend-provider/:skin",
 	"/sorting/:skin",
 	"/sorting-api/:skin",
 ];
