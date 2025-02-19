@@ -1,7 +1,5 @@
 <script>
-	import { Cell } from "wx-svelte-grid";
-
-	let { row, col, columnStyle, cellStyle } = $props();
+	let { row, column } = $props();
 
 	function getStyle(row, col) {
 		return `justify-content:${col.align};padding-left: ${
@@ -10,17 +8,15 @@
 	}
 </script>
 
-<Cell {row} {col} {columnStyle} {cellStyle}>
-	<div class="wx-content" style={getStyle(row, col)}>
-		{#if row.data || row.lazy}
-			<i
-				class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
-				data-action="open-task"
-			></i>
-		{:else}<i class="wx-toggle-placeholder"></i>{/if}
-		<div class="wx-text">{row.text}</div>
-	</div>
-</Cell>
+<div class="wx-content" style={getStyle(row, column)}>
+	{#if row.data || row.lazy}
+		<i
+			class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
+			data-action="open-task"
+		></i>
+	{:else}<i class="wx-toggle-placeholder"></i>{/if}
+	<div class="wx-text">{row.text}</div>
+</div>
 
 <style>
 	.wx-content {

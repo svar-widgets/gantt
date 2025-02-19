@@ -36,12 +36,13 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 			width,
 			align,
 			header: a.header,
-			resize: true,
 			id: a.id,
 			template,
 			...(flexgrow && { flexgrow }),
 			...(action && { action }),
-			sort: !!a.sort,
+			cell: a.cell,
+			resize: a.resize ?? true,
+			sort: a.sort ?? true,
 		};
 	});
 
@@ -58,7 +59,14 @@ export const defaultColumns: GanttColumn[] = [
 		align: "center",
 		sort: true,
 	},
-	{ id: "action", header: "", width: 50, align: "center" },
+	{
+		id: "action",
+		header: "",
+		width: 50,
+		align: "center",
+		sort: false,
+		resize: false,
+	},
 ];
 
 export const expandColumn: GanttColumn = {
@@ -66,4 +74,6 @@ export const expandColumn: GanttColumn = {
 	header: "",
 	align: "center",
 	width: 50,
+	sort: false,
+	resize: false,
 };

@@ -1,6 +1,6 @@
 <script>
 	// svelte core
-	import { tick, getContext } from "svelte";
+	import { getContext, tick } from "svelte";
 
 	// views
 	import TimeScales from "./TimeScale.svelte";
@@ -35,6 +35,8 @@
 	let compactWidth = 650;
 	let compactMode = $state(false);
 	let gridWidth = $state(0);
+	let layoutWidth = $state();
+	let chart = $state();
 
 	$effect(() => {
 		const ro = new ResizeObserver(resize);
@@ -49,33 +51,8 @@
 		for (let obj of data) {
 			if (obj.target === document.body) {
 				compactMode = obj.contentRect.width <= compactWidth;
-				expandScale();
 			}
 		}
-	}
-
-	let initialCall = true;
-	let scaleDate, scalePos;
-	async function expandScale() {
-		await tick();
-		if (layoutWidth > ganttWidth) {
-			const params = {
-				minWidth: layoutWidth - gridWidth,
-			};
-			if (!initialCall) {
-				if (scaleDate) params.date = scaleDate;
-				if (typeof scalePos !== "undefined") params.offset = scalePos;
-			}
-			api.exec("expand-scale", params);
-		}
-		if (initialCall) {
-			initialCall = false;
-		}
-	}
-
-	function setParams(p) {
-		scaleDate = p.date;
-		scalePos = p.offset;
 	}
 
 	function addTask() {
@@ -89,8 +66,6 @@
 			return marker;
 		});
 	});
-
-	let layoutWidth = $state();
 
 	const gridColumnWidth = $derived.by(() => {
 		let w;
@@ -116,7 +91,25 @@
 	const fullHeight = $derived($rTasks.length * $rCellHeight);
 	const ganttWidth = $derived(gridWidth + fullWidth);
 
-	// expandScale();
+	// expand scale
+	$effect(() => {
+		let ro;
+		if (chart) {
+			ro = new ResizeObserver(expandScale);
+			ro.observe(chart);
+		}
+		return () => {
+			if (ro) ro.disconnect();
+		};
+	});
+	function expandScale() {
+		tick().then(() => {
+			if (layoutWidth > ganttWidth) {
+				const minWidth = layoutWidth - gridWidth;
+				api.exec("expand-scale", { minWidth });
+			}
+		});
+	}
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -137,11 +130,10 @@
 			{/if}
 		{/if}
 
-		<div class="wx-content">
+		<div class="wx-content" bind:this={chart}>
 			<TimeScales {highlightTime} />
 
 			<Chart
-				scaleUpdate={setParams}
 				markers={markersData}
 				{readonly}
 				{fullWidth}

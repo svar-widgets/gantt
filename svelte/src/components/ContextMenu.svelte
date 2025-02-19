@@ -1,7 +1,11 @@
 <script>
 	import { getContext, setContext } from "svelte";
 	import { ContextMenu } from "wx-svelte-menu";
-	import { handleAction, defaultMenuOptions } from "wx-gantt-store";
+	import {
+		handleAction,
+		defaultMenuOptions,
+		isHandledAction,
+	} from "wx-gantt-store";
 
 	import { locale } from "wx-lib-dom";
 	import { en } from "wx-gantt-locales";
@@ -70,7 +74,8 @@
 	function menuAction(ev) {
 		const action = ev.action;
 		if (action) {
-			handleAction(api, action.id, activeId, _);
+			const isAction = isHandledAction(defaultMenuOptions, action.id);
+			if (isAction) handleAction(api, action.id, activeId, _);
 			onclick && onclick(ev);
 		}
 	}

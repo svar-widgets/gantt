@@ -27,11 +27,6 @@ export const bigScales = [
 	{ unit: "week", step: 1, format: weekScaleAltTemplate },
 ];
 
-export const simpleColumns = [
-	{ id: "text", header: "Task name", flexgrow: 1 },
-	{ id: "start", header: "Start Date" },
-];
-
 const generatedLinks = [
 	{ id: 1, source: 3, target: 4, type: "e2s" },
 	{ id: 2, source: 1, target: 2, type: "e2s" },
@@ -104,6 +99,7 @@ const tasks = [
 		type: "summary",
 		open: true,
 		details: "Outline the project's scope and resources.",
+		assigned: "",
 	},
 	{
 		id: 10,
@@ -114,6 +110,7 @@ const tasks = [
 		parent: 1,
 		type: "task",
 		details: "Analyze market trends and competitors.",
+		assigned: "Laura Turner",
 	},
 	{
 		id: 11,
@@ -124,6 +121,7 @@ const tasks = [
 		parent: 1,
 		type: "task",
 		details: "Team discussions on project strategies.",
+		assigned: "",
 	},
 	{
 		id: 110,
@@ -134,6 +132,7 @@ const tasks = [
 		parent: 11,
 		type: "task",
 		details: "Draft initial design concepts.",
+		assigned: "",
 	},
 	{
 		id: 111,
@@ -143,6 +142,7 @@ const tasks = [
 		parent: 11,
 		type: "milestone",
 		details: "Present initial designs to stakeholders.",
+		assigned: "",
 	},
 	{
 		id: 112,
@@ -152,6 +152,7 @@ const tasks = [
 		progress: 10,
 		parent: 11,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 113,
@@ -161,6 +162,7 @@ const tasks = [
 		progress: 0,
 		parent: 11,
 		type: "task",
+		assigned: "",
 	},
 
 	{
@@ -170,6 +172,7 @@ const tasks = [
 		progress: 100,
 		parent: 1,
 		type: "milestone",
+		assigned: "",
 	},
 
 	{
@@ -181,6 +184,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		assigned: "Robert Williams",
 	},
 	{
 		id: 20,
@@ -190,6 +194,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 21,
@@ -199,6 +204,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 22,
@@ -208,6 +214,7 @@ const tasks = [
 		progress: 0,
 		parent: 2,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 23,
@@ -217,6 +224,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		assigned: "",
 	},
 
 	{
@@ -228,6 +236,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		assigned: "",
 	},
 	{
 		id: 30,
@@ -237,6 +246,7 @@ const tasks = [
 		progress: 3,
 		parent: 3,
 		type: "task",
+		assigned: "Mary Johnson",
 	},
 	{
 		id: 31,
@@ -246,6 +256,7 @@ const tasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 32,
@@ -255,6 +266,7 @@ const tasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		assigned: "",
 	},
 
 	{
@@ -266,6 +278,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		assigned: "",
 	},
 	{
 		id: 40,
@@ -275,6 +288,7 @@ const tasks = [
 		progress: 3,
 		parent: 4,
 		type: "task",
+		assigned: "John Doe",
 	},
 	{
 		id: 41,
@@ -284,6 +298,7 @@ const tasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 42,
@@ -293,6 +308,7 @@ const tasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		assigned: "",
 	},
 	{
 		id: 43,
@@ -304,6 +320,7 @@ const tasks = [
 		type: "task",
 		details:
 			"Comprehensive testing of the beta version before the final release.",
+		assigned: "",
 	},
 
 	{
@@ -314,6 +331,7 @@ const tasks = [
 		parent: 0,
 		type: "milestone",
 		details: "Official release of version 1.0.0 to the public.",
+		assigned: "",
 	},
 ];
 const links = [

@@ -1,6 +1,6 @@
 import { assignChecks } from "./menuOptions";
 
-type ButtonConfig = {
+export interface IButtonConfig {
 	id?: string;
 	comp: string;
 	text?: string;
@@ -9,10 +9,10 @@ type ButtonConfig = {
 	menuText?: string;
 
 	check?: (params: any) => boolean;
-};
+}
 
-export const defaultToolbarButtons: ButtonConfig[] = assignChecks<ButtonConfig>(
-	[
+export const defaultToolbarButtons: IButtonConfig[] =
+	assignChecks<IButtonConfig>([
 		{
 			id: "add-task",
 			comp: "button",
@@ -77,5 +77,4 @@ export const defaultToolbarButtons: ButtonConfig[] = assignChecks<ButtonConfig>(
 			icon: "wxi-unindent",
 			menuText: "Outdent",
 		},
-	]
-);
+	]);

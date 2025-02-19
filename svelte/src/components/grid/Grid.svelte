@@ -38,29 +38,36 @@
 
 	function onClick(e) {
 		const id = locateID(e);
-		if (!id) return;
-		let action = e.target.dataset.action;
+		const action = e.target.dataset.action;
 
-		if (action) {
-			e.preventDefault();
-		}
+		if (action) e.preventDefault();
 
-		if (action == "add-task") {
-			api.exec(action, {
-				target: id,
-				task: { text: _("New Task") },
-				mode: "child",
-			});
-		} else if (action == "open-task") {
-			const task = tasks.find(a => a.id === id);
-			api.exec(action, { id, mode: !task.open });
+		if (id) {
+			if (action == "add-task") {
+				api.exec(action, {
+					target: id,
+					task: { text: _("New Task") },
+					mode: "child",
+				});
+			} else if (action == "open-task") {
+				const task = tasks.find(a => a.id === id);
+				api.exec(action, { id, mode: !task.open });
+			} else {
+				api.exec("select-task", {
+					id,
+					toggle: e.ctrlKey || e.metaKey,
+					range: e.shiftKey,
+					show: true,
+				});
+			}
 		} else {
-			api.exec("select-task", {
-				id,
-				toggle: e.ctrlKey || e.metaKey,
-				range: e.shiftKey,
-				show: true,
-			});
+			if (action == "add-task") {
+				api.exec(action, {
+					task: { text: _("New Task") },
+				});
+			} else if (action == "expand" && compactMode) {
+				showFull = !showFull;
+			}
 		}
 	}
 
@@ -165,17 +172,6 @@
 	function init(tapi) {
 		tapi.intercept("scroll", () => false);
 		tapi.intercept("select-row", () => false);
-		//hask: use collapsible to inject add-task and expand icons
-		tapi.intercept("collapse-column", () => {
-			if (compactMode) showFull = !showFull;
-			else
-				api.exec("add-task", {
-					task: {
-						text: _("New Task"),
-					},
-				});
-			return false;
-		});
 
 		tapi.intercept("sort-rows", e => {
 			const key = e.key;
@@ -272,8 +268,9 @@
 		cols[ai].cell = ActionCell;
 
 		cols[ai].header = {
-			css: "wx-action " + (compactMode ? "wx-expand" : "wx-add-task"),
-			collapsible: true,
+			css: "wx-action",
+			action: compactMode ? "expand" : "add-task",
+			cell: ActionCell,
 		};
 
 		if (compactMode) {
@@ -451,6 +448,10 @@
 	.wx-table > :global(.wx-grid .wx-cell) {
 		padding: 0 5px;
 	}
+	/*switch off focus until keys navigation is added*/
+	.wx-table > :global(.wx-grid .wx-cell[tabindex="0"]) {
+		outline: none;
+	}
 	.wx-table > :global(.wx-grid .wx-row) {
 		display: flex;
 		align-items: center;
@@ -494,13 +495,6 @@
 	}
 	.wx-table > :global(.wx-grid .wx-header .wx-action i:hover) {
 		color: var(--wx-color-link);
-	}
-	/*[fixme] find some permanent way to add correct icons - SVAR-1658 */
-	.wx-table > :global(.wx-grid .wx-header .wx-add-task i:before) {
-		content: "\f149";
-	}
-	.wx-table > :global(.wx-grid .wx-header .wx-expand i:before) {
-		content: "\f141";
 	}
 	/*drag element*/
 	.wx-table > :global(.wx-grid .wx-reorder-task.wx-row) {

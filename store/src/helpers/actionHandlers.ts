@@ -1,5 +1,7 @@
 import type { TID } from "wx-lib-state";
 import type { GanttDataTree } from "../types";
+import { IOptionConfig } from "./menuOptions";
+import { IButtonConfig } from "./toolbarButtons";
 
 export function handleAction(
 	api: any,
@@ -118,4 +120,15 @@ function runSingleAction(api: any, action: string, target: TID, _: any): void {
 	data = { ...data, ...extraData };
 
 	api.exec(op, data);
+}
+
+export function isHandledAction(
+	options: IOptionConfig[] | IButtonConfig[],
+	id: TID
+): boolean {
+	return options.some(op => {
+		if ((op as IOptionConfig).data)
+			return isHandledAction((op as IOptionConfig).data, id);
+		return op.id === id;
+	});
 }

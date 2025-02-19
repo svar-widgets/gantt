@@ -811,7 +811,10 @@ export default class DataStore extends Store<IData> {
 		inBus.on(
 			"scroll-chart",
 			({ left, top }: TMethodsConfig["scroll-chart"]) => {
-				if (!isNaN(left)) this.setState({ scrollLeft: left });
+				if (!isNaN(left)) {
+					const d = this.calcScaleDate(left);
+					this.setState({ scrollLeft: left, _scaleDate: d });
+				}
 				if (!isNaN(top)) this.setState({ scrollTop: top });
 			}
 		);
@@ -839,8 +842,11 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on(
 			"zoom-scale",
-			({ dir, date, offset }: TMethodsConfig["zoom-scale"]) => {
-				const { zoom, cellWidth, _cellWidth } = this.getState();
+			({ dir, offset }: TMethodsConfig["zoom-scale"]) => {
+				const { zoom, cellWidth, _cellWidth, scrollLeft } =
+					this.getState();
+				const pointerX = offset + scrollLeft;
+				const date = this.calcScaleDate(pointerX);
 				let w = cellWidth;
 				if (dir < 0) w = _cellWidth || cellWidth;
 				const width = w + dir * 50; // 50px is a zoom step
@@ -861,20 +867,32 @@ export default class DataStore extends Store<IData> {
 				const start = getUnitStart(_scales.minUnit, _start);
 				const num = _scales.diff(date, start, "hour");
 				if (typeof offset === "undefined") offset = cw;
-				let scrollLeft = Math.round(num * cw) - offset;
-				if (scrollLeft < 0) {
-					scrollLeft = 0;
+				let newScrollLeft = Math.round(num * cw) - offset;
+				if (newScrollLeft < 0) {
+					newScrollLeft = 0;
 				}
 
-				this.setState({ scrollLeft });
+				this.setState({
+					scrollLeft: newScrollLeft,
+					_scaleDate: date,
+					_zoomOffset: offset,
+				});
 			}
 		);
 
 		inBus.on(
 			"expand-scale",
-			({ minWidth, date, offset }: TMethodsConfig["expand-scale"]) => {
-				const { _start, _scales, start, end, _end, cellWidth } =
-					this.getState();
+			({ minWidth }: TMethodsConfig["expand-scale"]) => {
+				const {
+					_start,
+					_scales,
+					start,
+					end,
+					_end,
+					cellWidth,
+					_scaleDate,
+					_zoomOffset,
+				} = this.getState();
 				const adder = getAdder(_scales.minUnit);
 
 				let width = _scales.width;
@@ -896,11 +914,11 @@ export default class DataStore extends Store<IData> {
 				const startStep = step ? (end ? -step : -1) : 0;
 				const newStart = start || adder(_start, startStep);
 				let newScroll = 0;
-				if (date) {
-					const num = _scales.diff(date, newStart, "hour");
+				if (_scaleDate) {
+					const num = _scales.diff(_scaleDate, newStart, "hour");
 					newScroll = Math.max(
 						0,
-						Math.round(num * cellWidth) - (offset || 0)
+						Math.round(num * cellWidth) - (_zoomOffset || 0)
 					);
 				}
 
@@ -1039,6 +1057,18 @@ export default class DataStore extends Store<IData> {
 
 			if (kid.data?.length) this.moveSummaryKids(kid, move, eventSource);
 		});
+	}
+
+	private calcScaleDate(x: number) {
+		const { _scales, _start } = this.getState();
+		const width =
+			_scales.lengthUnit === "day"
+				? _scales.lengthUnitWidth / 24
+				: _scales.lengthUnitWidth;
+		return getAdder("hour")(
+			getUnitStart(_scales.minUnit, _start),
+			Math.floor(x / width)
+		);
 	}
 }
 

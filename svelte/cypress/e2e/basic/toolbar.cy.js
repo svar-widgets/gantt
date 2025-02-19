@@ -25,7 +25,7 @@ context("Toolbar", () => {
 
 		cy.wxG("toolbar").should("be.visible");
 		cy.wxG("grid-item", 1).click();
-		cy.wxG("toolbar").children().should("have.length", 8);
+		cy.wxG("toolbar").children().should("have.length", 9);
 		cy.shot(`limited-buttons-toolbar`);
 	});
 

@@ -1,6 +1,5 @@
 <script>
 	import { onMount, getContext } from "svelte";
-	import { getAdder, getUnitStart } from "wx-gantt-store";
 
 	import CellGrid from "./CellGrid.svelte";
 	import Bars from "./Bars.svelte";
@@ -14,7 +13,6 @@
 		taskTemplate,
 		cellBorders,
 		highlightTime,
-		scaleUpdate,
 	} = $props();
 
 	const api = getContext("gantt-store");
@@ -27,7 +25,6 @@
 		cellHeight,
 		_scales: scales,
 		zoom,
-		_start: start,
 		context,
 		_scrollSelected: scrollSelected,
 	} = api.getReactiveState();
@@ -39,7 +36,6 @@
 
 	let chart = {};
 	let extraRows = 0;
-	let timer;
 
 	const selectStyle = $derived.by(() => {
 		const t = [];
@@ -82,25 +78,14 @@
 
 	function onScroll() {
 		const scroll = { left: true, top: true };
-		setScroll(scroll, true);
+		setScroll(scroll);
 		dataRequest();
 	}
 
-	function dispatchScale(params) {
-		scaleUpdate(params || { date: calcDate(chart.scrollLeft) });
-	}
-	function setScroll(scroll, timeout) {
+	function setScroll(scroll) {
 		const pos = {};
 		if (scroll.top) pos.top = chart.scrollTop;
-		if (timer) clearTimeout(timer);
-		if (scroll.left) {
-			pos.left = chart.scrollLeft;
-			if (timeout)
-				timer = setTimeout(function () {
-					dispatchScale();
-				}, 100);
-			else dispatchScale();
-		}
+		if (scroll.left) pos.left = chart.scrollLeft;
 		api.exec("scroll-chart", pos);
 	}
 
@@ -136,28 +121,13 @@
 		}
 	}
 
-	function calcDate(x) {
-		const width =
-			$scales.lengthUnit === "day"
-				? $scales.lengthUnitWidth / 24
-				: $scales.lengthUnitWidth;
-		return getAdder("hour")(
-			getUnitStart($scales.minUnit, $start),
-			Math.floor(x / width)
-		);
-	}
-
 	function onWheel(e) {
 		if ($zoom && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
 			const dir = -Math.sign(e.deltaY);
 			const offset = e.clientX - chart.getBoundingClientRect().left;
-			const pointerX = offset + scrollLeft;
-			const date = calcDate(pointerX);
-			dispatchScale({ offset, date });
 			api.exec("zoom-scale", {
 				dir,
-				date,
 				offset,
 			});
 		}

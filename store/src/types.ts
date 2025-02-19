@@ -136,6 +136,8 @@ export interface IData {
 	_cellWidth?: number;
 	_scrollSelected?: boolean;
 	_sort?: TSort;
+	_scaleDate?: Date;
+	_zoomOffset?: number;
 }
 
 export interface DataHash {
@@ -187,6 +189,7 @@ export type GanttColumn = {
 	action?: string;
 	template?: { (b: any): string };
 	sort?: boolean;
+	cell?: any;
 };
 
 export interface IGanttTask extends IParsedTask {

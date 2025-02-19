@@ -1,7 +1,11 @@
 <script>
 	import { getContext, setContext } from "svelte";
 	import { Toolbar } from "wx-svelte-toolbar";
-	import { handleAction, defaultToolbarButtons } from "wx-gantt-store";
+	import {
+		handleAction,
+		defaultToolbarButtons,
+		isHandledAction,
+	} from "wx-gantt-store";
 
 	import { locale } from "wx-lib-dom";
 	import { en } from "wx-gantt-locales";
@@ -19,9 +23,9 @@
 	const finalItems = $derived.by(() => {
 		return items.map(b => {
 			b = { ...b, disabled: false };
-			b.handler = item => {
-				handleAction(api, item.id, null, _);
-			};
+			b.handler = isHandledAction(defaultToolbarButtons, b.id)
+				? item => handleAction(api, item.id, null, _)
+				: b.handler;
 			if (b.text) b.text = _(b.text);
 			if (b.menuText) b.menuText = _(b.menuText);
 			return b;

@@ -13,7 +13,10 @@ describe("columns", () => {
 			if (col.id === "start" || col.id === "end")
 				expect(col.template).to.not.be.undefined;
 			if (col.id === "action") expect(col.action).to.not.be.undefined;
-			expect(col.resize).to.be.true;
+			else {
+				expect(col.resize).to.be.true;
+				expect(col.sort).to.be.true;
+			}
 		}
 
 		expect(normalizeColumns([])).to.deep.eq([]);

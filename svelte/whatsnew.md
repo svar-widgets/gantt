@@ -1,27 +1,37 @@
+## 2.1.0
+
+### Updates
+
+-   Ability to use custom HTML in column cells
+-   Optimizing inner zoom and scale logic
+
+### Fixes
+
+-   Impossible to use numeric id for Toolbar and Menu options
+
 ## 2.0.1
+
+### New features
 
 -   Svelte 5 support
 
 ## 1.2.0
 
--   [dev] public release
+-   Released under GPLv3
 
 ## 1.1.0
 
-### New Functionality
+### New features
 
 -   Summary tasks
 -   Sorting Grid columns
 -   Batch mode for DataProvider to handle mass operations
-
-### New API
-
--   New "sort-tasks" action is added
--   New POST /{batchURL} route is added
--   The `columns` property is extended with the `sort` parameter
--   The `minCellWidth` and `maxCellWidth` settings are added to the `zoom` property
--   The "update-task" and "copy-task" actions are extended with the `eventSource` parameter
--   The `source` parameter is added to the "move-task" and "delete-task" actions
+-   `sort-tasks` action is added
+-   POST /{batchURL} route is added
+-   `columns` property is extended with the `sort` parameter
+-   `minCellWidth` and `maxCellWidth` settings are added to the `zoom` property
+-   `update-task` and `copy-task` actions are extended with the `eventSource` parameter
+-   `source` parameter is added to the "move-task" and "delete-task" actions
 -   RestDataProvider config has the `batchUrl` property
 -   New parameters (`source` and `lazy`) added to the "copy-task" action
 
@@ -50,14 +60,11 @@
 
 ## 1.1
 
-### New Functionality
+### New features
 
 -   Summary tasks
 -   Sorting Grid columns
 -   Batch mode for DataProvider to handle mass operations
-
-### New API
-
 -   New "sort-tasks" action is added
 -   New POST /{batchURL} route is added
 -   The `columns` property is extended with the `sort` parameter
@@ -92,7 +99,7 @@
 
 ## 1.0
 
-### Initial functionality
+### Initial features
 
 -   Fast behavior and clear API
 -   Configurable Grid columns

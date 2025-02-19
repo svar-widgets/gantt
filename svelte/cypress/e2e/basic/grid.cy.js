@@ -21,7 +21,7 @@ context("Grid", () => {
 		cy.visit("/index.html#/local-data");
 		cy.viewport(1300, 900);
 
-		cy.wxG("grid-header").find(".wx-add-task").click();
+		cy.wxG("grid-header").find(".wx-action-icon").click();
 		cy.wxG("editor").should("exist");
 		cy.wxG("grid-task-list").children().should("have.length", 20);
 		cy.wxG("grid-task-list")
@@ -31,7 +31,7 @@ context("Grid", () => {
 			.should("match", /^temp/);
 		cy.shot("add-task-via-header-button");
 
-		cy.wxG("grid-item", 10).find(".wx-add-icon").click();
+		cy.wxG("grid-item", 10).find(".wx-action-icon").click();
 		cy.wxG("editor").should("exist");
 		cy.wxG("grid-item", 10)
 			.find(".wx-toggle-icon.wxi-menu-down")
@@ -52,12 +52,12 @@ context("Grid", () => {
 		cy.wxG("grid-header")
 			.children()
 			.first()
-			.should("have.class", "wx-expand")
+			.should("have.class", "wx-action")
 			.click();
 		cy.wxG("grid-header")
 			.children()
 			.first()
-			.should("have.class", "wx-expand");
+			.should("have.class", "wx-action");
 		cy.wxG("grid-header").children().should("have.length", 4);
 		//cy.wxG("grid-header").children().eq(3).should("be.visible");
 
@@ -76,7 +76,7 @@ context("Grid", () => {
 		cy.wxG("grid-task-list").children().should("have.length", 20);
 		cy.shot("add-task-via-right-down-corner-button");
 
-		cy.wxG("grid-item", 1).find(".wx-add-icon").click();
+		cy.wxG("grid-item", 1).find(".wx-action-icon").click();
 		cy.wxG("editor").should("exist");
 		cy.get(".wxi-close").click();
 		cy.wxG("grid-header").children().first().click();
@@ -122,7 +122,7 @@ context("Grid", () => {
 		];
 
 		columns.forEach(column => {
-			cy.wxG("grid-header").find(".wx-sort").eq(column.idx).click();
+			cy.wxG("grid-header").find(".wx-cell").eq(column.idx).click();
 			const isAscInitial = column.initialOrder === "asc";
 			let value = column.firstInOrder;
 

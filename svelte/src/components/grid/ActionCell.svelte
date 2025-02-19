@@ -1,19 +1,18 @@
 <script>
-	import { Cell } from "wx-svelte-grid";
+	let { column, cell } = $props();
 
-	let { row, col, columnStyle, cellStyle } = $props();
+	const action = $derived(cell?.action || column.action);
+	const icon = $derived(action == "expand" ? "menu" : "plus");
 </script>
 
-<Cell {row} {col} {columnStyle} {cellStyle}>
-	{#if col.action == "add-task"}
-		<div style="text-align:{col.align}">
-			<i class="wx-add-icon wxi-plus" data-action={col.action}></i>
-		</div>
-	{/if}
-</Cell>
+{#if cell || column.action == "add-task"}
+	<div style="text-align:{column.align}">
+		<i class="wx-action-icon wxi-{icon}" data-action={action}></i>
+	</div>
+{/if}
 
 <style>
-	.wx-add-icon {
+	.wx-action-icon {
 		cursor: pointer;
 		font-size: var(--wx-icon-size);
 		height: 16px;
@@ -21,7 +20,7 @@
 		display: block;
 		color: var(--wx-gantt-icon-color);
 	}
-	.wx-add-icon:hover {
+	.wx-action-icon:hover {
 		color: var(--wx-color-link);
 	}
 </style>

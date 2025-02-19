@@ -1,18 +1,18 @@
 import type { TID } from "wx-lib-state";
 import type { ITask, IGanttTask } from "../types";
 
-interface OptionConfig {
+export interface IOptionConfig {
 	id?: TID;
 	separator?: boolean;
 	text?: string;
 	icon?: string;
-	data?: OptionConfig[];
+	data?: IOptionConfig[];
 	type?: string;
 	check?: (task: ITask, _tasks?: IGanttTask[]) => boolean | TID;
-	dataFactory?: (obj: any) => OptionConfig;
+	dataFactory?: (obj: any) => IOptionConfig;
 }
 
-export function assignChecks<T extends OptionConfig>(items: T[]): T[] {
+export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
 	return items.map(item => {
 		if (item.data) assignChecks(item.data);
 
@@ -53,7 +53,7 @@ function prevTaskID(task: ITask, _tasks: IGanttTask[]): TID {
 
 const exclude = (v: any) => (task: ITask) => task.type !== v;
 
-export const defaultMenuOptions: OptionConfig[] = assignChecks<OptionConfig>([
+export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 	{
 		id: "add-task",
 		text: "Add",

@@ -55,9 +55,9 @@ export default [{
                 }
         },
         {       
-                // temporarily ignore cypress folder
+                // temporarily ignore test folders
                 ignores: [
-                        "**/cypress/" 
+                        "**/cypress/", "**/test/" 
                 ]
         }
 ];

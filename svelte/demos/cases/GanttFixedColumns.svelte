@@ -17,7 +17,7 @@
 		{
 			id: "duration",
 			header: "Duration",
-			width: 80,
+			width: 90,
 			align: "center",
 		},
 		{ id: "action", header: "", width: 50, align: "center" },
