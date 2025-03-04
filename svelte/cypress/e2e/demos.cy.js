@@ -49,6 +49,7 @@ context("Basic functionality", () => {
 	it("widget", () => {
 		links.forEach(w => {
 			cy.visit(`/index.html#${w}`);
+			cy.wait(500);
 			cy.shot(w, { area: ".content" });
 		});
 	});

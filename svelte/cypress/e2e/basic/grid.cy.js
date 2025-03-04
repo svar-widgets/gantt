@@ -44,6 +44,13 @@ context("Grid", () => {
 	});
 
 	it("grid in compact mode with local data", () => {
+		const resizeObserverLoopErrRe =
+			/^[^(ResizeObserver loop limit exceeded)]/;
+		Cypress.on("uncaught:exception", err => {
+			if (resizeObserverLoopErrRe.test(err.message)) {
+				return false;
+			}
+		});
 		cy.visit("/index.html#/local-data");
 		cy.viewport(650, 900);
 

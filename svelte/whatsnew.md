@@ -1,3 +1,11 @@
+## 2.1.1
+
+### Fixes
+
+-   Regression with table and chart alignment
+-   Regression with fullscreen functionality
+-   Right and center alignment does not apply to header cells
+
 ## 2.1.0
 
 ### Updates

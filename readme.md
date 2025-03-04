@@ -85,7 +85,7 @@ To use the widget, simply import the package and include the component in your S
 <Gantt {tasks} {links} {scales} />
 ```
 
-For further instructions, follow the deatailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
+For further instructions, follow the detailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
 ### 💻 How to Modify
 

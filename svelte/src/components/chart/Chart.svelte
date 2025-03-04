@@ -1,5 +1,5 @@
 <script>
-	import { onMount, getContext } from "svelte";
+	import { getContext } from "svelte";
 
 	import CellGrid from "./CellGrid.svelte";
 	import Bars from "./Bars.svelte";
@@ -31,6 +31,8 @@
 
 	let scrollLeft = $state(),
 		scrollTop = $state();
+	let chartHeight = $state();
+
 	rScrollLeft.subscribe(value => (scrollLeft = value));
 	rScrollTop.subscribe(value => (scrollTop = value));
 
@@ -57,13 +59,10 @@
 		if (selectedTask) scrollToTask(selectedTask.id);
 	});
 
-	// $: if ($cellHeight) dataRequest();
+	const markersHeight = $derived(Math.min(chartHeight, fullHeight));
 
-	const markersHeight = $derived(
-		fullHeight > chart.clientHeight ? chart.clientHeight : fullHeight
-	);
-
-	onMount(() => {
+	$effect(() => {
+		chartHeight;
 		dataRequest();
 	});
 
@@ -90,7 +89,7 @@
 	}
 
 	function dataRequest() {
-		const clientHeight = chart.clientHeight || 0;
+		const clientHeight = chartHeight || 0;
 		const num = Math.ceil(clientHeight / $cellHeight) + 1;
 		const pos = Math.floor((chart.scrollTop || 0) / $cellHeight);
 		const start = Math.max(0, pos - extraRows);
@@ -151,9 +150,13 @@
 	});
 </script>
 
-<svelte:window on:resize={dataRequest} />
-
-<div class="wx-chart" bind:this={chart} onscroll={onScroll} onwheel={onWheel}>
+<div
+	class="wx-chart"
+	bind:this={chart}
+	onscroll={onScroll}
+	onwheel={onWheel}
+	bind:clientHeight={chartHeight}
+>
 	{#if markers.length}
 		<div
 			class="wx-markers"
@@ -207,7 +210,8 @@
 <style>
 	.wx-chart {
 		flex: 1 1 auto;
-		overflow: auto;
+		overflow-x: auto;
+		overflow-y: hidden;
 	}
 
 	.wx-markers {

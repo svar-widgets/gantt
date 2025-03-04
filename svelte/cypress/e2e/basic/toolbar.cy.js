@@ -30,6 +30,13 @@ context("Toolbar", () => {
 	});
 
 	it("default toolbar actions with local data", () => {
+		const resizeObserverLoopErrRe =
+			/^[^(ResizeObserver loop limit exceeded)]/;
+		Cypress.on("uncaught:exception", err => {
+			if (resizeObserverLoopErrRe.test(err.message)) {
+				return false;
+			}
+		});
 		cy.visit(`/index.html#/toolbar/willow`);
 		cy.viewport(1300, 900);
 

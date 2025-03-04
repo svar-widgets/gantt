@@ -35,7 +35,9 @@
 	let compactWidth = 650;
 	let compactMode = $state(false);
 	let gridWidth = $state(0);
-	let layoutWidth = $state();
+	let ganttWidth = $state();
+	let ganttHeight = $state();
+	let innerWidth = $state();
 	let chart = $state();
 
 	$effect(() => {
@@ -87,9 +89,18 @@
 		gridWidth = w;
 	});
 
+	const scrollSize = $derived(ganttWidth - innerWidth);
 	const fullWidth = $derived($rScales.width);
 	const fullHeight = $derived($rTasks.length * $rCellHeight);
-	const ganttWidth = $derived(gridWidth + fullWidth);
+	const scrollHeight = $derived($rScales.height + fullHeight + scrollSize);
+	const totalWidth = $derived(gridWidth + fullWidth);
+
+	let ganttDiv = $state();
+	function onScroll() {
+		api.exec("scroll-chart", {
+			top: ganttDiv.scrollTop,
+		});
+	}
 
 	// expand scale
 	$effect(() => {
@@ -104,8 +115,8 @@
 	});
 	function expandScale() {
 		tick().then(() => {
-			if (layoutWidth > ganttWidth) {
-				const minWidth = layoutWidth - gridWidth;
+			if (ganttWidth > totalWidth) {
+				const minWidth = ganttWidth - gridWidth;
 				api.exec("expand-scale", { minWidth });
 			}
 		});
@@ -115,44 +126,65 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div class="wx-gantt">
-	<div tabindex="0" class="wx-layout" bind:offsetWidth={layoutWidth}>
-		{#if $rColumns.length}
-			<Grid
-				{compactMode}
-				columnWidth={gridColumnWidth}
-				width={gridWidth}
-				{readonly}
-				{fullHeight}
-			/>
-			{#if !compactMode}
-				<Resizer bind:value={gridWidth} minValue="50" maxValue="800" />
-			{/if}
-		{/if}
+<div
+	class="wx-gantt"
+	bind:this={ganttDiv}
+	bind:offsetHeight={ganttHeight}
+	bind:offsetWidth={ganttWidth}
+	onscroll={onScroll}
+>
+	<div
+		class="wx-pseudo-rows"
+		style="height: {scrollHeight}px;width:100%;"
+		bind:offsetWidth={innerWidth}
+	>
+		<div
+			class="wx-stuck"
+			style="height:{ganttHeight}px;width:{innerWidth}px;"
+		>
+			<div tabindex="0" class="wx-layout">
+				{#if $rColumns.length}
+					<Grid
+						{compactMode}
+						columnWidth={gridColumnWidth}
+						width={gridWidth}
+						{readonly}
+						{fullHeight}
+					/>
+					{#if !compactMode}
+						<Resizer
+							bind:value={gridWidth}
+							minValue="50"
+							maxValue="800"
+						/>
+					{/if}
+				{/if}
 
-		<div class="wx-content" bind:this={chart}>
-			<TimeScales {highlightTime} />
+				<div class="wx-content" bind:this={chart}>
+					<TimeScales {highlightTime} />
 
-			<Chart
-				markers={markersData}
-				{readonly}
-				{fullWidth}
-				{fullHeight}
-				{taskTemplate}
-				{cellBorders}
-				{highlightTime}
-			/>
-		</div>
+					<Chart
+						markers={markersData}
+						{readonly}
+						{fullWidth}
+						{fullHeight}
+						{taskTemplate}
+						{cellBorders}
+						{highlightTime}
+					/>
+				</div>
 
-		{#if $rActiveTask && !readonly}
-			<Sidebar {compactMode} {editorShape} />
-		{/if}
+				{#if $rActiveTask && !readonly}
+					<Sidebar {compactMode} {editorShape} />
+				{/if}
 
-		{#if compactMode && !$rActiveTask && !readonly}
-			<div class="wx-icon">
-				<IconButton icon="wxi-plus" onclick={addTask} />
+				{#if compactMode && !$rActiveTask && !readonly}
+					<div class="wx-icon">
+						<IconButton icon="wxi-plus" onclick={addTask} />
+					</div>
+				{/if}
 			</div>
-		{/if}
+		</div>
 	</div>
 </div>
 
@@ -160,6 +192,19 @@
 	.wx-gantt {
 		height: 100%;
 		width: 100%;
+		overflow-y: auto;
+	}
+	.wx-pseudo-rows {
+		width: 100%;
+		height: auto;
+		min-height: 100%;
+	}
+	.wx-stuck {
+		position: sticky;
+		top: 0;
+		height: 100%;
+		width: 100%;
+		max-height: 100%;
 	}
 	.wx-layout {
 		position: relative;

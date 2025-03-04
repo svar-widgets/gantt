@@ -42,7 +42,7 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 			...(action && { action }),
 			cell: a.cell,
 			resize: a.resize ?? true,
-			sort: a.sort ?? true,
+			sort: a.sort ?? !action,
 		};
 	});
 

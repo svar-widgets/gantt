@@ -2,7 +2,7 @@
 	import IconButton from "../widgets/IconButton.svelte";
 	import { hotkeys } from "../helpers/hotkey";
 
-	let { mode = false, hotkey = null, children } = $props();
+	let { hotkey = null, children } = $props();
 
 	$effect(() => {
 		if (hotkey) $hotkeys.add(hotkey, toggleFullscreen);
@@ -10,8 +10,9 @@
 
 	let node = null;
 	let inFullscreen = $state(false);
-	function toggleFullscreen(mode) {
-		if (typeof mode === "undefined") mode = !inFullscreen;
+
+	function toggleFullscreen() {
+		let mode = !inFullscreen;
 
 		if (mode && node) {
 			node.requestFullscreen();
@@ -34,10 +35,6 @@
 			);
 		};
 	});
-
-	$effect(() => {
-		toggleFullscreen(mode);
-	});
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -47,7 +44,7 @@
 		<IconButton
 			appearance={"transparent"}
 			icon="wxi-{inFullscreen ? 'collapse' : 'expand'}"
-			onclick={() => (mode = !mode)}
+			onclick={() => toggleFullscreen()}
 		/>
 	</div>
 </div>

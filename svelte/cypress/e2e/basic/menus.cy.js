@@ -3,7 +3,7 @@ context("Menus", () => {
 		cy.visit(`/index.html#/context-menu/willow`);
 		cy.viewport(1300, 900);
 
-		cy.wxG("grid-item", 1).rightclick();
+		cy.wxG("grid-item", 1).rightclick({ position: "center" });
 		cy.wxG("menu").should("be.visible");
 		cy.wxG("menu").children().should("have.length", 13);
 		cy.shot(`default-grid-menu`);
@@ -92,8 +92,16 @@ context("Menus", () => {
 	});
 
 	it("default menu actions with local data", () => {
+		const resizeObserverLoopErrRe =
+			/^[^(ResizeObserver loop limit exceeded)]/;
+		Cypress.on("uncaught:exception", err => {
+			if (resizeObserverLoopErrRe.test(err.message)) {
+				return false;
+			}
+		});
+
 		cy.visit(`/index.html#/context-menu/willow`);
-		cy.viewport(1300, 900);
+		cy.viewport(1300, 1000);
 
 		const taskId = "21";
 		let relativeId;
@@ -182,7 +190,7 @@ context("Menus", () => {
 								.then(data => {
 									expect(data).to.eq(relativeId);
 								});
-							cy.shot("add-task-after");
+							cy.shot("move-task-up");
 						},
 					},
 					{

@@ -1,5 +1,5 @@
 <script>
-	import { getContext, tick } from "svelte";
+	import { getContext } from "svelte";
 	import { locateID } from "wx-lib-dom";
 	import { reorder } from "../../helpers/reorder";
 
@@ -7,13 +7,7 @@
 	import TextCell from "./TextCell.svelte";
 	import ActionCell from "./ActionCell.svelte";
 
-	let {
-		readonly,
-		compactMode,
-		width = 0,
-		columnWidth,
-		fullHeight = 0,
-	} = $props();
+	let { readonly, compactMode, width = 0, columnWidth } = $props();
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -33,8 +27,6 @@
 	let touchY = null;
 	let scroll = true;
 	let dragTask = $state(null);
-	let container = $state();
-	let innerContainer = $state();
 
 	function onClick(e) {
 		const id = locateID(e);
@@ -163,8 +155,7 @@
 		if (!compactMode) showFull = false;
 	});
 
-	let w = $state(0); // clientWidth
-	let h = $state(0); // clientHeight
+	let gridWidth = $state(0); // clientWidth
 
 	let table = $state();
 	let updateFlex = $state(false);
@@ -199,28 +190,15 @@
 	// --------
 	// --------
 	const scrollDelta = $derived($area.from);
-	const height = $derived($scales.height);
+	const headerHeight = $derived($scales.height);
 	const scrollX = $derived(
-		!compactMode ? columnWidth > width : showFull && columnWidth > w
+		!compactMode ? columnWidth > width : showFull && columnWidth > gridWidth
 	);
-	const scrollY = $derived(container ? h < height + fullHeight : false);
 
 	const basis = $derived(showFull ? "100%" : `${width}px`);
 
-	const baseTableStyle = $derived(
-		!showFull || scrollX ? `width:${scrollX ? columnWidth : width}px;` : ""
-	);
 	const tableStyle = $derived(
-		scrollY
-			? baseTableStyle +
-					`height:${Math.max(container.offsetHeight, h)}px;`
-			: baseTableStyle
-	);
-	const tableOuterStyle = $derived(
-		scrollY ? baseTableStyle + `height:${fullHeight + height}px;` : ""
-	);
-	const scrollYStyle = $derived(
-		scrollY && showFull ? tableOuterStyle : baseTableStyle
+		!showFull || scrollX ? `width:${scrollX ? columnWidth : width}px;` : ""
 	);
 
 	// --------
@@ -246,7 +224,7 @@
 			if (col.$width) col.$width = col.width;
 			return acc + col.width;
 		}, 0);
-		const containerWidth = showFull ? w : width;
+		const containerWidth = showFull ? gridWidth : width;
 		if (newColumnWidth > containerWidth || columnWidth > containerWidth)
 			columnWidth = newColumnWidth;
 	}
@@ -300,9 +278,9 @@
 		// column widths are increased
 		if (
 			!hasFlexCol &&
-			(columnWidth < width || (showFull && columnWidth < w))
+			(columnWidth < width || (showFull && columnWidth < gridWidth))
 		) {
-			const k = (w - 50) / (columnWidth - 50);
+			const k = (gridWidth - 50) / (columnWidth - 50);
 			return sortedColumns.map(c => {
 				if (c.id != "action") {
 					c = { ...c };
@@ -317,109 +295,90 @@
 	});
 
 	// --------
-	// SCROLLS
+	// SCROLLS AND TOP ROW OFFSET
 	// --------
-	const scrollDiv = $derived(showFull ? container : innerContainer);
-
-	function onScroll(ev) {
-		if (ev.target === scrollDiv) {
-			api.exec("scroll-chart", {
-				top: scrollDiv.scrollTop,
-			});
-		}
-	}
 
 	$effect(() => {
-		if (table)
-			setScrollOffset($scrollTop, scrollDelta, tableStyle, fitColumns);
+		if (table) {
+			$scrollTop;
+			scrollDelta;
+			allTasks;
+			setScrollOffset();
+		}
 	});
 
-	async function setScrollOffset(y, delta, tableStyle, cols) {
-		await tick();
-		if (
-			scrollDiv &&
-			scrollDiv.scrollTop != $scrollTop &&
-			tableStyle !== null &&
-			cols
-		)
-			scrollDiv.scrollTop = $scrollTop;
+	function setScrollOffset() {
 		// hack to align scroll
-		table.querySelector(".wx-body").style.top = -(y - delta) + "px";
+		if (table && allTasks !== null)
+			table.querySelector(".wx-body").style.top =
+				-($scrollTop - scrollDelta) + "px";
 	}
+
+	// Observe grid inner container and set offset on size change
+	const ro = new ResizeObserver(() => {
+		setScrollOffset();
+	});
+
+	$effect(() => {
+		if (table) {
+			fitColumns;
+			updateFlex;
+			tableStyle;
+			showFull;
+			basis;
+			ro.observe(table.querySelector(".wx-table-box"));
+		}
+		return () => {
+			ro.disconnect();
+		};
+	});
 </script>
 
 <svelte:window ontouchend={endScroll} />
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	bind:this={container}
-	bind:clientWidth={w}
-	bind:clientHeight={h}
-	class="wx-table-wrapper"
-	class:wx-wrapper-scroll={scrollX}
-	class:wx-wrapper-scroll-y={scrollY && showFull}
-	onscroll={onScroll}
+	class="wx-table-container"
 	style="flex: 0 0 {basis}"
+	bind:clientWidth={gridWidth}
 >
 	<div
-		bind:this={innerContainer}
-		style={scrollYStyle}
-		class:wx-scroll-y={scrollY && !showFull}
-		onscroll={onScroll}
+		bind:this={table}
+		style={tableStyle}
+		class="wx-table"
+		use:reorder={{
+			start: startReorder,
+			touchStart: endScroll,
+			end: endReorder,
+			move: moveReorder,
+			getTask: api.getTask,
+		}}
+		ontouchstart={onTouchstart}
+		ontouchmove={onTouchmove}
+		onclick={onClick}
+		ondblclick={onDblClick}
 	>
-		<div style={tableOuterStyle}>
-			<div
-				bind:this={table}
-				style={tableStyle}
-				class="wx-table"
-				use:reorder={{
-					start: startReorder,
-					touchStart: endScroll,
-					end: endReorder,
-					move: moveReorder,
-					getTask: api.getTask,
-				}}
-				ontouchstart={onTouchstart}
-				ontouchmove={onTouchmove}
-				onclick={onClick}
-				ondblclick={onDblClick}
-			>
-				<Grid
-					{init}
-					sizes={{ rowHeight: $cellHeight, headerHeight: height - 1 }}
-					rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
-					columnStyle={col => "wx-text-" + col.align}
-					data={allTasks}
-					columns={fitColumns}
-					selectedRows={[...sel]}
-				/>
-			</div>
-		</div>
+		<Grid
+			{init}
+			sizes={{ rowHeight: $cellHeight, headerHeight: headerHeight - 1 }}
+			rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
+			columnStyle={col => "wx-text-" + col.align}
+			data={allTasks}
+			columns={fitColumns}
+			selectedRows={[...sel]}
+		/>
 	</div>
 </div>
 
 <style>
-	.wx-table-wrapper {
+	.wx-table-container {
 		display: flex;
 		flex-direction: column;
 		border-right: var(--wx-gantt-border);
-		overflow: hidden;
-		position: sticky;
-	}
-
-	.wx-wrapper-scroll {
-		overflow-x: scroll;
-	}
-	.wx-wrapper-scroll-y {
-		overflow-y: scroll;
-		display: block;
-	}
-	.wx-scroll-y {
-		overflow-y: auto;
-		scrollbar-width: none;
-	}
-	.wx-scroll-y::-webkit-scrollbar {
-		display: none;
+		overflow-x: auto;
+		overflow-y: hidden;
+		height: 100%;
+		box-sizing: content-box;
 	}
 
 	/*table*/
@@ -431,8 +390,6 @@
 		--wx-table-header-background: var(--wx-background);
 		--wx-table-header-border: var(--wx-gantt-border);
 		--wx-table-header-cell-border: var(--wx-gantt-border);
-		position: sticky !important;
-		top: 0;
 	}
 	.wx-table > :global(.wx-grid .wx-table-box) {
 		border: none;
@@ -479,12 +436,24 @@
 	.wx-table > :global(.wx-grid .wx-header .wx-cell:first-child) {
 		padding-left: 14px;
 	}
+	.wx-table > :global(.wx-grid .wx-header .wx-cell .wx-text) {
+		width: 100%;
+	}
+	.wx-table > :global(.wx-grid .wx-header .wx-cell:has(.wx-sort) .wx-text) {
+		width: calc(100% - 15px);
+	}
 	.wx-table > :global(.wx-grid .wx-header .wx-cell.wx-text-right) {
-		justify-content: right;
+		text-align: right;
 	}
 	.wx-table > :global(.wx-grid .wx-header .wx-cell.wx-text-center) {
-		justify-content: center;
+		text-align: center;
 		padding-left: 5px;
+	}
+	.wx-table > :global(.wx-grid .wx-header .wx-cell.wx-text-center.wx-action) {
+		justify-content: center;
+	}
+	.wx-table > :global(.wx-grid .wx-header .wx-cell.wx-text-right.wx-action) {
+		justify-content: right;
 	}
 	.wx-table > :global(.wx-grid .wx-header .wx-action i) {
 		font-size: var(--wx-icon-size);

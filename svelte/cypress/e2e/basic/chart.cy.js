@@ -254,9 +254,7 @@ context("Chart", () => {
 			});
 
 			// very unstable: crushed without cy.wait inside modifyElement and itself
-			cy.wxG("chart-item", 31)
-				.scrollIntoView({ offset: { left: 300 } })
-				.as("rightFullEl");
+			cy.wxG("chart-item", 22).as("rightFullEl");
 			let rFullStart;
 			cy.get("@rightFullEl").then($bar => {
 				rFullStart = $bar.offset().left;
