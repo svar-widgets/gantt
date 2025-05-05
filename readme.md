@@ -18,17 +18,33 @@
 
 </div>
 
-SVAR Svelte Gantt is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form.
+**SVAR Svelte Gantt** is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form.
 
 <div align="center">
   <img src="https://cdn.svar.dev/public/gantt-chart-ui.png" alt="UI of SVAR Svelte Gantt Chart - Screenshot">
 </div>
 
-### Svelte 4 and Svelte 5 versions
+### ✨ Key Features
 
-There are two versions of the library: the 1.x version, designed to work with Svelte 4, and the 2.x version, created for Svelte 5. Please note that the 2.x version is in beta and may contain some instabilities.
+-   Interactive drag-and-drop interface
+-   Intuitive and customizable task edit form
+-   Set task dependencies on the timeline or in a popup form
+-   Showing task progress on the taskbar
+-   Hierarchical view of sub tasks
+-   Reordering tasks in grid with drag-and-drop
+-   Configurable timeline (hours, days, weeks)
+-   Ability to use custom HTML in grid cells
+-   Toolbar and context menu
+-   Tooltips for taskbars
+-   Zooming with scroll
+-   Fast performance with large data sets
+-   Light and dark skins
 
-To use the SVAR Gantt beta for Svelte 5, install it as follows:
+### 🔧 Svelte 4 and Svelte 5 versions
+
+There are two versions of the library: the 1.x version – designed to work with Svelte 4, and the 2.x version – created for Svelte 5. 
+
+To use the SVAR Gantt for Svelte 5, install it as follows:
 
 ```
 npm install wx-svelte-gantt
@@ -39,20 +55,6 @@ To use the SVAR Gantt for Svelte 4:
 ```
 npm install wx-svelte-gantt@1.2.0
 ```
-
-### ✨ Key Features
-
--   Interactive drag-and-drop interface
--   Intuitive and customizable task edit form
--   Set task dependencies on the timeline or in a popup form
--   Hierarchical view of sub tasks
--   Reordering tasks in grid with drag-and-drop
--   Configurable timeline (hours, days, weeks)
--   Zooming with scroll
--   Showing task progress on the taskbar
--   Toolbar and context menu
--   Tooltips for taskbars
--   Fast performance with big data sets
 
 ### 🛠️ How to Use
 
