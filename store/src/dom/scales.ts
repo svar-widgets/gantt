@@ -9,7 +9,7 @@ export function grid(
 	if (typeof document === "undefined") return "";
 	const canvas = document.createElement("canvas");
 
-	let fillMode = true;
+	const fillMode = true;
 
 	if (fillMode) {
 		const ctx = canvasSize(canvas, width, height, 1, color);

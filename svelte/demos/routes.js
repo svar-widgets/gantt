@@ -11,6 +11,7 @@ import GanttReadOnly from "./cases/GanttReadOnly.svelte";
 import GanttPreventActions from "./cases/GanttPreventActions.svelte";
 import GanttFormControls from "./cases/GanttFormControls.svelte";
 import GanttForm from "./cases/GanttForm.svelte";
+import GanttSaveEvent from "./cases/GanttSaveEvent.svelte";
 import GanttSizes from "./cases/GanttSizes.svelte";
 import GanttMultiple from "./cases/GanttMultiple.svelte";
 import GanttPerformance from "./cases/GanttPerformance.svelte";
@@ -102,6 +103,7 @@ export const links = [
 		GanttFormControls,
 	],
 	["/custom-edit-form/:skin", "Custom editor", GanttForm],
+	["/save-event/:skin", "Editor: save event", GanttSaveEvent],
 
 	["/locale/:skin", "Locales", GanttLocale],
 	["/fullscreen/:skin", "Fullscreen", GanttFullscreen],
