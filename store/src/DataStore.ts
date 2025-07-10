@@ -205,6 +205,10 @@ export default class DataStore extends Store<IData> {
 		inBus.on("show-editor", ({ id }: TMethodsConfig["show-editor"]) => {
 			this.setStateAsync({ activeTask: id });
 		});
+		inBus.on("save-taskeditor", () => {
+			// Event fired when the save button in the task editor is clicked
+			// This event is automatically forwarded to external listeners
+		});
 		inBus.on(
 			"select-task",
 			({ id, toggle, range, show }: TMethodsConfig["select-task"]) => {
@@ -1126,6 +1130,7 @@ export type IDataMethodsConfig = CombineTypes<
 		["indent-task"]: { id: TID; mode: boolean };
 
 		["show-editor"]: { id: TID };
+		["save-taskeditor"]: { id: TID };
 		["add-link"]: { id?: TID; link: Partial<ILink> };
 		["update-link"]: { id: TID; link: Partial<ILink> };
 		["delete-link"]: { id: TID };

@@ -55,6 +55,12 @@
 		api.exec("show-editor", { id: null });
 	}
 
+	function saveTask() {
+		// Fire the save-taskeditor event before hiding the editor
+		api.exec("save-taskeditor", { id: $task.id });
+		hide();
+	}
+
 	function onDurationChange(e) {
 		tdata.update(v => {
 			v.duration = e.value;
@@ -88,7 +94,7 @@
 		<i class="wxi-close" onclick={hide}></i>
 		<div>
 			<Button type="danger" onclick={deleteTask}>{_("Delete")}</Button>
-			<Button type="primary" onclick={hide}>{_("Save")}</Button>
+			<Button type="primary" onclick={saveTask}>{_("Save")}</Button>
 		</div>
 	</div>
 
