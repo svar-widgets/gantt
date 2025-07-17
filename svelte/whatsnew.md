@@ -1,3 +1,9 @@
+## 2.2.1
+
+### Fixes
+
+-   Correct dependencies
+
 ## 2.2.0
 
 ### New features

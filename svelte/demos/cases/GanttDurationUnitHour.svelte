@@ -45,6 +45,7 @@
 		{scales}
 		cellWidth={40}
 		durationUnit={"hour"}
+		lengthUnit={"minute"}
 		{highlightTime}
 	/>
 </ContextMenu>
