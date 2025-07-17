@@ -1,5 +1,5 @@
 <script>
-	import { Gantt, ContextMenu } from "../../src";
+	import { Gantt, ContextMenu, Editor } from "../../src";
 
 	const server = "https://master--svar-gantt-go--dev.webix.io";
 
@@ -48,3 +48,4 @@
 <ContextMenu {api}>
 	<Gantt bind:this={api} {init} {tasks} {links} />
 </ContextMenu>
+<Editor {api} />

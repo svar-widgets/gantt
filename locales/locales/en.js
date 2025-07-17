@@ -3,6 +3,7 @@ export default {
 		// Header / sidebar
 		"Task name": "Task name",
 		"Start date": "Start date",
+		"Add task": "Add task",
 		Duration: "Duration",
 		Task: "Task",
 		Milestone: "Milestone",

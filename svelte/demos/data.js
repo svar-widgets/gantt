@@ -110,7 +110,7 @@ const tasks = [
 		parent: 1,
 		type: "task",
 		details: "Analyze market trends and competitors.",
-		assigned: "Laura Turner",
+		assigned: 1,
 	},
 	{
 		id: 11,
@@ -184,7 +184,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
-		assigned: "Robert Williams",
+		assigned: 2,
 	},
 	{
 		id: 20,
@@ -246,7 +246,7 @@ const tasks = [
 		progress: 3,
 		parent: 3,
 		type: "task",
-		assigned: "Mary Johnson",
+		assigned: 3,
 	},
 	{
 		id: 31,
@@ -288,7 +288,7 @@ const tasks = [
 		progress: 3,
 		parent: 4,
 		type: "task",
-		assigned: "John Doe",
+		assigned: 4,
 	},
 	{
 		id: 41,
@@ -379,9 +379,172 @@ const links = [
 	},
 ];
 
-export function getData() {
-	return { tasks, links, scales };
+const scales = [
+	{ unit: "month", step: 1, format: "MMMM yyy" },
+	{ unit: "day", step: 1, format: "d", css: dayStyle },
+];
+
+const tasksHour = [
+	{
+		id: 1,
+		start: new Date(2025, 3, 10, 8, 0),
+		end: new Date(2025, 3, 10, 20, 0),
+		text: "Preparing Venue",
+		progress: 90,
+		parent: 0,
+		type: "summary",
+		open: true,
+	},
+	{
+		id: 11,
+		start: new Date(2025, 3, 10, 8, 0),
+		end: new Date(2025, 3, 10, 12, 0),
+		text: "Stage Setup",
+		progress: 100,
+		parent: 1,
+		type: "task",
+	},
+	{
+		id: 12,
+		start: new Date(2025, 3, 10, 12, 0),
+		end: new Date(2025, 3, 10, 17, 0),
+		text: "Technical Setup",
+		progress: 100,
+		parent: 1,
+		type: "task",
+	},
+	{
+		id: 13,
+		start: new Date(2025, 3, 10, 14, 0),
+		end: new Date(2025, 3, 10, 20, 0),
+		text: "Decoration",
+		progress: 85,
+		parent: 1,
+		type: "task",
+	},
+	{
+		id: 2,
+		start: new Date(2025, 3, 10, 16, 0),
+		end: new Date(2025, 3, 10, 22, 0),
+		text: "Rehearsal Session",
+		progress: 60,
+		parent: 0,
+		type: "summary",
+		open: true,
+	},
+	{
+		id: 21,
+		start: new Date(2025, 3, 10, 16, 0),
+		end: new Date(2025, 3, 10, 19, 0),
+		text: "Speakers Rehearsal",
+		progress: 100,
+		parent: 2,
+		type: "task",
+	},
+	{
+		id: 22,
+		start: new Date(2025, 3, 10, 19, 0),
+		text: "Sound Check",
+		progress: 0,
+		parent: 2,
+		type: "milestone",
+	},
+	{
+		id: 23,
+		start: new Date(2025, 3, 10, 19, 0),
+		end: new Date(2025, 3, 10, 22, 0),
+		text: "Full Run-through",
+		progress: 40,
+		parent: 2,
+		type: "task",
+	},
+
+	{
+		id: 3,
+		start: new Date(2025, 3, 11, 8, 0),
+		end: new Date(2025, 3, 11, 21, 0),
+		text: "Conference Day",
+		progress: 0,
+		parent: 0,
+		type: "summary",
+		open: true,
+	},
+	{
+		id: 31,
+		start: new Date(2025, 3, 11, 8, 0),
+		end: new Date(2025, 3, 11, 12, 0),
+		text: "Catering setup",
+		progress: 0,
+		parent: 3,
+		type: "task",
+	},
+	{
+		id: 32,
+		start: new Date(2025, 3, 11, 10, 0),
+		end: new Date(2025, 3, 11, 12, 0),
+		text: "Tech Check",
+		progress: 0,
+		parent: 3,
+		type: "task",
+	},
+	{
+		id: 33,
+		start: new Date(2025, 3, 11, 12, 0),
+		end: new Date(2025, 3, 11, 16, 0),
+		text: "Registration",
+		progress: 0,
+		parent: 3,
+		type: "task",
+	},
+	{
+		id: 34,
+		start: new Date(2025, 3, 11, 16, 0),
+		end: new Date(2025, 3, 11, 20, 0),
+		text: "Main Conference",
+		progress: 0,
+		parent: 3,
+		type: "task",
+	},
+	{
+		id: 35,
+		start: new Date(2025, 3, 11, 20, 0),
+		text: "Closing Ceremony",
+		progress: 0,
+		parent: 3,
+		type: "milestone",
+	},
+];
+
+const linksHour = [
+	{ id: 1, source: 11, target: 12, type: "e2s" },
+	{ id: 2, source: 21, target: 22, type: "e2s" },
+	{ id: 3, source: 22, target: 23, type: "e2s" },
+	{ id: 4, source: 32, target: 33, type: "e2s" },
+	{ id: 5, source: 33, target: 34, type: "e2s" },
+	{ id: 6, source: 34, target: 35, type: "e2s" },
+];
+
+const scalesHour = [
+	{ unit: "day", step: 1, format: "MMM d" },
+	{ unit: "hour", step: 1, format: "HH:mm" },
+];
+
+export const users = [
+	{ id: 1, label: "Laura Turner" },
+	{ id: 2, label: "Robert Williams" },
+	{ id: 3, label: "Mary Johnson" },
+	{ id: 4, label: "John Doe" },
+];
+
+export function getData(name) {
+	name = name || "day";
+	return datasets[name];
 }
+
+const datasets = {
+	day: { tasks, links, scales },
+	hour: { tasks: tasksHour, links: linksHour, scales: scalesHour },
+};
 
 export function getBaselinesData() {
 	const t = tasks.map(t => ({
@@ -392,11 +555,6 @@ export function getBaselinesData() {
 
 	return { tasks: t, links, scales };
 }
-
-const scales = [
-	{ unit: "month", step: 1, format: "MMMM yyy" },
-	{ unit: "day", step: 1, format: "d", css: dayStyle },
-];
 
 export const taskTypes = [
 	{ id: "task", label: "Task" },

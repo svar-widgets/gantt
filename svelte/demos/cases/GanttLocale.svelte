@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu, Toolbar } from "../../src/";
+	import { Gantt, ContextMenu, Toolbar, Editor } from "../../src/";
 	import { Segmented, Locale } from "wx-svelte-core";
 	import { cn } from "wx-gantt-locales";
 	import { cn as cnCore } from "wx-core-locales";
@@ -34,6 +34,7 @@
 					bind:this={api}
 				/>
 			</ContextMenu>
+			<Editor {api} />
 		</div>
 	{/if}
 
@@ -50,6 +51,7 @@
 						bind:this={api}
 					/>
 				</ContextMenu>
+				<Editor {api} />
 			</div>
 		</Locale>
 	{/if}

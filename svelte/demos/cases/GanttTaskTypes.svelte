@@ -1,20 +1,24 @@
 <script>
 	import { getTypedData, taskTypes } from "../data";
-	import { Gantt } from "../../src/";
+	import { Gantt, Editor } from "../../src/";
 
 	let { skinSettings } = $props();
 
 	const data = getTypedData();
+
+	let api = $state();
 </script>
 
 <div class="demo">
 	<Gantt
+		bind:this={api}
 		{...skinSettings}
 		tasks={data.tasks}
 		links={data.links}
 		scales={data.scales}
 		{taskTypes}
 	/>
+	<Editor {api} />
 </div>
 
 <style>

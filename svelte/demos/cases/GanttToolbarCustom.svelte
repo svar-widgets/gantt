@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt } from "../../src/";
+	import { Gantt, Editor } from "../../src/";
 	import { Toolbar } from "wx-svelte-toolbar";
 
 	let { skinSettings } = $props();
@@ -89,6 +89,7 @@
 		links={data.links}
 		scales={data.scales}
 	/>
+	<Editor {api} />
 </div>
 
 <style>

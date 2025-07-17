@@ -3,6 +3,7 @@ export default {
 		// Header / sidebar
 		"Task name": "任务名称",
 		"Start date": "开始日期",
+		"Add task": "添加任务",
 		Duration: "期间",
 		Task: "任务",
 		Milestone: "里程碑",

@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, Toolbar } from "../../src/";
+	import { Gantt, Toolbar, Editor } from "../../src/";
 
 	let { skinSettings } = $props();
 
@@ -18,6 +18,7 @@
 		links={data.links}
 		scales={data.scales}
 	/>
+	<Editor {api} />
 </div>
 
 <style>

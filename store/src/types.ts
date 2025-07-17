@@ -13,6 +13,21 @@ export type TLinkType = "s2s" | "s2e" | "e2s" | "e2e";
 
 export type TTaskType = "task" | "summary" | "milestone";
 
+export type TEditorType = "text" | "combo" | "datepicker" | "richselect";
+export interface IColumnEditor {
+	type: TEditorType;
+	config?: {
+		template?: (v: any) => string;
+		cell?: any;
+		options?: any[];
+		buttons?: boolean | string[];
+	};
+}
+export type TEditorHandler = (
+	row?: ITask,
+	column?: any
+) => TEditorType | IColumnEditor | null;
+
 export interface ILink {
 	id: TID;
 	type: TLinkType;
@@ -25,6 +40,7 @@ export interface ITask {
 	id: TID;
 	end?: Date;
 	duration?: number;
+	data?: ITask[];
 
 	base_start?: Date;
 	base_end?: Date;
@@ -36,6 +52,7 @@ export interface ITask {
 	progress?: number;
 	type?: TTaskType;
 	parent?: TID;
+	unscheduled?: boolean;
 
 	[key: string]: any;
 }
@@ -80,6 +97,13 @@ export interface IScaleLevel {
 	scales: GanttScale[];
 }
 
+export interface IMarker {
+	start: Date;
+	text?: string;
+	css?: string;
+	left?: number;
+}
+
 export interface IDataConfig {
 	selected?: TID[];
 	activeTask?: TID;
@@ -96,13 +120,17 @@ export interface IDataConfig {
 	scrollLeft: number;
 	scrollTop: number;
 	area: IVisibleArea;
-	editorShape?: TEditorShape[];
 	taskTypes?: ITaskType[];
 	baselines?: boolean;
 	zoom: boolean | IZoomConfig;
 	highlightTime?: (date: Date, unit: "day" | "hour") => string;
 	_cellWidth?: number;
-	_sort?: TSort;
+	_sort?: TSort[];
+	autoScale?: boolean;
+	unscheduledTasks?: boolean;
+	markers?: IMarker[];
+	durationUnit: "day" | "hour";
+	_scrollTask?: TScrollTask;
 }
 
 export interface IData {
@@ -128,16 +156,20 @@ export interface IData {
 	scrollTop: number;
 	scrollLeft: number;
 	area: IVisibleArea;
-	editorShape?: TEditorShape[];
 	taskTypes?: ITaskType[];
 	baselines?: boolean;
 	zoom: IZoomConfig;
 	highlightTime?: (date: Date, unit: "day" | "hour") => string;
 	_cellWidth?: number;
-	_scrollSelected?: boolean;
-	_sort?: TSort;
+	_sort?: TSort[];
 	_scaleDate?: Date;
 	_zoomOffset?: number;
+	autoScale?: boolean;
+	markers?: IMarker[];
+	_markers?: IMarker[];
+	unscheduledTasks?: boolean;
+	durationUnit: "day" | "hour";
+	_scrollTask?: TScrollTask;
 }
 
 export interface DataHash {
@@ -184,17 +216,27 @@ export type GanttColumn = {
 	align?: "left" | "right" | "center";
 	flexgrow?: number;
 	resize?: boolean;
-	header: string;
+	header:
+		| string
+		| {
+				cell?: string;
+				css?: string;
+				text: string;
+		  };
 	id: string;
 	action?: string;
-	template?: { (b: any): string };
+	template?: { (b: any, row: any): string };
 	sort?: boolean;
 	cell?: any;
+	editor?: TEditorType | IColumnEditor | TEditorHandler;
+	options?: DataHash[];
 };
 
 export interface IGanttTask extends IParsedTask {
 	end: Date;
 	duration: number;
+
+	unscheduled?: boolean;
 
 	$x: number;
 	$y: number;
@@ -213,46 +255,47 @@ export interface IGanttLink extends ILink {
 }
 
 export type TCommonShape = {
-	key: string | any;
-	label?: string;
 	id?: TID;
+	key: string;
+	label?: string;
+	labelTemplate?: (value: any) => string;
+	config?: Record<string, any>;
+	[key: string]: any;
 };
 
 export type TTextFieldShape = TCommonShape & {
-	type: "text" | "textarea";
-	config?: Record<string, any>;
+	comp: "text" | "textarea";
 };
 
 export type TCounterShape = TCommonShape & {
-	type: "counter";
-	config?: Record<string, any>;
+	comp: "counter";
 };
 
 export type TRadioShape = TCommonShape & {
-	type: "radio";
-	options: { id: TID; label?: string }[];
+	comp: "radio";
+	options: { id: TID; label: string }[];
 };
 
 export type TComboFieldShape = TCommonShape & {
-	type: "combo" | "select" | "multiselect";
-	// [todo] alias for values, can be removed later
-	options?: { id: any; label?: string }[];
-	config?: Record<string, any>;
+	comp: "combo" | "select" | "multiselect";
+	options?: { id: any; label: string }[];
 };
 
 export type TSliderShape = TCommonShape & {
-	type: "slider";
-	config?: Record<string, any>;
+	comp: "slider";
 };
 
 export type TDateFieldShape = TCommonShape & {
-	type: "date";
+	comp: "date";
 	time?: boolean;
-	config?: Record<string, any>;
 };
 
 export type ILinksShape = TCommonShape & {
-	type: "links";
+	comp: "links";
+};
+
+export type ITwoStateShape = TCommonShape & {
+	comp: "twostate";
 };
 
 export type TEditorShape =
@@ -262,7 +305,8 @@ export type TEditorShape =
 	| TSliderShape
 	| TDateFieldShape
 	| TRadioShape
-	| ILinksShape;
+	| ILinksShape
+	| ITwoStateShape;
 
 export type ITaskType = {
 	id: TID;
@@ -274,3 +318,5 @@ export type TSort = {
 	order?: "asc" | "desc";
 };
 export type TSortValue = string | number | Date;
+
+export type TScrollTask = { id: TID; mode?: "x" | "y" | "xy" | boolean };

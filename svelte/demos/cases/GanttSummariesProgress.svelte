@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, defaultEditorShape, ContextMenu } from "../../src";
+	import { Gantt, Editor, defaultEditorItems, ContextMenu } from "../../src";
 
 	let { skinSettings } = $props();
 
@@ -13,7 +13,7 @@
 
 	let tasks = data.tasks;
 	let gApi = $state();
-	let editorShape = $state(defaultEditorShape);
+	let items = $state(defaultEditorItems);
 
 	/**
      * 
@@ -98,11 +98,12 @@
 		api.on("show-editor", ({ id }) => {
 			if (id) {
 				const type = api.getTask(id).type;
-				const slider = defaultEditorShape.find(
-					e => e.key == "progress"
-				);
-				slider.config = { disabled: type === "summary" };
-				editorShape = defaultEditorShape;
+				items = defaultEditorItems.map(ed => ({
+					...ed,
+					...(ed.key == "progress" && {
+						config: { disabled: type === "summary" },
+					}),
+				}));
 			}
 		});
 	}
@@ -117,11 +118,11 @@
 				{tasks}
 				links={data.links}
 				scales={data.scales}
-				{editorShape}
 				cellWidth={30}
 			/>
 		</div>
 	</ContextMenu>
+	<Editor api={gApi} {items} />
 </div>
 
 <style>

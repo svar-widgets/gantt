@@ -11,7 +11,6 @@ import { writable } from "./stubs/writable";
 import GanttDataTree from "../src/GanttDataTree";
 import { DataArray } from "wx-lib-state";
 
-import { normalizeEditor } from "../src/sidebar";
 import { resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";
 import { updateLink } from "../src/links";
@@ -102,14 +101,17 @@ describe("datastore", () => {
 				_cellWidth: cellWidth,
 				cellHeight: 38,
 				scaleHeight: 30,
-				editorShape: normalizeEditor({ taskTypes }),
 				_start: new Date(2024, 3, 1),
 				_end: new Date(2024, 3, 9),
 				_scales,
 				_tasks,
 				_links,
-				_scrollSelected: false,
+				_scrollTask: null,
 				_sort: null,
+				autoScale: true,
+				markers: [],
+				_markers: [],
+				durationUnit: "day",
 			};
 
 			vi.advanceTimersByTime(1);
@@ -813,6 +815,25 @@ describe("datastore", () => {
 			expect(store.getState().selected).to.deep.eq([
 				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
 				19, 20,
+			]);
+		});
+
+		test("can select a range of tasks, reverse", () => {
+			resetState(getData("range"));
+
+			store.in.exec("select-task", {
+				id: 20,
+			});
+			store.in.exec("select-task", {
+				id: 1,
+				range: true,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(store.getState().selected).to.deep.eq([
+				20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,
+				2, 1,
 			]);
 		});
 

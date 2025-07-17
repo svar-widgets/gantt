@@ -1,6 +1,6 @@
 <script>
 	import { RestDataProvider } from "wx-gantt-data-provider";
-	import { Gantt, ContextMenu } from "../../src";
+	import { Gantt, ContextMenu, Editor } from "../../src";
 
 	const restProvider = new RestDataProvider(
 		"https://master--svar-gantt-go--dev.webix.io"
@@ -33,3 +33,4 @@
 <ContextMenu {api}>
 	<Gantt bind:this={api} {init} {tasks} {links} />
 </ContextMenu>
+<Editor {api} />

@@ -1,5 +1,5 @@
 <script>
-	import { Gantt, ContextMenu, Tooltip } from "wx-svelte-gantt";
+	import { Gantt, ContextMenu, Tooltip, Editor } from "wx-svelte-gantt";
 	import { getData } from "../data/index";
 	import TooltipContent from "./TooltipContent.svelte";
 
@@ -52,6 +52,7 @@
 			/>
 		</Tooltip>
 	</ContextMenu>
+	<Editor {api} />
 </div>
 
 <style>

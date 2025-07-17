@@ -1,12 +1,11 @@
 <script>
 	import { getContext } from "svelte";
-	let { width, height } = $props();
 
 	const api = getContext("gantt-store");
 	const links = api.getReactiveState()._links;
 </script>
 
-<svg class="wx-links" width="{width}px" height="{height}px">
+<svg class="wx-links">
 	{#each $links as link (link.id)}
 		<polyline class="wx-line" points={link.$p} />
 	{/each}
@@ -17,6 +16,8 @@
 		position: absolute;
 		top: 0;
 		left: 0;
+		width: 100%;
+		height: 100%;
 	}
 
 	.wx-line {

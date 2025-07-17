@@ -1,19 +1,16 @@
 <script>
-	import { run } from "svelte/legacy";
-
 	import { onMount } from "svelte";
 
 	import {
+		Field,
 		Text,
 		TextArea,
 		Select,
 		Slider,
 		DatePicker,
-		Locale,
 	} from "wx-svelte-core";
-	import { en } from "wx-gantt-locales";
 
-	let { task = $bindable({}), taskTypes, onaction } = $props();
+	let { task, taskTypes, onaction } = $props();
 
 	let node = $state(),
 		left = $state(),
@@ -33,9 +30,8 @@
 		onaction && onaction({ action: "close-form" });
 	}
 
-	run(() => {
-		//legacy_recursive_reactive_block
-		if (task.type === "milestone") {
+	function handleChange({ value }, key) {
+		if (key === "type" && value === "milestone") {
 			delete task.end;
 			task.duration = 0;
 		} else if (task.start > task.end) {
@@ -43,55 +39,96 @@
 			task.duration = 1;
 			task.end = 0;
 		}
-
+		task = {
+			...task,
+			[key]: value,
+		};
 		onaction &&
 			onaction({
 				action: "update-task",
 				data: { id: task.id, task },
 			});
-	});
+	}
 </script>
 
-<Locale words={en} optional={true}>
-	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="backdrop">
-		<div class="modal" style="left:{left}px;top:{top}px" bind:this={node}>
-			<div class="header">
-				<h3 class="title">Edit task</h3>
-				<i class="close wxi-close" onclick={onClose}></i>
-			</div>
-			<div class="body">
-				<p class="label">Name</p>
-				<Text focus={true} bind:value={task.text} />
-
-				<p class="label">Description</p>
-				<TextArea bind:value={task.details} />
-
-				{#if taskTypes.length > 1}
-					<p class="label">Type</p>
-					<Select bind:value={task.type} options={taskTypes} />
-				{/if}
-
-				<p class="label">Start date</p>
-				<DatePicker bind:value={task.start} />
-
-				{#if task.type !== "milestone"}
-					<p class="label">End date</p>
-					<DatePicker bind:value={task.end} />
-					<Slider
-						label="Progress: {task.progress}%"
-						bind:value={task.progress}
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="backdrop">
+	<div class="modal" style="left:{left}px;top:{top}px" bind:this={node}>
+		<div class="header">
+			<h3 class="title">Edit task</h3>
+			<i class="close wxi-close" onclick={onClose}></i>
+		</div>
+		<div class="body">
+			<Field label="Name">
+				{#snippet children({ id })}
+					<Text
+						{id}
+						focus={true}
+						value={task.text}
+						onchange={ev => handleChange(ev, "text")}
 					/>
-				{/if}
+				{/snippet}
+			</Field>
 
-				<button class="button danger" onclick={deleteTask}
-					>Delete</button
-				>
-			</div>
+			<Field label="Description">
+				{#snippet children({ id })}
+					<TextArea
+						{id}
+						value={task.details}
+						onchange={ev => handleChange(ev, "details")}
+					/>
+				{/snippet}
+			</Field>
+
+			{#if taskTypes.length > 1}
+				<Field label="Type">
+					{#snippet children({ id })}
+						<Select
+							{id}
+							value={task.type}
+							options={taskTypes}
+							onchange={ev => handleChange(ev, "type")}
+						/>
+					{/snippet}
+				</Field>
+			{/if}
+
+			<Field label="Start date">
+				{#snippet children({ id })}
+					<DatePicker
+						{id}
+						value={task.start}
+						onchange={ev => handleChange(ev, "start")}
+					/>
+				{/snippet}
+			</Field>
+
+			{#if task.type !== "milestone"}
+				<Field label="End date">
+					{#snippet children({ id })}
+						<DatePicker
+							{id}
+							value={task.end}
+							onchange={ev => handleChange(ev, "end")}
+						/>
+					{/snippet}
+				</Field>
+				<Field label="Progress: {task.progress}%">
+					{#snippet children({ id })}
+						<Slider
+							{id}
+							value={task.progress}
+							onchange={ev => handleChange(ev, "progress")}
+						/>
+					{/snippet}
+				</Field>
+			{/if}
+
+			<button class="button danger" onclick={deleteTask}>Delete</button>
 		</div>
 	</div>
-</Locale>
+</div>
 
 <style>
 	.backdrop {
@@ -159,10 +196,5 @@
 	.danger {
 		color: var(--wx-color-danger-font);
 		background-color: var(--wx-color-danger);
-	}
-
-	.label {
-		font-family: var(--wx-font-family);
-		font-size: var(--wx-font-size);
 	}
 </style>

@@ -13,6 +13,10 @@ function getOffset(node, relative, ev) {
 	};
 }
 
+function checkSource(node) {
+	return node && node.getAttribute("data-context-id");
+}
+
 const SHIFT = 5;
 
 export function reorder(node, config) {
@@ -33,7 +37,8 @@ export function reorder(node, config) {
 
 	function handleTouchstart(event) {
 		source = locate(event);
-		if (!source) return;
+		if (!checkSource(source)) return;
+
 		sid = getID(source);
 
 		touchTimer = setTimeout(() => {
@@ -58,7 +63,8 @@ export function reorder(node, config) {
 		if (event.which !== 1) return;
 
 		source = locate(event);
-		if (!source) return;
+		if (!checkSource(source)) return;
+
 		sid = getID(source);
 
 		node.addEventListener("mousemove", handleMousemove);
@@ -107,12 +113,13 @@ export function reorder(node, config) {
 				if (config.move({ id: sid, top, detail }) === false) return;
 			}
 
-			const y = config.getTask(sid).$y;
+			const task = config.getTask(sid);
+			const y = task.$y;
 			//dnd may be blocked
 			if (!base.start && base.y == y) return up();
 
 			base.start = true;
-			base.y = config.getTask(sid).$y - 4;
+			base.y = task.$y - 4;
 			clone.style.top = top + "px"; //task.$y - scroll
 
 			const targetNode = document.elementFromPoint(

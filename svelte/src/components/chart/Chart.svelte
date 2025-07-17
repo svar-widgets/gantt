@@ -5,9 +5,10 @@
 	import Bars from "./Bars.svelte";
 	import Links from "./Links.svelte";
 
+	import { hotkeys } from "wx-grid-store";
+
 	let {
 		readonly,
-		markers,
 		fullWidth,
 		fullHeight,
 		taskTemplate,
@@ -26,18 +27,19 @@
 		_scales: scales,
 		zoom,
 		context,
-		_scrollSelected: scrollSelected,
+		_markers: markers,
+		_scrollTask: rScrollTask,
 	} = api.getReactiveState();
 
 	let scrollLeft = $state(),
 		scrollTop = $state();
 	let chartHeight = $state();
+	let chart = $state();
+
+	let extraRows = 1;
 
 	rScrollLeft.subscribe(value => (scrollLeft = value));
 	rScrollTop.subscribe(value => (scrollTop = value));
-
-	let chart = {};
-	let extraRows = 0;
 
 	const selectStyle = $derived.by(() => {
 		const t = [];
@@ -50,21 +52,12 @@
 		return t;
 	});
 
-	const selectedTask = $derived(
-		$scrollSelected ? $selected[$selected.length - 1] : null
-	);
-	// const lastSelectedId = $derived(selectedTasks ? selectedTasks.id : null);
-
-	$effect(() => {
-		if (selectedTask) scrollToTask(selectedTask.id);
-	});
-
-	const markersHeight = $derived(Math.min(chartHeight, fullHeight));
-
 	$effect(() => {
 		chartHeight;
 		dataRequest();
 	});
+
+	const chartGridHeight = $derived(Math.max(chartHeight, fullHeight));
 
 	$effect(() => {
 		chart.scrollTop = scrollTop;
@@ -102,23 +95,22 @@
 		});
 	}
 
-	function scrollToTask(task) {
-		if ($context) return;
-		const { clientHeight, clientWidth } = chart;
+	function showTask(value) {
+		if ($context || !value) return;
 
-		if (task.$x < scrollLeft) {
+		const { id, mode } = value;
+
+		if (mode.toString().indexOf("x") < 0) return;
+		const { clientWidth } = chart;
+		const task = api.getTask(id);
+		if (task.$x + task.$w < scrollLeft) {
 			scrollLeft = task.$x - $cellWidth;
-		} else if (task.$x + task.$w >= clientWidth + scrollLeft) {
+		} else if (task.$x >= clientWidth + scrollLeft) {
 			const width = clientWidth < task.$w ? $cellWidth : task.$w;
 			scrollLeft = task.$x - clientWidth + width;
 		}
-
-		if (task.$y < scrollTop) {
-			scrollTop = task.$y - $cellHeight;
-		} else if (task.$y + task.$h >= clientHeight + scrollTop) {
-			scrollTop = task.$y - clientHeight + $cellHeight;
-		}
 	}
+	rScrollTask.subscribe(value => showTask(value));
 
 	function onWheel(e) {
 		if ($zoom && (e.ctrlKey || e.metaKey)) {
@@ -148,21 +140,31 @@
 			? $scales.rows[$scales.rows.length - 1].cells.map(getHoliday)
 			: null;
 	});
+
+	function handleHotkey(ev) {
+		ev.eventSource = "chart";
+		api.exec("hotkey", ev);
+	}
 </script>
 
 <div
 	class="wx-chart"
+	tabindex="-1"
 	bind:this={chart}
 	onscroll={onScroll}
 	onwheel={onWheel}
 	bind:clientHeight={chartHeight}
+	use:hotkeys={{
+		keys: {
+			arrowup: true,
+			arrowdown: true,
+		},
+		exec: v => handleHotkey(v),
+	}}
 >
-	{#if markers.length}
-		<div
-			class="wx-markers"
-			style="height:{markersHeight}px;left:{-scrollLeft}px"
-		>
-			{#each markers as marker}
+	{#if $markers.length}
+		<div class="wx-markers" style="height:{chartGridHeight}px;">
+			{#each $markers as marker}
 				<div
 					class="wx-marker {marker.css || 'wx-default'}"
 					style="left:{marker.left}px"
@@ -173,7 +175,7 @@
 		</div>
 	{/if}
 
-	<div class="wx-area" style="width:{fullWidth}px;height:{fullHeight}px">
+	<div class="wx-area" style="width:{fullWidth}px;height:{chartGridHeight}px">
 		{#if holidays}
 			<div class="wx-gantt-holidays" style="height:100%;">
 				{#each holidays as holiday, i}
@@ -202,13 +204,14 @@
 			{/each}
 		{/if}
 
-		<Links width={fullWidth} height={fullHeight} />
+		<Links />
 		<Bars {readonly} {taskTemplate} />
 	</div>
 </div>
 
 <style>
 	.wx-chart {
+		position: relative;
 		flex: 1 1 auto;
 		overflow-x: auto;
 		overflow-y: hidden;

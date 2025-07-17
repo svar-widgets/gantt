@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu } from "../../src/";
+	import { Gantt, ContextMenu, Editor } from "../../src/";
 	import { Button } from "wx-svelte-core";
 
 	let { skinSettings } = $props();
@@ -35,6 +35,7 @@
 			links={data.links}
 			scales={data.scales}
 		/>
+		<Editor {api} />
 	</div>
 </div>
 

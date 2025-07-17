@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from "svelte";
 	import { getData } from "../data";
-	import { Gantt, Toolbar, defaultToolbarButtons } from "../../src/";
+	import { Gantt, Toolbar, Editor, defaultToolbarButtons } from "../../src/";
 
 	const helpers = getContext("wx-helpers");
 	let { skinSettings } = $props();
@@ -36,6 +36,7 @@
 		links={data.links}
 		scales={data.scales}
 	/>
+	<Editor {api} />
 </div>
 
 <style>

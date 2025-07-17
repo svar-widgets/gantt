@@ -1,4 +1,5 @@
 import {
+	addMinutes,
 	addHours,
 	addDays,
 	addWeeks,
@@ -34,6 +35,8 @@ import {
 	endOfDay,
 	endOfHour,
 } from "date-fns";
+
+import { units } from "./scales";
 
 const diff: { [name: string]: { (start: Date, end: Date): number } } = {
 	year: differenceInYears,
@@ -150,6 +153,7 @@ const add: { [name: string]: { (start: number | Date, step: number): Date } } =
 		week: addWeeks,
 		day: addDays,
 		hour: addHours,
+		minute: addMinutes,
 	};
 
 export function getDiffer(unit: string): {
@@ -233,58 +237,90 @@ export function getAdder(unit: string): {
 	return add[unit];
 }
 
-export function getUnitStart(unit: string, start: Date): Date {
-	switch (unit) {
-		case "year":
-			return startOfYear(start);
-		case "quarter":
-			return startOfQuarter(start);
-		case "month":
-			return startOfMonth(start);
-		case "week":
-			return startOfWeek(start, { weekStartsOn: 1 });
-		case "day":
-			return startOfDay(start);
-		case "hour":
-			return startOfHour(start);
-		default:
-			return new Date(start);
-	}
+const startHandlers: {
+	[name: string]: { (start: number | Date): Date };
+} = {
+	year: startOfYear,
+	quarter: startOfQuarter,
+	month: startOfMonth,
+	week: (start: Date) => startOfWeek(start, { weekStartsOn: 1 }),
+	day: startOfDay,
+	hour: startOfHour,
+};
+
+export function getUnitStart(unit: string, date: Date): Date {
+	const handler = startHandlers[unit];
+	return handler ? handler(date) : new Date(date);
+}
+const endHandlers: {
+	[name: string]: { (end: number | Date): Date };
+} = {
+	year: endOfYear,
+	quarter: endOfQuarter,
+	month: endOfMonth,
+	week: (end: Date) => endOfWeek(end, { weekStartsOn: 1 }),
+	day: endOfDay,
+	hour: endOfHour,
+};
+export function getUnitEnd(unit: string, date: Date): Date {
+	const handler = endHandlers[unit];
+	return handler ? handler(date) : new Date(date);
 }
 
-export function getUnitEnd(unit: string, date: Date): Date {
-	switch (unit) {
-		case "year":
-			return endOfYear(date);
-		case "quarter":
-			return endOfQuarter(date);
-		case "month":
-			return endOfMonth(date);
-		case "week":
-			return endOfWeek(date, { weekStartsOn: 1 });
-		case "day":
-			return endOfDay(date);
-		case "hour":
-			return endOfHour(date);
-		default:
-			return new Date(date);
-	}
-}
+const sameHandlers: {
+	[unit: string]: { (a: Date, b: Date): boolean };
+} = {
+	year: isSameYear,
+	quarter: isSameQuarter,
+	month: isSameMonth,
+	week: (a, b) => isSameWeek(a, b, { weekStartsOn: 1 }),
+	day: isSameDay,
+};
 
 export function isSameUnit(unit: string, a: Date, b: Date): boolean {
-	switch (unit) {
-		case "year":
-			return isSameYear(a, b);
-		case "quarter":
-			return isSameQuarter(a, b);
-		case "month":
-			return isSameMonth(a, b);
-		case "week":
-			return isSameWeek(a, b, { weekStartsOn: 1 });
-		case "day":
-			return isSameDay(a, b);
-		default:
-			return false;
+	const handler = sameHandlers[unit];
+	return handler ? handler(a, b) : false;
+}
+
+const handlers: { [name: string]: any } = {
+	start: startHandlers,
+	end: endHandlers,
+	add,
+	isSame: sameHandlers,
+	diff,
+	smallerCount,
+};
+
+const getCount = (count: any) => {
+	if (typeof count === "function") return count(new Date());
+	return count;
+};
+
+export function registerScaleUnit(
+	unit: string,
+	config: { [name: string]: any }
+) {
+	for (const key in config) {
+		if (key === "smallerCount") {
+			const childUnits = Object.keys(config[key]);
+			const baseUnit = childUnits
+				.sort((a, b) => units.indexOf(a) - units.indexOf(b))
+				.shift();
+			let index = units.indexOf(baseUnit);
+			const baseSmallerCount = config[key][baseUnit];
+			const count = getCount(baseSmallerCount);
+			for (let i = index - 1; i >= 0; i--) {
+				const unitI = units[i];
+				const countI = getCount(smallerCount[unitI][baseUnit]);
+				if (count <= countI) break;
+				index = i;
+			}
+			units.splice(index, 0, unit);
+		}
+		if (key === "biggerCount") {
+			for (const parentUnit in config[key])
+				smallerCount[parentUnit][unit] = config[key][parentUnit];
+		} else handlers[key][unit] = config[key];
 	}
 }
 

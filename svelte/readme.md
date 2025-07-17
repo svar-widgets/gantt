@@ -19,30 +19,32 @@
 
 </div>
 
-[SVAR Svelte Gantt](https://svar.dev/svelte/gantt/) is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form. 
+[SVAR Svelte Gantt](https://svar.dev/svelte/gantt/) is a customizable, easy-to-use, and interactive Gantt chart component written in Svelte. Its intuitive interface allows users to add and manage tasks and dependencies directly on the timeline using drag-and-drop or via a simple task edit form.
 
 <div align="center">
   <img src="https://cdn.svar.dev/public/gantt-chart-ui.png" alt="UI of SVAR Svelte Gantt Chart - Screenshot">
 </div>
+</br>
 
+### :sparkles: Key Features
 
-# :sparkles: Key Features
+-   Interactive drag-and-drop interface
+-   Intuitive and customizable task edit form
+-   Set task dependencies on the timeline or in a popup form
+-   Showing task progress on the taskbar
+-   Hierarchical view of sub tasks
+-   Reordering tasks in grid with drag-and-drop
+-   Configurable timeline (hours, days, weeks)
+-   Ability to use custom HTML in grid cells
+-   Toolbar and context menu
+-   Tooltips for taskbars
+-   Zooming with scroll
+-   Fast performance with big data sets
+-   Light and dark skins
 
-- Interactive drag-and-drop interface
-- Intuitive and customizable task edit form
-- Set task dependencies on the timeline or in a popup form
-- Hierarchical view of sub tasks
-- Reordering tasks in grid with drag-and-drop
-- Configurable timeline (hours, days, weeks)
-- Zooming with scroll
-- Showing task progress on the taskbar
-- Toolbar and context menu
-- Tooltips for taskbars
-- Fast performance with big data sets
+### :hammer_and_wrench: How to Use
 
-# :hammer_and_wrench: How to Use
-
-To use the widget, simply import the package and include the component in your Svelte file:
+To use the Gantt chart widget, simply import the package and include the component in your Svelte file:
 
 ```svelte
 <script>
@@ -70,9 +72,10 @@ To use the widget, simply import the package and include the component in your S
 
 <Gantt {tasks} {links} {scales} />
 ```
+
 For further instructions, follow the deatailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
-###  :computer: How to Modify
+### :computer: How to Modify
 
 Typically, you don't need to modify the code. However, if you wish to do so, follow these steps:
 
@@ -94,5 +97,4 @@ To run the test:
 
 ### :speech_balloon: Need Help?
 
-Join our [community forum](https://forum.svar.dev) to get help and submit feature requests. 
-
+Join our [community forum](https://forum.svar.dev) to get help and submit feature requests.

@@ -20,8 +20,8 @@ export function getMinUnit(scales: GanttScale[]): GanttScale {
 		.sort((a, b) => (a.len < b.len ? -1 : 1))[0].item;
 }
 
-const units = ["year", "quarter", "month", "week", "day", "hour"];
-const unitFormats: { [name: string]: string } = {
+export const units = ["year", "quarter", "month", "week", "day", "hour"];
+const unitFormats: { [name: string]: GanttScale["format"] } = {
 	year: "yyyy",
 	quarter: "QQQ",
 	month: "MMM",
@@ -35,6 +35,7 @@ const defaultMaxCellWidth = 300;
 export function calcScales(
 	prevStart: Date,
 	prevEnd: Date,
+	autoScale: boolean,
 	minUnit?: string,
 	tasks?: GanttDataTree
 ): { _start: Date; _end: Date } {
@@ -44,12 +45,12 @@ export function calcScales(
 		_eFix = false;
 	if (tasks) {
 		tasks.forEach(t => {
-			if (!prevStart && (!_start || t.start <= _start)) {
+			if ((!prevStart || autoScale) && (!_start || t.start <= _start)) {
 				_start = t.start;
 				_sFix = true;
 			}
 			const taskEnd = t.type === "milestone" ? t.start : t.end;
-			if (!prevEnd && (!_end || taskEnd >= _end)) {
+			if ((!prevEnd || autoScale) && (!_end || taskEnd >= _end)) {
 				_end = taskEnd;
 				_eFix = true;
 			}
@@ -58,7 +59,8 @@ export function calcScales(
 	const adder = getAdder(minUnit || "day");
 	if (_start) {
 		if (_sFix) _start = adder(_start, -1);
-	} else _start = new Date();
+	} else if (_end) _start = adder(_end, -30);
+	else _start = new Date();
 
 	if (_end) {
 		if (_eFix) _end = adder(_end, 1);
@@ -181,6 +183,12 @@ export function normalizeZoom(
 			_zoom.maxCellWidth,
 			defaultMaxCellWidth
 		);
+
+		scales.forEach(s => {
+			if (s.format && !unitFormats[s.unit])
+				unitFormats[s.unit] = s.format;
+		});
+
 		units.forEach((unit, i) => {
 			if (i === mainScaleLevel) {
 				levels.push({
@@ -192,16 +200,21 @@ export function normalizeZoom(
 				const levelScales: GanttScale[] = [];
 				if (i) {
 					for (let j = numOfScales - 1; j > 0; j--) {
-						if (units[i - j]) {
+						const pUnit = units[i - j];
+						if (pUnit) {
 							levelScales.push({
-								unit: units[i - j],
+								unit: pUnit,
 								step: 1,
-								format: unitFormats[units[i - j]],
+								format: unitFormats[pUnit],
 							});
 						}
 					}
 				}
-				levelScales.push({ unit, step: 1, format: unitFormats[unit] });
+				levelScales.push({
+					unit,
+					step: 1,
+					format: unitFormats[unit],
+				});
 
 				levels.push({
 					minCellWidth,

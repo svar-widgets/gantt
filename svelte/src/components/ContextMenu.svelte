@@ -47,6 +47,7 @@
 		return options.map(op => {
 			op = { ...op };
 			if (op.text) op.text = _(op.text);
+			if (op.subtext) op.subtext = _(op.subtext);
 			if (op.data) op.data = applyLocale(op.data);
 			return op;
 		});

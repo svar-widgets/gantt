@@ -11,6 +11,7 @@
 
 <style>
 	:global(.wx-material-theme) {
+		--wx-gantt-border-color: #e6e6e6;
 		--wx-gantt-border: var(--wx-border);
 		--wx-gantt-form-header-border: var(--wx-border);
 		--wx-gantt-icon-color: var(--wx-icon-color);

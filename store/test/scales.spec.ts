@@ -11,6 +11,7 @@ describe("scales", () => {
 		const _scales = calcScales(
 			new Date(2024, 3, 1),
 			new Date(2024, 3, 10),
+			false,
 			"day",
 			new GanttDataTree(tasks)
 		);

@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu } from "../../src/";
+	import { Gantt, ContextMenu, Editor } from "../../src/";
 
 	let { skinSettings } = $props();
 	let api = $state();
@@ -33,3 +33,4 @@
 		scales={data.scales}
 	/>
 </ContextMenu>
+<Editor {api} />

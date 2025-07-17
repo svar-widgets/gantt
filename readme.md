@@ -42,7 +42,7 @@
 
 ### 🔧 Svelte 4 and Svelte 5 versions
 
-There are two versions of the library: the 1.x version – designed to work with Svelte 4, and the 2.x version – created for Svelte 5. 
+There are two versions of the library: the 1.x version – designed to work with Svelte 4, and the 2.x version – created for Svelte 5.
 
 To use the SVAR Gantt for Svelte 5, install it as follows:
 

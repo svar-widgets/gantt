@@ -1,24 +1,47 @@
-import type { GanttColumn } from "./types";
+import type { GanttColumn, ITask } from "./types";
 import { format } from "./time";
+
+const dateFields = ["start", "end", "duration"];
+
+function isCellEditable(task: ITask, columnId: string) {
+	const { type, unscheduled } = task;
+	if (unscheduled || type === "summary")
+		return !dateFields.includes(columnId);
+	else if (type === "milestone")
+		return !["end", "duration"].includes(columnId);
+	return true;
+}
+function processEditor(id: string, editor: GanttColumn["editor"]) {
+	if (typeof editor === "function") return editor;
+
+	if (dateFields.includes(id)) {
+		if (typeof editor === "string") {
+			editor = {
+				type: editor,
+				config: {},
+			};
+		}
+		if (editor.type === "datepicker") {
+			editor.config.buttons = ["today"];
+		}
+		return (task: ITask, column: GanttColumn) => {
+			if (isCellEditable(task, column.id)) return editor;
+			return null;
+		};
+	}
+	return editor;
+}
 
 export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 	if (!columns || !columns.length) {
 		return [];
 	}
 
-	const addTaskColumn = columns.find(col => col.id === "action");
-	if (!addTaskColumn) {
-		columns = [...columns, expandColumn];
-	}
-
 	const resColumns = columns.map<GanttColumn>(a => {
 		const align = a.align || "left";
-		const isActionColumn = a.id === "action";
-		const flexgrow = !isActionColumn && a.flexgrow ? a.flexgrow : null;
-		const width = flexgrow ? 1 : a.width || (isActionColumn ? 50 : 120);
-
-		let action;
-		if (a.id === "action") action = addTaskColumn ? "add-task" : "expand";
+		const isAddTaskColumn = a.id === "add-task";
+		const flexgrow = !isAddTaskColumn && a.flexgrow ? a.flexgrow : null;
+		const width = flexgrow ? 1 : a.width || (isAddTaskColumn ? 50 : 120);
 
 		let template = a.template;
 		if (!template) {
@@ -27,10 +50,12 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 					template = b => format(b, "dd-MM-yyyy");
 					break;
 				case "end":
-					template = b => format(b, "dd-MM-yyyy");
+					template = b => (b ? format(b, "dd-MM-yyyy") : "-");
 					break;
 			}
 		}
+
+		const editor = a.editor && processEditor(a.id, a.editor);
 
 		return {
 			width,
@@ -39,13 +64,13 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 			id: a.id,
 			template,
 			...(flexgrow && { flexgrow }),
-			...(action && { action }),
 			cell: a.cell,
 			resize: a.resize ?? true,
-			sort: a.sort ?? !action,
+			sort: a.sort ?? !isAddTaskColumn,
+			...(editor && { editor }),
+			...(a.options && { options: a.options }),
 		};
 	});
-
 	return resColumns;
 }
 
@@ -60,20 +85,11 @@ export const defaultColumns: GanttColumn[] = [
 		sort: true,
 	},
 	{
-		id: "action",
-		header: "",
+		id: "add-task",
+		header: "Add task",
 		width: 50,
 		align: "center",
 		sort: false,
 		resize: false,
 	},
 ];
-
-export const expandColumn: GanttColumn = {
-	id: "action",
-	header: "",
-	align: "center",
-	width: 50,
-	sort: false,
-	resize: false,
-};

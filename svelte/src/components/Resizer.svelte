@@ -7,6 +7,8 @@
 		minValue = 0,
 		maxValue = 0,
 		onmove,
+		display = $bindable("all"),
+		compactMode,
 	} = $props();
 
 	function getBox(value) {
@@ -63,37 +65,182 @@
 		window.removeEventListener("mouseup", up);
 	}
 
+	function handleExpandLeft() {
+		if (compactMode) {
+			display = display === "chart" ? "grid" : "chart";
+		} else {
+			display = display === "all" ? "chart" : "all";
+		}
+	}
+
+	function handleExpandRight() {
+		if (compactMode) {
+			display = display === "grid" ? "chart" : "grid";
+		} else {
+			display = display === "all" ? "grid" : "all";
+		}
+	}
 	const b = $derived(getBox(value));
-	const cursor = $derived(dir == "x" ? "ew-resize" : "ns-resize");
+	const cursor = $derived(
+		display !== "all" ? "auto" : dir == "x" ? "ew-resize" : "ns-resize"
+	);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="wx-resizer wx-resizer-{dir}"
+	class="wx-resizer wx-resizer-{dir} wx-resizer-display-{display}"
 	class:wx-resizer-active={active}
 	onmousedown={down}
-	style="left:{b.p[0]};top:{b.p[1]};width:{b.size[0]}; height: {b
-		.size[1]};right:{b.p2[0]};bottom:{b.p2[1]}; cursor:{cursor};"
+	style="width:{b.size[0]}; height: {b.size[1]}; cursor:{cursor};"
 >
+	<div class="wx-button-expand-box">
+		<div class="wx-button-expand-content wx-button-expand-left">
+			<i class="wxi-menu-left" onclick={handleExpandLeft}></i>
+		</div>
+		<div class="wx-button-expand-content wx-button-expand-right">
+			<i class="wxi-menu-right" onclick={handleExpandRight}></i>
+		</div>
+	</div>
 	<div class="wx-resizer-line"></div>
 </div>
 
 <style>
-	.wx-resizer {
+	.wx-resizer.wx-resizer-display-all:hover::before,
+	.wx-resizer.wx-resizer-display-all:hover::after,
+	.wx-button-expand-content::before,
+	.wx-button-expand-content::after {
+		content: "";
 		position: absolute;
-		z-index: 2;
+		background-color: var(--wx-gantt-border-color);
 	}
 
-	.wx-resizer-x .wx-resizer-line {
+	.wx-resizer {
+		position: relative;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--wx-gantt-border-color);
+	}
+	.wx-resizer:hover .wx-button-expand-content {
+		opacity: 1;
+	}
+
+	.wx-resizer.wx-resizer-display-all:hover::before,
+	.wx-resizer.wx-resizer-display-all:hover::after {
+		top: 0;
 		width: 2px;
 		height: 100%;
 	}
-	.wx-resizer-y .wx-resizer-line {
-		height: 2px;
-		width: 100%;
+
+	.wx-resizer.wx-resizer-display-all:hover::before {
+		left: -3px;
 	}
-	.wx-resizer-active .wx-resizer-line {
-		background: rgba(0, 0, 0, 0.05);
+
+	.wx-resizer.wx-resizer-display-all:hover::after {
+		right: -2px;
+	}
+
+	.wx-resizer-display-chart .wx-button-expand-left {
+		display: none;
+	}
+
+	.wx-resizer-display-grid .wx-button-expand-right {
+		display: none;
+	}
+
+	.wx-resizer-display-all {
+		.wx-button-expand-content {
+			opacity: 0;
+		}
+	}
+
+	.wx-resizer-display-all .wx-button-expand-box,
+	.wx-resizer-display-chart .wx-button-expand-box {
+		left: 12px;
+	}
+
+	.wx-resizer-display-grid .wx-button-expand-left {
+		right: -6px;
+	}
+
+	.wx-resizer-display-chart .wx-button-expand-left,
+	.wx-resizer-display-all .wx-button-expand-left {
+		right: 5px;
+	}
+
+	.wx-button-expand-box {
+		position: relative;
+		width: 20px;
+	}
+
+	.wx-button-expand-content {
+		position: absolute;
+		transform: translate(-50%, -50%);
+		width: 20px;
+
+		i {
+			display: flex;
+			justify-content: center;
+			background-color: var(--wx-gantt-border-color);
+			cursor: pointer;
+			font-size: 20px;
+			line-height: 24px;
+		}
+
+		i:hover {
+			color: var(--wx-color-primary);
+		}
+
+		i:active {
+			color: var(--wx-gantt-task-fill-color);
+		}
+	}
+
+	.wx-button-expand-right {
+		top: 4px;
+		left: 1px;
+
+		&::before {
+			top: -3.6px;
+			width: 17px;
+			height: 4px;
+			clip-path: polygon(100% 100%, 0 0, 0 100%);
+		}
+
+		&::after {
+			width: 17px;
+			height: 4px;
+			clip-path: polygon(100% 0, 0 100%, 0 0);
+		}
+
+		i {
+			border-top-right-radius: 4px;
+			border-bottom-right-radius: 4px;
+		}
+	}
+
+	.wx-button-expand-left {
+		top: 4px;
+		i {
+			border-top-left-radius: 4px;
+			border-bottom-left-radius: 4px;
+		}
+
+		&::before {
+			top: -3.6px;
+			left: 3px;
+			width: 17px;
+			height: 4px;
+			clip-path: polygon(100% 0, 100% 100%, 0% 100%);
+		}
+
+		&::after {
+			left: 3px;
+			width: 17px;
+			height: 4px;
+			clip-path: polygon(0 0, 100% 100%, 100% 0);
+		}
 	}
 </style>

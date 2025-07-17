@@ -56,7 +56,7 @@ Cypress.Commands.add(
 				return subject.get(`.wx-grid .wx-row[data-id="${id}"]`);
 
 			case "editor":
-				return subject.get(".wx-sidebar");
+				return subject.get(".wx-gantt-editor");
 			case "chart-task-list":
 				return subject.get(".wx-chart .wx-bars");
 			case "chart-link-list":

@@ -10,6 +10,7 @@ export interface IOptionConfig {
 	type?: string;
 	check?: (task: ITask, _tasks?: IGanttTask[]) => boolean | TID;
 	dataFactory?: (obj: any) => IOptionConfig;
+	subtext?: string;
 }
 
 export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
@@ -81,10 +82,21 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		id: "edit-task",
 		text: "Edit",
 		icon: "wxi-edit",
+		subtext: "Ctrl+E",
 	},
-	{ id: "cut-task", text: "Cut", icon: "wxi-content-cut" },
-	{ id: "copy-task", text: "Copy", icon: "wxi-content-copy" },
-	{ id: "paste-task", text: "Paste", icon: "wxi-content-paste" },
+	{ id: "cut-task", text: "Cut", icon: "wxi-content-cut", subtext: "Ctrl+X" },
+	{
+		id: "copy-task",
+		text: "Copy",
+		icon: "wxi-content-copy",
+		subtext: "Ctrl+C",
+	},
+	{
+		id: "paste-task",
+		text: "Paste",
+		icon: "wxi-content-paste",
+		subtext: "Ctrl+V",
+	},
 	{
 		id: "move-task",
 		text: "Move",
@@ -102,5 +114,6 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		id: "delete-task",
 		icon: "wxi-delete",
 		text: "Delete",
+		subtext: "Ctrl+D / BS",
 	},
 ]);

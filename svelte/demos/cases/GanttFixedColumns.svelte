@@ -20,7 +20,7 @@
 			width: 90,
 			align: "center",
 		},
-		{ id: "action", header: "", width: 50, align: "center" },
+		{ id: "add-task", header: "Add task", width: 50, align: "center" },
 	];
 </script>
 

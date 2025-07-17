@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu, defaultMenuOptions } from "../../src/";
+	import { Gantt, ContextMenu, Editor, defaultMenuOptions } from "../../src/";
 
 	import { getContext } from "svelte";
 	const helpers = getContext("wx-helpers");
@@ -42,3 +42,4 @@
 		scales={data.scales}
 	/>
 </ContextMenu>
+<Editor {api} />

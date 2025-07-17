@@ -1,8 +1,4 @@
 import type { IParsedTask, TSort, TSortValue } from "../types";
-export function sort(data: IParsedTask[], conf: TSort) {
-	return data.sort(sortBy(conf));
-}
-
 function sortAsc(a: TSortValue, b: TSortValue): number {
 	if (typeof a === "string")
 		return a.localeCompare(b as string, undefined, { numeric: true });
@@ -20,4 +16,23 @@ function sortDesc(a: TSortValue, b: TSortValue): number {
 function sortBy({ key, order }: TSort) {
 	const sortMethod = order === "asc" ? sortAsc : sortDesc;
 	return (a: IParsedTask, b: IParsedTask) => sortMethod(a[key], b[key]);
+}
+
+function sortByMany(sortArray: TSort[]) {
+	if (!sortArray || !sortArray.length) return;
+
+	const sorts = sortArray.map(s => sortBy(s));
+	if (sortArray.length === 1) return sorts[0];
+
+	return function (a: IParsedTask, b: IParsedTask) {
+		for (let i = 0; i < sorts.length; i++) {
+			const res = sorts[i](a, b);
+			if (res !== 0) return res;
+		}
+		return 0;
+	};
+}
+
+export function sort(data: IParsedTask[], conf: TSort[]) {
+	return data.sort(sortByMany(conf));
 }

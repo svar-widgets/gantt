@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, defaultColumns } from "../../src/";
+	import { Gantt, defaultColumns, Editor } from "../../src/";
 	import { Field, Switch } from "wx-svelte-core";
 
 	let { skinSettings } = $props();
@@ -13,10 +13,10 @@
 	let newLink = $state(true); // if false - cannot create new links
 
 	let ignore = false;
-	let gApi = $state();
+	let api = $state();
 
-	function init(api) {
-		gApi = api;
+	function init(gApi) {
+		api = gApi;
 
 		api.intercept("show-editor", () => edit || ignore);
 		api.intercept("drag-task", ev => {
@@ -26,14 +26,14 @@
 	}
 
 	let columns = $derived(
-		edit ? defaultColumns : defaultColumns.filter(a => a.id != "action")
+		edit ? defaultColumns : defaultColumns.filter(a => a.id != "add-task")
 	);
 
 	// for demo purposes: close editor when checkbox is unchecked
 	$effect(() => {
 		if (!edit) {
 			ignore = true;
-			gApi.exec("show-editor", { id: null });
+			api.exec("show-editor", { id: null });
 			ignore = false;
 		}
 	});
@@ -76,6 +76,7 @@
 			scales={data.scales}
 			{columns}
 		/>
+		<Editor {api} />
 	</div>
 </div>
 

@@ -13,6 +13,7 @@
 	:global(.wx-willow-dark-theme) {
 		color-scheme: dark;
 
+		--wx-gantt-border-color: #384047;
 		--wx-gantt-border: var(--wx-border);
 		--wx-gantt-form-header-border: none;
 		--wx-gantt-icon-color: #9fa1ae;

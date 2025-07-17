@@ -11,6 +11,7 @@
 
 <style>
 	:global(.wx-willow-theme) {
+		--wx-gantt-border-color: #e6e6e6;
 		--wx-gantt-border: 1px solid #1d1e261a;
 		--wx-gantt-form-header-border: none;
 		--wx-gantt-icon-color: #9fa1ae;

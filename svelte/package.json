@@ -1,7 +1,7 @@
 {
 	"name": "wx-svelte-gantt",
-	"version": "2.1.1",
-	"description": "Interactive and customizable Gantt chart component written in Svelte",
+	"version": "2.2.0",
+	"description": "Interactive and customizable Svelte Gantt chart component",
 	"productTag": "gantt",
 	"productTrial": false,
 	"type": "module",
@@ -32,16 +32,21 @@
 	},
 	"homepage": "https://svar.dev/svelte/gantt/",
 	"dependencies": {
-		"wx-gantt-data-provider": "2.1.1",
-		"wx-gantt-locales": "2.1.1",
-		"wx-gantt-store": "2.1.1",
-		"wx-lib-dom": "0.8.0",
-		"wx-lib-state": "1.9.0",
+		"wx-gantt-data-provider": "2.2.0",
+		"wx-gantt-locales": "2.2.0",
+		"wx-gantt-store": "2.2.0",
+		"wx-lib-dom": "0.9.1",
+		"wx-lib-state": "1.9.3",
 		"wx-lib-svelte": "0.5.1",
-		"wx-svelte-core": "2.1.0",
-		"wx-svelte-menu": "2.1.0",
-		"wx-svelte-grid": "2.1.0",
-		"wx-svelte-toolbar": "2.1.0"
+		"wx-svelte-core": "2.2.0",
+		"wx-svelte-menu": "2.2.0",
+		"wx-svelte-grid": "2.2.0",
+		"wx-svelte-toolbar": "2.2.0",
+		"wx-svelte-editor": "2.2.0"
+	},
+	"devDependencies": {
+		"wx-svelte-comments": "2.2.0",
+		"wx-svelte-tasklist": "2.2.0"
 	},
 	"files": [
 		"src",

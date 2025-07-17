@@ -1,13 +1,12 @@
 <script>
 	let { column, cell } = $props();
 
-	const action = $derived(cell?.action || column.action);
-	const icon = $derived(action == "expand" ? "menu" : "plus");
+	const action = $derived(column.id);
 </script>
 
-{#if cell || column.action == "add-task"}
+{#if cell || column.id == "add-task"}
 	<div style="text-align:{column.align}">
-		<i class="wx-action-icon wxi-{icon}" data-action={action}></i>
+		<i class="wx-action-icon wxi-plus" data-action={action}></i>
 	</div>
 {/if}
 

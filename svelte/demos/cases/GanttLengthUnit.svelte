@@ -7,6 +7,7 @@
 
 	const data = getData();
 	const options = [
+		{ id: "minute", label: "Minute" },
 		{ id: "hour", label: "Hour" },
 		{ id: "day", label: "Day" },
 		{ id: "week", label: "Week" },
@@ -19,6 +20,12 @@
 	const scales = $derived.by(() => {
 		let scales;
 		switch (lengthUnit) {
+			case "minute":
+				scales = [
+					{ unit: "day", step: 1, format: "MMM d" },
+					{ unit: "hour", step: 1, format: "HH:mm" },
+				];
+				break;
 			case "hour":
 				scales = [
 					{ unit: "month", step: 1, format: "MMM" },

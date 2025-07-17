@@ -1,3 +1,36 @@
+## 2.2.0
+
+### New features
+
+-   Ability to define "hour" duration unit
+-   Ability to define "minute" length unit
+-   Ability to create custom scale units
+-   `autoScale` property to configure `start`/`end` scale behaviour
+-   Standalone sidebar and modal Editor
+-   Ability to validate fields in the Editor
+-   Hotkeys for common actions and navigation
+-   Multi-sorting for table columns
+-   Headermenu to hide table columns
+-   Inline editors for table cells
+-   Ability to expand/collapse table and chart via buttons
+
+### Updates
+
+-   Chart grid expands to widget height
+
+### Fixes
+
+-   Summary is not always adjusted to kids when task type changes
+-   Unnecessary focus over chart area
+-   Task position is not sent to backend on adding
+-   Reordered task appears after deleting
+-   Node painting logic enhanced
+
+### Breaking changes
+
+-   Default sidebar editor and `editorShape` property is removed, use standalone Editor instead
+-   Table action column id is changed from "action" to "add-task"
+
 ## 2.1.1
 
 ### Fixes

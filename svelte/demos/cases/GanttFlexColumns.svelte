@@ -21,8 +21,8 @@
 			flexgrow: 1,
 		},
 		{
-			id: "action",
-			header: "",
+			id: "add-task",
+			header: "Add task",
 			width: 50,
 			align: "center",
 		},

@@ -79,6 +79,7 @@ function mapOrder(
 }
 
 function runSingleAction(api: any, action: string, target: TID, _: any): void {
+	const exec = api.exec ? api.exec : api.in.exec;
 	let op: string = action.split(":")[0];
 	let mode: string | boolean = action.split(":")[1];
 	let data: any = { id: target };
@@ -91,7 +92,7 @@ function runSingleAction(api: any, action: string, target: TID, _: any): void {
 	} else if (op == "paste-task") {
 		if (api._temp && api._temp.length) {
 			api._temp.forEach((temp: any) => {
-				api.exec(temp.cut ? "move-task" : "copy-task", {
+				exec(temp.cut ? "move-task" : "copy-task", {
 					id: temp.id,
 					target,
 					mode: "after",
@@ -119,7 +120,7 @@ function runSingleAction(api: any, action: string, target: TID, _: any): void {
 	if (typeof mode !== "undefined") extraData = { mode, ...extraData };
 	data = { ...data, ...extraData };
 
-	api.exec(op, data);
+	exec(op, data);
 }
 
 export function isHandledAction(

@@ -25,12 +25,14 @@ export const defaultToolbarButtons: IButtonConfig[] =
 			comp: "icon",
 			icon: "wxi-edit",
 			menuText: "Edit",
+			text: "Ctrl+E",
 		},
 		{
 			id: "delete-task",
 			comp: "icon",
 			icon: "wxi-delete",
 			menuText: "Delete",
+			text: "Ctrl+D, Backspace",
 		},
 		{ comp: "separator" },
 		{
@@ -51,18 +53,21 @@ export const defaultToolbarButtons: IButtonConfig[] =
 			comp: "icon",
 			icon: "wxi-content-copy",
 			menuText: "Copy",
+			text: "Ctrl+V",
 		},
 		{
 			id: "cut-task",
 			comp: "icon",
 			icon: "wxi-content-cut",
 			menuText: "Cut",
+			text: "Ctrl+X",
 		},
 		{
 			id: "paste-task",
 			comp: "icon",
 			icon: "wxi-content-paste",
 			menuText: "Paste",
+			text: "Ctrl+V",
 		},
 		{ comp: "separator" },
 		{

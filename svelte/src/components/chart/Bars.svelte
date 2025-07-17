@@ -15,6 +15,8 @@
 		_scales: scales,
 		taskTypes,
 		baselines,
+		_selected: selected,
+		_scrollTask: scrollTask,
 	} = api.getReactiveState();
 
 	// let tasks = $derived($rTasks.slice($area.start, $area.end));
@@ -355,6 +357,22 @@
 	}
 
 	let totalWidth = $state(0);
+
+	// focus selected
+	let container = $state();
+	const hasFocus = $derived(
+		$selected.length &&
+			container &&
+			container.contains(document.activeElement)
+	);
+	const focused = $derived(hasFocus && $selected[$selected.length - 1].id);
+	scrollTask.subscribe(value => {
+		if (hasFocus && value) {
+			const { id } = value;
+			const node = container.querySelector(`.wx-bar[data-id='${id}']`);
+			if (node) node.focus();
+		}
+	});
 </script>
 
 <svelte:window onmouseup={mouseup} />
@@ -365,6 +383,7 @@
 	class="wx-bars"
 	style="line-height: {tasks.length ? tasks[0].$h : 0}px"
 	bind:offsetWidth={totalWidth}
+	bind:this={container}
 	oncontextmenu={contextmenu}
 	onmousedown={mousedown}
 	onmousemove={mousemove}
@@ -385,6 +404,7 @@
 				style={taskStyle(task)}
 				data-tooltip-id={task.id}
 				data-id={task.id}
+				tabindex={focused === task.id ? "0" : "-1"}
 			>
 				{#if !readonly}
 					<div
@@ -688,5 +708,16 @@
 
 	.wx-cut {
 		opacity: 50%;
+	}
+	.wx-bar:not(.wx-milestone):focus {
+		outline: 1px solid var(--wx-color-primary);
+		outline-offset: 1px;
+	}
+	.wx-milestone:focus {
+		outline: none;
+	}
+	.wx-milestone:focus .wx-content {
+		outline: 1px solid var(--wx-color-primary);
+		outline-offset: 1.6px;
 	}
 </style>

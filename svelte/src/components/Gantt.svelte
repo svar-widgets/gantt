@@ -11,8 +11,8 @@
 	import { EventBusRouter } from "wx-lib-state";
 	import {
 		DataStore,
-		defaultEditorShape,
 		defaultColumns,
+		defaultTaskTypes,
 	} from "wx-gantt-store";
 
 	//views
@@ -21,11 +21,7 @@
 	let {
 		taskTemplate = null,
 		markers = [],
-		taskTypes = [
-			{ id: "task", label: "Task" },
-			{ id: "summary", label: "Summary task" },
-			{ id: "milestone", label: "Milestone" },
-		],
+		taskTypes = defaultTaskTypes,
 		tasks = [],
 		selected = [],
 		activeTask = null,
@@ -38,16 +34,19 @@
 		start = null,
 		end = null,
 		lengthUnit = "day",
+		durationUnit = "day",
 		cellWidth = 100,
 		cellHeight = 38,
 		scaleHeight = 36,
 		readonly = false,
 		cellBorders = "full",
-		editorShape = defaultEditorShape,
 		zoom = false,
 		baselines = false,
 		highlightTime = null,
 		init = null,
+		autoScale = true,
+		unscheduledTasks = false,
+		tableAPI = null,
 		...restProps
 	} = $props();
 
@@ -78,7 +77,12 @@
 		on = firstInRoute.on.bind(firstInRoute),
 		detach = firstInRoute.detach.bind(firstInRoute),
 		//specific
-		getTask = id => dataStore.getTask(id);
+		getTask = id => dataStore.getTask(id),
+		serialize = () => dataStore.serialize(),
+		getTable = waitRender =>
+			waitRender
+				? new Promise(res => setTimeout(() => res(tableAPI), 1))
+				: tableAPI;
 
 	const api = {
 		getState,
@@ -89,7 +93,9 @@
 		intercept,
 		on,
 		detach,
+		getTable,
 		getTask,
+		serialize,
 	};
 
 	// common API available in components
@@ -117,6 +123,10 @@
 			selected,
 			activeTask,
 			baselines,
+			autoScale,
+			unscheduledTasks,
+			markers,
+			durationUnit,
 		});
 
 		if (init_once && init) {
@@ -132,10 +142,9 @@
 <Locale words={en} optional={true}>
 	<Layout
 		{taskTemplate}
-		{markers}
 		{readonly}
 		{cellBorders}
-		{editorShape}
 		{highlightTime}
+		bind:tableAPI
 	/>
 </Locale>

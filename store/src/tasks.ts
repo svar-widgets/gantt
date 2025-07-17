@@ -14,7 +14,7 @@ const heightAdjustment = 7;
 const baselineAdjustment = baselineHeight + baselineTopPadding;
 
 export function dragSummaryKids(task: IParsedTask, dx: number) {
-	if (task.open) {
+	if (task.open || task.type != "summary") {
 		task.data?.forEach(kid => {
 			kid.$x += dx;
 			dragSummaryKids(kid, dx);
@@ -51,22 +51,26 @@ function getSummaryBarSize(
 ) {
 	const { lengthUnit, start } = _scales;
 	task.data?.forEach(kid => {
-		if (typeof kid.$x === "undefined") {
-			kid.$x = Math.round(
-				_scales.diff(kid.start, start, lengthUnit) * cellWidth
-			);
-			kid.$w = Math.round(
-				_scales.diff(kid.end, kid.start, lengthUnit, true) * cellWidth
-			);
+		if (!kid.unscheduled) {
+			if (typeof kid.$x === "undefined") {
+				kid.$x = Math.round(
+					_scales.diff(kid.start, start, lengthUnit) * cellWidth
+				);
+				kid.$w = Math.round(
+					_scales.diff(kid.end, kid.start, lengthUnit, true) *
+						cellWidth
+				);
+			}
+			const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
+			if (coords.xMin > kid.$x) {
+				coords.xMin = kid.$x + mD;
+			}
+			const right = kid.$x + kid.$w - mD;
+			if (coords.xMax < right) {
+				coords.xMax = right;
+			}
 		}
-		const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
-		if (coords.xMin > kid.$x) {
-			coords.xMin = kid.$x + mD;
-		}
-		const right = kid.$x + kid.$w - mD;
-		if (coords.xMax < right) {
-			coords.xMax = right;
-		}
+
 		if (kid.type !== "summary")
 			getSummaryBarSize(kid, coords, _scales, cellWidth);
 	});
@@ -80,20 +84,23 @@ export function setSummaryDates(
 	if (tasks) {
 		data = tasks.filter(t => t.parent == task.id);
 	}
+
 	const copy = { data, ...task };
 	if (copy.data?.length) {
 		copy.data.forEach((kid: IParsedTask) => {
-			if (tasks || (kid.type != "summary" && kid.data))
+			if (kid.unscheduled && !kid.data) return;
+			if (tasks || (kid.type != "summary" && kid.data)) {
+				if (kid.unscheduled)
+					// reset own dates to take from kids
+					kid = { ...kid, start: undefined, end: undefined };
 				kid = setSummaryDates(kid, tasks);
-			if (!copy.start || copy.start > kid.start) {
+			}
+			if (kid.start && (!copy.start || copy.start > kid.start)) {
 				copy.start = new Date(kid.start);
 			}
-			if (
-				!copy.end ||
-				copy.end < kid.end ||
-				(kid.type === "milestone" && copy.end < kid.start)
-			) {
-				copy.end = new Date(kid.end || kid.start);
+			const end = kid.type === "milestone" ? kid.start : kid.end;
+			if (end && (!copy.end || copy.end < end)) {
+				copy.end = new Date(end);
 			}
 		});
 	} else if (task.type === "summary") {
@@ -194,5 +201,6 @@ function calculateTaskDimensions(
 		}
 	}
 
-	t[skip] = isEqual(startDate, endDate);
+	if (t.unscheduled && !isBaseline) t["$skip"] = true;
+	else t[skip] = isEqual(startDate, endDate);
 }

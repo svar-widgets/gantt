@@ -12,10 +12,11 @@ describe("columns", () => {
 			expect(col.align).to.not.be.undefined;
 			if (col.id === "start" || col.id === "end")
 				expect(col.template).to.not.be.undefined;
-			if (col.id === "action") expect(col.action).to.not.be.undefined;
 			else {
-				expect(col.resize).to.be.true;
-				expect(col.sort).to.be.true;
+				if (col.id !== "add-task") {
+					expect(col.resize).to.be.true;
+					expect(col.sort).to.be.true;
+				}
 			}
 		}
 

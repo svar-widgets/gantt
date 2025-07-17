@@ -1,92 +1,86 @@
 <script>
 	// svelte core
-	import { getContext, tick } from "svelte";
+	import { tick, getContext } from "svelte";
+	import { hotkeys } from "wx-grid-store";
 
 	// views
 	import TimeScales from "./TimeScale.svelte";
 	import Grid from "./grid/Grid.svelte";
 	import Chart from "./chart/Chart.svelte";
-	import Sidebar from "./sidebar/SideBar.svelte";
-	import IconButton from "../widgets/IconButton.svelte";
 	import Resizer from "./Resizer.svelte";
+
+	//helpers
+	import { useModeObserver } from "../helpers/modeResizeObserver";
 
 	let {
 		taskTemplate,
-		markers,
 		readonly,
 		cellBorders,
-		editorShape,
 		highlightTime,
+		tableAPI = $bindable(),
 	} = $props();
 
 	const api = getContext("gantt-store");
-	const _ = getContext("wx-i18n").getGroup("gantt");
 
 	const {
 		_tasks: rTasks,
 		_scales: rScales,
-		_activeTask: rActiveTask,
-		cellWidth: rCellWidth,
 		cellHeight: rCellHeight,
 		columns: rColumns,
+		scrollTop,
+		_scrollTask: rScrollTask,
 	} = api.getReactiveState();
 
 	// resize
-	let compactWidth = 650;
 	let compactMode = $state(false);
 	let gridWidth = $state(0);
 	let ganttWidth = $state();
 	let ganttHeight = $state();
 	let innerWidth = $state();
 	let chart = $state();
+	let display = $state("all"); // all, grid, chart
 
 	$effect(() => {
-		const ro = new ResizeObserver(resize);
-		ro.observe(document.body);
+		const ro = useModeObserver(handleResize);
+		ro.observe();
 
 		return () => {
 			ro.disconnect();
 		};
 	});
 
-	function resize(data) {
-		for (let obj of data) {
-			if (obj.target === document.body) {
-				compactMode = obj.contentRect.width <= compactWidth;
-			}
+	let lastDisplay = null;
+
+	function handleResize(mode) {
+		if (mode != compactMode) {
+			compactMode = mode;
+			if (compactMode) {
+				lastDisplay = display;
+				if (display == "all") display = "grid";
+			} else if (!lastDisplay || lastDisplay == "all") display = "all";
 		}
 	}
 
-	function addTask() {
-		api.exec("add-task", { task: { text: _("New Task") } });
-	}
-
-	const markersData = $derived.by(() => {
-		const { start, diff } = $rScales;
-		return markers.map(marker => {
-			marker.left = diff(marker.start, start) * $rCellWidth;
-			return marker;
-		});
-	});
-
 	const gridColumnWidth = $derived.by(() => {
 		let w;
+
 		if ($rColumns.every(c => c.width && !c.flexgrow)) {
-			w = $rColumns.reduce((acc, c) => {
-				acc += parseInt(c.width);
-				return acc;
-			}, 0);
-		} else w = 440;
+			w = $rColumns.reduce((acc, c) => acc + parseInt(c.width), 0);
+		} else {
+			if (compactMode && display === "chart") {
+				w =
+					parseInt($rColumns.find(c => c.id === "action")?.width) ||
+					50;
+			} else {
+				w = 440;
+			}
+		}
 
 		return w;
 	});
 
 	$effect(() => {
-		let w = gridColumnWidth;
-		if (compactMode) {
-			w = parseInt($rColumns.find(c => c.id === "action")?.width) || 50;
-		}
-		gridWidth = w;
+		gridWidth = gridColumnWidth;
 	});
 
 	const scrollSize = $derived(ganttWidth - innerWidth);
@@ -94,13 +88,6 @@
 	const fullHeight = $derived($rTasks.length * $rCellHeight);
 	const scrollHeight = $derived($rScales.height + fullHeight + scrollSize);
 	const totalWidth = $derived(gridWidth + fullWidth);
-
-	let ganttDiv = $state();
-	function onScroll() {
-		api.exec("scroll-chart", {
-			top: ganttDiv.scrollTop,
-		});
-	}
 
 	// expand scale
 	$effect(() => {
@@ -121,6 +108,46 @@
 			}
 		});
 	}
+
+	// scroll
+	let ganttDiv = $state();
+	function syncScroll() {
+		if (ganttDiv && $scrollTop !== ganttDiv.scrollTop)
+			ganttDiv.scrollTop = $scrollTop;
+	}
+
+	$effect(() => {
+		$scrollTop;
+		syncScroll();
+	});
+
+	function onScroll() {
+		api.exec("scroll-chart", {
+			top: ganttDiv.scrollTop,
+		});
+	}
+
+	// Scroll to task
+	function scrollToTask(value) {
+		if (!value || !ganttDiv) return;
+		const { id } = value;
+		const index = $rTasks.findIndex(t => t.id === id);
+		if (index > -1) {
+			const height = ganttHeight - $rScales.height;
+			const scrollY = index * $rCellHeight;
+			const now = ganttDiv.scrollTop;
+			let top = null;
+			if (scrollY < now) {
+				top = scrollY;
+			} else if (scrollY + $rCellHeight > now + height) {
+				top = scrollY - height + $rCellHeight + scrollSize;
+			}
+			if (top !== null) {
+				api.exec("scroll-chart", { top: Math.max(top, 0) });
+			}
+		}
+	}
+	rScrollTask.subscribe(scrollToTask);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -135,36 +162,52 @@
 >
 	<div
 		class="wx-pseudo-rows"
-		style="height: {scrollHeight}px;width:100%;"
+		style="height:{scrollHeight}px;width:100%;"
 		bind:offsetWidth={innerWidth}
 	>
 		<div
 			class="wx-stuck"
 			style="height:{ganttHeight}px;width:{innerWidth}px;"
 		>
-			<div tabindex="0" class="wx-layout">
+			<div
+				tabindex="0"
+				class="wx-layout"
+				use:hotkeys={{
+					keys: {
+						"ctrl+c": true,
+						"ctrl+v": true,
+						"ctrl+x": true,
+						"ctrl+d": true,
+						backspace: true,
+					},
+					exec: ev => {
+						if (!ev.isInput) api.exec("hotkey", ev);
+					},
+				}}
+			>
 				{#if $rColumns.length}
 					<Grid
+						bind:display
 						{compactMode}
 						columnWidth={gridColumnWidth}
 						width={gridWidth}
 						{readonly}
 						{fullHeight}
+						bind:tableAPI
 					/>
-					{#if !compactMode}
-						<Resizer
-							bind:value={gridWidth}
-							minValue="50"
-							maxValue="800"
-						/>
-					{/if}
+					<Resizer
+						bind:value={gridWidth}
+						bind:display
+						{compactMode}
+						minValue="50"
+						maxValue="800"
+					/>
 				{/if}
 
 				<div class="wx-content" bind:this={chart}>
 					<TimeScales {highlightTime} />
 
 					<Chart
-						markers={markersData}
 						{readonly}
 						{fullWidth}
 						{fullHeight}
@@ -173,16 +216,6 @@
 						{highlightTime}
 					/>
 				</div>
-
-				{#if $rActiveTask && !readonly}
-					<Sidebar {compactMode} {editorShape} />
-				{/if}
-
-				{#if compactMode && !$rActiveTask && !readonly}
-					<div class="wx-icon">
-						<IconButton icon="wxi-plus" onclick={addTask} />
-					</div>
-				{/if}
 			</div>
 		</div>
 	</div>
@@ -222,12 +255,5 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-	}
-
-	.wx-icon {
-		position: absolute;
-		right: 25px;
-		bottom: 35px;
-		z-index: 4;
 	}
 </style>

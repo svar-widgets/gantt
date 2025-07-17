@@ -49,7 +49,7 @@ context("Basic functionality", () => {
 	it("widget", () => {
 		links.forEach(w => {
 			cy.visit(`/index.html#${w}`);
-			cy.wait(500);
+			cy.wait(1000);
 			cy.shot(w, { area: ".content" });
 		});
 	});

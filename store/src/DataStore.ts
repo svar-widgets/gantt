@@ -17,8 +17,9 @@ import {
 } from "./tasks";
 import { updateLink } from "./links";
 import { normalizeColumns } from "./columns";
-import { normalizeEditor } from "./sidebar";
 import { getAdder, getDiffer, isCorrectLengthUnit, getUnitStart } from "./time";
+import { isCommunity } from "./package";
+import { handleAction } from "./helpers/actionHandlers";
 
 import type {
 	IData,
@@ -32,15 +33,18 @@ import type {
 	IVisibleArea,
 	IZoomConfig,
 	IParsedTask,
+	TSort,
+	TScrollTask,
 } from "./types";
 import { isEqual } from "date-fns";
+import { normalizeDates, prepareTask } from "./normalizeDates";
 
 export default class DataStore extends Store<IData> {
 	public in: EventBus<TMethodsConfig, keyof TMethodsConfig>;
 	private _router: DataRouter<IData, IDataConfig, TMethodsConfig>;
 
 	constructor(w: TWritableCreator) {
-		super(w);
+		super({ writable: w, async: false });
 
 		this._router = new DataRouter(
 			super.setState.bind(this),
@@ -48,17 +52,25 @@ export default class DataStore extends Store<IData> {
 			[
 				// recalculate scales in auto-scale mode
 				{
-					in: ["tasks", "start", "end", "scales"],
+					in: ["tasks", "start", "end", "scales", "autoScale"],
 					out: ["_start", "_end"],
 					exec: (ctx: TDataConfig) => {
-						const { _end, _start, start, end, tasks, scales } =
-							this.getState();
-						if (!start || !end) {
+						const {
+							_end,
+							_start,
+							start,
+							end,
+							tasks,
+							scales,
+							autoScale,
+						} = this.getState();
+						if (!start || !end || autoScale) {
 							const minUnit = getMinUnit(scales).unit;
 
 							const bounds = calcScales(
 								start,
 								end,
+								autoScale,
 								minUnit,
 								tasks
 							);
@@ -169,15 +181,11 @@ export default class DataStore extends Store<IData> {
 					in: ["tasks", "selected"],
 					out: ["_selected"],
 					exec: (ctx: TDataConfig) => {
-						const { tasks, selected, _scrollSelected } =
-							this.getState();
+						const { tasks, selected } = this.getState();
 						const _selected = selected
 							.map(id => tasks.byId(id))
 							.filter((task: ITask) => !!task);
-						const update: Partial<IData> = { _selected };
-						if (typeof _scrollSelected == "undefined")
-							update._scrollSelected = false;
-						this.setState(update, ctx);
+						this.setState({ _selected }, ctx);
 					},
 				},
 				// restore config cellWidth on scale change
@@ -188,6 +196,19 @@ export default class DataStore extends Store<IData> {
 						const { _cellWidth, cellWidth } = this.getState();
 						if (_cellWidth != cellWidth)
 							this.setState({ cellWidth: _cellWidth }, ctx);
+					},
+				},
+				{
+					in: ["markers", "_scales", "cellWidth"],
+					out: ["_markers"],
+					exec: (ctx: TDataConfig) => {
+						const { markers, _scales, cellWidth } = this.getState();
+						const { start, diff } = _scales;
+						const _markers = markers.map(marker => {
+							marker.left = diff(marker.start, start) * cellWidth;
+							return marker;
+						});
+						this.setState({ _markers }, ctx);
 					},
 				},
 			],
@@ -231,6 +252,7 @@ export default class DataStore extends Store<IData> {
 						const range = _tasks
 							.slice(start, end)
 							.map(obj => obj.id);
+						if (sourceInd > targetInd) range.reverse();
 
 						range.forEach(selId => {
 							if (!result.includes(selId)) result.push(selId);
@@ -249,10 +271,14 @@ export default class DataStore extends Store<IData> {
 				} else {
 					ids = [id];
 				}
-				this.setStateAsync({
+				const update: Partial<IData> = {
 					selected: ids,
-					_scrollSelected: !!show,
-				});
+				};
+
+				if (show && ids.length)
+					update._scrollTask = { id: ids[0], mode: show };
+
+				this.setStateAsync(update);
 
 				if (!unselect && activeTask && activeTask != id) {
 					inBus.exec("show-editor", { id });
@@ -301,8 +327,7 @@ export default class DataStore extends Store<IData> {
 
 			if (inProgress === false) {
 				// end of dnd move
-				task.$reorder = false;
-				tasks.update(task.id, task); //[FIXME] repaint signal
+				tasks.update(task.id, { $reorder: false });
 				this.setState({ tasks });
 				source = null;
 				return;
@@ -432,13 +457,6 @@ export default class DataStore extends Store<IData> {
 
 				tasks.move(id, mode, target);
 
-				// [FIXME] in lib-state
-				// indent-outdent operations: tasks need to be
-				// explicitely updated to be re-painted in UI
-				// indent: update source task; outdent: update target
-				tasks.update(id, { $level: task.$level });
-				tasks.update(target, targetTask);
-
 				if (mode == "child") {
 					let tobj = targetTask;
 					while (tobj.id !== 0 && !tobj.open) {
@@ -506,7 +524,9 @@ export default class DataStore extends Store<IData> {
 		inBus.on("update-task", (ev: TMethodsConfig["update-task"]) => {
 			const { id, task, eventSource } = ev;
 			let diff = ev.diff;
-			const { tasks, _scales } = this.getState();
+			const { tasks, _scales, durationUnit } = this.getState();
+
+			const t = tasks.byId(id);
 
 			if (
 				eventSource === "add-task" ||
@@ -515,6 +535,7 @@ export default class DataStore extends Store<IData> {
 				eventSource === "update-task" ||
 				eventSource === "delete-task"
 			) {
+				prepareTask(t, task, durationUnit);
 				tasks.update(id, task);
 				return;
 			}
@@ -523,8 +544,6 @@ export default class DataStore extends Store<IData> {
 
 			const adder = getAdder(minUnit);
 			const differ = getDiffer(minUnit);
-
-			const t = tasks.byId(id);
 
 			if (diff) {
 				//dnd
@@ -537,7 +556,11 @@ export default class DataStore extends Store<IData> {
 					!isEqual(task.start, t.start) ||
 					!isEqual(task.end, t.end)
 				) {
-					if (t.type == "summary" && t.data?.length) {
+					if (
+						t.type === "summary" &&
+						(!task.type || task.type === "summary") &&
+						t.data?.length
+					) {
 						if (!diff) {
 							diff = differ(task.start, t.start);
 							// summary dates must be changed equally
@@ -559,6 +582,7 @@ export default class DataStore extends Store<IData> {
 			)
 				return;
 
+			prepareTask(t, task, durationUnit);
 			tasks.update(id, task);
 
 			if (task.type === "summary" && t.type !== "summary") {
@@ -576,9 +600,17 @@ export default class DataStore extends Store<IData> {
 		});
 
 		inBus.on("add-task", (ev: TMethodsConfig["add-task"]) => {
-			const { tasks, _scales, baselines } = this.getState();
-			const { target, mode, task } = ev;
+			const {
+				tasks,
+				_scales,
+				baselines,
+				unscheduledTasks,
+				durationUnit,
+			} = this.getState();
 
+			const { target, mode, task, show } = ev;
+
+			task.unscheduled = unscheduledTasks;
 			let ind = -1;
 			let parent;
 			let targetObj;
@@ -606,14 +638,15 @@ export default class DataStore extends Store<IData> {
 				else {
 					const branch = tasks.getBranch(0);
 					let start;
-					if (branch.length) {
+					if (branch?.length) {
 						const task = branch[branch.length - 1];
 						if (!task.$skip) {
 							const d = new Date(task.start.valueOf());
 							if (_scales.start <= d) start = d;
 						}
 					}
-					task.start = start || getAdder("day")(_scales.start, 1);
+					task.start =
+						start || getAdder(durationUnit)(_scales.start, 1);
 				}
 				task.duration = 1;
 
@@ -623,6 +656,7 @@ export default class DataStore extends Store<IData> {
 				}
 			}
 
+			normalizeDates(task, durationUnit);
 			const newTask = tasks.add(task, ind);
 
 			if (parent) {
@@ -644,8 +678,7 @@ export default class DataStore extends Store<IData> {
 
 			this.setStateAsync({ tasks });
 
-			inBus.exec("select-task", { id: newTask.id });
-			inBus.exec("show-editor", { id: newTask.id });
+			inBus.exec("select-task", { id: newTask.id, show: show || false });
 
 			ev.id = newTask.id;
 			ev.task = newTask;
@@ -666,15 +699,15 @@ export default class DataStore extends Store<IData> {
 				);
 			});
 
+			const update: Partial<IData> = { tasks, links };
+			if (selected.includes(id)) {
+				update.selected = selected.filter(sel => sel !== id);
+			}
+
 			tasks.remove(id);
 
 			if (summary) {
 				this.resetSummaryDates(summary, "delete-task");
-			}
-
-			const update: Partial<IData> = { tasks, links };
-			if (selected.includes(id)) {
-				update.selected = selected.filter(sel => sel !== id);
 			}
 
 			this.setStateAsync(update);
@@ -813,7 +846,10 @@ export default class DataStore extends Store<IData> {
 			({ left, top }: TMethodsConfig["scroll-chart"]) => {
 				if (!isNaN(left)) {
 					const d = this.calcScaleDate(left);
-					this.setState({ scrollLeft: left, _scaleDate: d });
+					this.setState({
+						scrollLeft: left,
+						_scaleDate: d,
+					});
 				}
 				if (!isNaN(top)) this.setState({ scrollTop: top });
 			}
@@ -931,11 +967,78 @@ export default class DataStore extends Store<IData> {
 		);
 		inBus.on(
 			"sort-tasks",
-			({ key, order }: TMethodsConfig["sort-tasks"]) => {
-				const { tasks } = this.getState();
-				const _sort = { key, order };
-				tasks.sort(_sort);
-				this.setState({ _sort, tasks });
+			({ key, order, add }: TMethodsConfig["sort-tasks"]) => {
+				const state = this.getState();
+				const { tasks } = state;
+				let sort = state._sort;
+				const sortBy: TSort = { key, order };
+
+				let index = sort?.length || 0;
+				if (index && add) {
+					sort.forEach((a, i) => {
+						if (a.key === key) index = i;
+					});
+					sort[index] = sortBy;
+				} else sort = [sortBy];
+
+				tasks.sort(sort);
+				this.setState({ _sort: sort, tasks });
+			}
+		);
+		inBus.on(
+			"hotkey",
+			({ key, event, eventSource }: IDataMethodsConfig["hotkey"]) => {
+				switch (key) {
+					case "arrowup":
+					case "arrowdown": {
+						const { selected, _tasks } = this.getState();
+						event.preventDefault();
+						const len = selected.length;
+						let id;
+						if (key === "arrowup") {
+							id = len
+								? this.getPrevRow(selected[len - 1])?.id
+								: _tasks[_tasks.length - 1]?.id;
+						} else {
+							id = len
+								? this.getNextRow(selected[len - 1])?.id
+								: _tasks[0]?.id;
+						}
+						if (id) {
+							const show = eventSource === "chart" ? "xy" : true;
+							this.in.exec("select-task", { id, show });
+						}
+						break;
+					}
+					case "ctrl+c": {
+						handleAction(this, "copy-task", null, null);
+						break;
+					}
+					case "ctrl+x": {
+						handleAction(this, "cut-task", null, null);
+						break;
+					}
+					case "ctrl+v": {
+						handleAction(this, "paste-task", null, null);
+						break;
+					}
+					case "ctrl+d":
+					case "backspace": {
+						event.preventDefault();
+						handleAction(this, "delete-task", null, null);
+						break;
+					}
+					/*case "ctrl+e": {
+					const { selected, _tasks } = this.getState();
+					event.preventDefault();
+					const id = selected.length
+						? selected[selected.length - 1]
+						: _tasks[0]?.id;
+
+					this.in.exec("show-editor", { id });
+					break;
+				}*/
+				}
 			}
 		);
 	}
@@ -951,9 +1054,25 @@ export default class DataStore extends Store<IData> {
 
 		if (state.cellWidth) state._cellWidth = state.cellWidth;
 		state._sort = null;
-		state.editorShape = normalizeEditor(state);
+
+		if (isCommunity()) {
+			state.unscheduledTasks = false;
+			state.baselines = false;
+			state.markers = [];
+		}
+
+		if (Array.isArray(state.tasks)) {
+			state.tasks.forEach(task =>
+				normalizeDates(task, state.durationUnit)
+			);
+		}
+
 		this._router.init({
+			_scrollTask: null,
 			selected: [],
+			markers: [],
+			autoScale: true,
+			durationUnit: "day",
 			...update,
 			...state,
 		});
@@ -985,6 +1104,11 @@ export default class DataStore extends Store<IData> {
 		return tasks.byId(id);
 	}
 
+	serialize() {
+		const { tasks } = this.getState();
+		return tasks.serialize();
+	}
+
 	private changeScale(zoom: IZoomConfig, step: number) {
 		const level = zoom.level + step;
 		const nextUnit = zoom.levels[level];
@@ -1006,15 +1130,23 @@ export default class DataStore extends Store<IData> {
 		return false;
 	}
 
+	private isScheduled(data: ITask[]) {
+		if (!this.getState().unscheduledTasks) return true;
+
+		const result = data.some((kid: ITask) => {
+			return !kid.unscheduled || (kid.data && this.isScheduled(kid.data));
+		});
+		return result;
+	}
+
 	private resetSummaryDates(id: TID, eventSource: string) {
 		const { tasks } = this.getState();
 		const obj = tasks.byId(id);
-		// do not reset dates if the last non-milestone subtask was (re)moved
 		const kids = obj.data;
-		if (
-			kids?.length > 1 ||
-			(kids?.length && kids[0].type !== "milestone")
-		) {
+
+		// do not reset dates if there are no kids or all kids are unscheduled
+
+		if (kids?.length && this.isScheduled(kids)) {
 			const task = setSummaryDates({
 				...obj,
 				start: undefined,
@@ -1070,6 +1202,17 @@ export default class DataStore extends Store<IData> {
 			Math.floor(x / width)
 		);
 	}
+	getNextRow(id: TID): IParsedTask {
+		const data = this.getState()._tasks;
+		const index = data.findIndex((t: IParsedTask) => t.id == id);
+		return data[index + 1];
+	}
+
+	getPrevRow(id: TID): IParsedTask {
+		const data = this.getState()._tasks;
+		const index = data.findIndex((t: IParsedTask) => t.id == id);
+		return data[index - 1];
+	}
 }
 
 type CombineTypes<T, N> = {
@@ -1083,6 +1226,7 @@ export type IDataMethodsConfig = CombineTypes<
 			task: Partial<ITask>;
 			target?: TID;
 			mode?: "before" | "after" | "child";
+			show?: TScrollTask["mode"];
 		};
 		["update-task"]: {
 			id: TID;
@@ -1097,7 +1241,7 @@ export type IDataMethodsConfig = CombineTypes<
 			id: TID;
 			toggle?: boolean;
 			range?: boolean;
-			show?: boolean;
+			show?: TScrollTask["mode"];
 		};
 		["drag-task"]: {
 			id: TID;
@@ -1151,7 +1295,12 @@ export type IDataMethodsConfig = CombineTypes<
 			date?: Date;
 			offset?: number;
 		};
-		["sort-tasks"]: { key: string; order: "asc" | "desc" };
+		["sort-tasks"]: { key: string; order: "asc" | "desc"; add?: boolean };
+		["hotkey"]: {
+			key: string;
+			event: any;
+			eventSource?: string;
+		};
 	},
 	{
 		skipProvider?: boolean;

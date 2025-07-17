@@ -1,6 +1,6 @@
 {
 	"name": "wx-site-svelte-gantt",
-	"version": "2.1.1",
+	"version": "2.2.0",
 	"type": "module",
 	"scripts": {
 		"build": "vite build",
@@ -9,7 +9,7 @@
 	},
 	"license": "MIT",
 	"dependencies": {
-		"wx-svelte-core": "2.0.1",
-		"wx-svelte-gantt": "2.1.1"
+		"wx-svelte-core": "2.1.0",
+		"wx-svelte-gantt": "2.2.0"
 	}
 }

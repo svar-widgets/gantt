@@ -16,7 +16,7 @@
 			...gantts,
 			{
 				id: counter,
-				data: getData("[" + counter + "] "),
+				data: getData(),
 			},
 		];
 		counter++;

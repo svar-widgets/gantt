@@ -1,16 +1,12 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt } from "../../src/";
+	import { Gantt, defaultTaskTypes } from "../../src/";
 	import Form from "../custom/Form.svelte";
 
 	let { skinSettings } = $props();
 
 	const data = getData();
-	const taskTypes = [
-		{ id: "task", label: "Task" },
-		{ id: "milestone", label: "Milestone" },
-		{ id: "summary", label: "Summary task" },
-	];
+	const taskTypes = defaultTaskTypes;
 
 	let task = $state();
 	let gApi = $state();
@@ -27,8 +23,8 @@
 	}
 
 	function init(api) {
-		api.intercept("show-editor", data => {
-			task = api.getState().tasks.byId(data.id);
+		api.intercept("show-editor", ({ id }) => {
+			if (id) task = api.getState().tasks.byId(id);
 			return false;
 		});
 		gApi = api;

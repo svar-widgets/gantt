@@ -16,15 +16,15 @@ test("supports delete action, Default set", () => {
 	const { tasks, links } = store.getState();
 
 	store.in.exec("delete-task", { id: 13 });
-	expect(tasks.toArray().length).to.eq(12);
+	expect(tasks.toArray().length).to.eq(16);
 	expect(links.map(l => l).length).to.eq(7);
 
 	store.in.exec("delete-task", { id: 12 });
-	expect(tasks.toArray().length).to.eq(11);
+	expect(tasks.toArray().length).to.eq(15);
 	expect(links.map(l => l).length).to.eq(6);
 
 	store.in.exec("delete-task", { id: 8 });
-	expect(tasks.toArray().length).to.eq(4);
+	expect(tasks.toArray().length).to.eq(8);
 	expect(links.map(l => l).length).to.eq(2);
 
 	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 14));
@@ -158,12 +158,12 @@ test("correctly resets new parent summary task after all tasks are removed one b
 
 	store.in.exec("delete-task", { id: 12 });
 	expect(links.map(l => l).length).to.eq(6);
-	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 20));
+	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 21));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
 
 	store.in.exec("delete-task", { id: 13 });
 	expect(links.map(l => l).length).to.eq(6);
-	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 20));
+	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 21));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
 });
 
@@ -207,12 +207,57 @@ test("correctly resets new parent summary task after all tasks are moved out one
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
 
 	store.in.exec("move-task", { id: 12, mode: "up" });
-	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 20));
+	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 21));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
 
 	store.in.exec("move-task", { id: 13, mode: "up" });
-	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 20));
+	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 21));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
+});
+
+test("sets summary dates only for scheduled children, Default set", () => {
+	const store = getDataStore(getData("summaries"));
+	const { tasks } = store.getState();
+
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 14));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
+
+	store.in.exec("update-task", {
+		id: 15,
+		task: { unscheduled: true },
+	});
+	expect(tasks.byId(15).unscheduled).to.eq(true);
+
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 15));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
+
+	store.in.exec("update-task", {
+		id: 15,
+		task: { unscheduled: false },
+	});
+	expect(tasks.byId(15).unscheduled).to.eq(false);
+
+	store.in.exec("update-task", {
+		id: 152,
+		task: { unscheduled: true },
+	});
+	expect(tasks.byId(152).unscheduled).to.eq(true);
+
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 14));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
+});
+
+test("check dates of summary task if all kids are unscheduled, Default set", () => {
+	const store = getDataStore(getData("summaries"));
+	const { tasks } = store.getState();
+
+	store.in.exec("delete-task", { id: 15 });
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 21));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
+
+	store.in.exec("delete-task", { id: 17 });
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 21));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 22));
 });
 
 test("correctly resets new parent summary task after all tasks are moved out one by one, Pretty set", () => {
@@ -468,20 +513,20 @@ test("supports drag-task operation and resets related summary task dates, Defaul
 	store.in.exec("drag-task", { id: 5, left: 60 });
 	expect(tasks.byId(5).$x).toEqual(60);
 	expect(tasks.byId(11).$x).toEqual(60);
-	expect(tasks.byId(8).$x).toEqual(30);
-	expect(tasks.byId(1).$x).toEqual(30);
+	expect(tasks.byId(8).$x).toEqual(60);
+	expect(tasks.byId(1).$x).toEqual(60);
 
 	store.in.exec("drag-task", { id: 5, left: 300 });
 	expect(tasks.byId(5).$x).toEqual(300);
-	expect(tasks.byId(11).$w).toEqual(90);
-	expect(tasks.byId(8).$w).toEqual(300);
-	expect(tasks.byId(1).$w).toEqual(300);
+	expect(tasks.byId(11).$w).toEqual(120);
+	expect(tasks.byId(8).$w).toEqual(240);
+	expect(tasks.byId(1).$w).toEqual(240);
 
 	store.in.exec("drag-task", { id: 5, width: 90 });
 	expect(tasks.byId(5).$w).toEqual(90);
-	expect(tasks.byId(11).$w).toEqual(150);
-	expect(tasks.byId(8).$w).toEqual(360);
-	expect(tasks.byId(1).$w).toEqual(360);
+	expect(tasks.byId(11).$w).toEqual(120);
+	expect(tasks.byId(8).$w).toEqual(240);
+	expect(tasks.byId(1).$w).toEqual(240);
 });
 
 test("sets summary task dates from kids when no dates are provided in initial data, Default set", () => {
@@ -582,4 +627,54 @@ test("correctly resets summary task and kids dates and coordinates after complex
 	});
 	expect(tasks.byId(12).end).toEqual(new Date(2024, 5, 19));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
+});
+
+test("correctly update summary task to task type task and back, Default set", () => {
+	const store = getDataStore(getData("summaries"));
+	let { tasks } = store.getState();
+
+	store.in.exec("update-task", {
+		id: 1,
+		task: {
+			type: "task",
+			start: new Date(2024, 5, 11),
+			end: new Date(2024, 5, 23),
+		},
+	});
+
+	expect(tasks.byId(1).type).to.eq("task");
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 11));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 23));
+
+	store.in.exec("update-task", {
+		id: 1,
+		task: { type: "summary" },
+	});
+
+	expect(tasks.byId(1).type).to.eq("summary");
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 13));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 21));
+});
+
+test("correctly update summary task to task milestone task and back, Default set", () => {
+	const store = getDataStore(getData("summaries"));
+	let { tasks } = store.getState();
+
+	store.in.exec("update-task", {
+		id: 1,
+		task: { type: "milestone" },
+	});
+
+	expect(tasks.byId(1).type).to.eq("milestone");
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 13));
+	expect(tasks.byId(1).end).to.be.undefined;
+
+	store.in.exec("update-task", {
+		id: 1,
+		task: { type: "summary" },
+	});
+
+	expect(tasks.byId(1).type).to.eq("summary");
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 13));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 21));
 });

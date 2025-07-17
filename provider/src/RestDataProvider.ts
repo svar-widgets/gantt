@@ -27,7 +27,11 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 				ignoreID: true,
 				handler: async (ev: TMethodsConfig["add-task"]) => {
 					ev.task.parent = this.correctID(ev.task.parent);
-					return this.sendBatch(`tasks`, "POST", ev.task);
+					return this.sendBatch(`tasks`, "POST", {
+						task: ev.task,
+						mode: ev.mode,
+						target: this.correctID(ev.target),
+					});
 				},
 			},
 			"update-task": {
