@@ -25,6 +25,7 @@
 		tasks = [],
 		selected = [],
 		activeTask = null,
+		selectedLink = null,
 		links = [],
 		scales = [
 			{ unit: "month", step: 1, format: "MMMM yyy" },
@@ -122,6 +123,7 @@
 			zoom,
 			selected,
 			activeTask,
+			selectedLink,
 			baselines,
 			autoScale,
 			unscheduledTasks,

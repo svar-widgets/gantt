@@ -29,6 +29,7 @@
 		context,
 		_markers: markers,
 		_scrollTask: rScrollTask,
+		selectedLink,
 	} = api.getReactiveState();
 
 	let scrollLeft = $state(),
@@ -145,14 +146,22 @@
 		ev.eventSource = "chart";
 		api.exec("hotkey", ev);
 	}
+
+	function clearLinkSelection() {
+		if ($selectedLink != null) api.exec("select-link", { id: null });
+	}
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="wx-chart"
+	role="application"
 	tabindex="-1"
 	bind:this={chart}
 	onscroll={onScroll}
 	onwheel={onWheel}
+	onclick={clearLinkSelection}
 	bind:clientHeight={chartHeight}
 	use:hotkeys={{
 		keys: {

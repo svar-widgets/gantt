@@ -188,6 +188,18 @@ export default class DataStore extends Store<IData> {
 						this.setState({ _selected }, ctx);
 					},
 				},
+				// selectedLink
+				{
+					in: ["links", "selectedLink"],
+					out: ["_selectedLink"],
+					exec: (ctx: TDataConfig) => {
+						const { links, selectedLink, _links } = this.getState();
+						this.setState(
+							{ _selectedLink: selectedLink ? _links.find(l => l.id === selectedLink) || null : null },
+							ctx
+						);
+					},
+				},
 				// restore config cellWidth on scale change
 				{
 					in: ["start", "end"],
@@ -225,6 +237,9 @@ export default class DataStore extends Store<IData> {
 		/* before data modifications */
 		inBus.on("show-editor", ({ id }: TMethodsConfig["show-editor"]) => {
 			this.setStateAsync({ activeTask: id });
+		});
+		inBus.on("select-link", ({ id }: TMethodsConfig["select-link"]) => {
+			this.setStateAsync({ selectedLink: id });
 		});
 		inBus.on(
 			"select-task",
@@ -286,9 +301,13 @@ export default class DataStore extends Store<IData> {
 			}
 		);
 		inBus.on("delete-link", ({ id }: TMethodsConfig["delete-link"]) => {
-			const { links } = this.getState();
+			const { links, selectedLink } = this.getState();
 			links.remove(id);
-			this.setStateAsync({ links });
+			const update: Partial<IData> = { links };
+			if (selectedLink === id) {
+				update.selectedLink = null;
+			}
+			this.setStateAsync(update);
 		});
 		inBus.on("update-link", (ev: TMethodsConfig["update-link"]) => {
 			const { links } = this.getState();
@@ -1270,6 +1289,7 @@ export type IDataMethodsConfig = CombineTypes<
 		["indent-task"]: { id: TID; mode: boolean };
 
 		["show-editor"]: { id: TID };
+		["select-link"]: { id: TID | null };
 		["add-link"]: { id?: TID; link: Partial<ILink> };
 		["update-link"]: { id: TID; link: Partial<ILink> };
 		["delete-link"]: { id: TID };
