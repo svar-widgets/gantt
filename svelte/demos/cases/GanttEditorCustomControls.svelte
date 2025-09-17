@@ -6,7 +6,7 @@
 		registerEditorItem,
 		defaultTaskTypes,
 	} from "../../src";
-	import { RadioButtonGroup } from "wx-svelte-core";
+	import { RadioButtonGroup } from "@svar-ui/svelte-core";
 	import UsersCustomCombo from "../custom/UsersCustomCombo.svelte";
 	import AvatarCell from "../custom/AvatarCell.svelte";
 	import { getData, users } from "../data";

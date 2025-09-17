@@ -1,5 +1,5 @@
 <script>
-	import { Material } from "wx-svelte-core";
+	import { Material } from "@svar-ui/svelte-core";
 	let { fonts = true, children } = $props();
 </script>
 

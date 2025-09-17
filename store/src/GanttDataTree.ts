@@ -1,4 +1,4 @@
-import { DataTree, tempID, TID } from "wx-lib-state";
+import { DataTree, tempID, TID } from "@svar-ui/lib-state";
 import type { ITask, IParsedTask, TSort } from "./types";
 import { sort } from "./helpers/sort";
 import { setSummaryDates } from "./tasks";

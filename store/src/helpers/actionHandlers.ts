@@ -1,4 +1,4 @@
-import type { TID } from "wx-lib-state";
+import type { TID } from "@svar-ui/lib-state";
 import type { GanttDataTree } from "../types";
 import { IOptionConfig } from "./menuOptions";
 import { IButtonConfig } from "./toolbarButtons";

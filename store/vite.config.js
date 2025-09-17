@@ -20,6 +20,7 @@ const minify = {
 export default function ({ mode }) {
 	process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "WX") };
 	const trial = !!process.env.WX_TRIAL_PACKAGE;
+	const isProduction = mode !== "development" && mode !== "test";
 
 	const config = {
 		build: {
@@ -30,7 +31,7 @@ export default function ({ mode }) {
 				fileName: () => `index.js`,
 			},
 			sourcemap: !trial,
-			minify: mode !== "development",
+			minify: isProduction,
 			target: "esnext",
 		},
 		test: {
@@ -41,7 +42,7 @@ export default function ({ mode }) {
 		plugins: [],
 	};
 
-	if (mode !== "development") {
+	if (isProduction) {
 		config.plugins.push(conditionalCompile({}));
 	}
 
@@ -50,7 +51,7 @@ export default function ({ mode }) {
 	} else {
 		config.plugins.push(dts({ outDir: resolve(__dirname, "dist/types") }));
 	}
-	if (mode !== "development") {
+	if (isProduction) {
 		config.plugins.push(minify);
 	}
 

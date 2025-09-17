@@ -1,9 +1,9 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, ContextMenu, Toolbar, Editor } from "../../src/";
-	import { Segmented, Locale } from "wx-svelte-core";
-	import { cn } from "wx-gantt-locales";
-	import { cn as cnCore } from "wx-core-locales";
+	import { Segmented, Locale } from "@svar-ui/svelte-core";
+	import { cn } from "@svar-ui/gantt-locales";
+	import { cn as cnCore } from "@svar-ui/core-locales";
 
 	let { skinSettings } = $props();
 

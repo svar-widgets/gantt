@@ -1,5 +1,5 @@
 <script>
-	import { RestDataProvider } from "wx-gantt-data-provider";
+	import { RestDataProvider } from "@svar-ui/gantt-data-provider";
 	import { Gantt, ContextMenu, Editor } from "../../src";
 
 	const restProvider = new RestDataProvider(

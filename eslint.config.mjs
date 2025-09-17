@@ -1,12 +1,13 @@
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginSvelte from 'eslint-plugin-svelte';
+import * as svelteParser from 'svelte-eslint-parser';
 import tsLint from "typescript-eslint";
 import jsLint from "@eslint/js";
 import vitest from "eslint-plugin-vitest";
 import globals from "globals";
 
 export default [{
-                ignores: ["node_modules/", "dist/", "build/", "coverage/", "public/", "svelte/vite.config.js"],
+                ignores: ["node_modules/", "dist/", "build/", "coverage/", "public/", "*/vite.config.js"],
         },
 	jsLint.configs.recommended,
         ...tsLint.configs.recommended,
@@ -55,9 +56,16 @@ export default [{
                 }
         },
         {       
-                // temporarily ignore test folders
+                // temporarily ignore cypress folder
                 ignores: [
-                        "**/cypress/", "**/test/" 
+                        "**/cypress/" 
                 ]
+        },
+        {
+
+                files: ["**/*.svelte.js"],
+                languageOptions: {
+                        parser: svelteParser,
+                }
         }
 ];

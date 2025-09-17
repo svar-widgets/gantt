@@ -1,11 +1,11 @@
 <script>
 	import { getContext } from "svelte";
-	import { Editor, registerEditorItem } from "wx-svelte-editor";
-	import { Locale } from "wx-svelte-core";
-	import { defaultEditorItems, normalizeDates } from "wx-gantt-store";
-	import { dateToString } from "wx-lib-dom";
+	import { Editor, registerEditorItem } from "@svar-ui/svelte-editor";
+	import { Locale } from "@svar-ui/svelte-core";
+	import { defaultEditorItems, normalizeDates } from "@svar-ui/gantt-store";
+	import { dateToString } from "@svar-ui/lib-dom";
 
-	import { RichSelect, Slider, Counter, TwoState } from "wx-svelte-core";
+	import { RichSelect, Slider, Counter, TwoState } from "@svar-ui/svelte-core";
 	import Links from "./editor/Links.svelte";
 	import DateTimePicker from "./editor/DateTimePicker.svelte";
 

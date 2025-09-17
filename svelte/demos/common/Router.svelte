@@ -2,14 +2,16 @@
 	import { onMount } from "svelte";
 	import Router, { push } from "svelte-spa-router";
 	import { getRoutes, getLinks } from "./helpers";
+	import { Locale } from "@svar-ui/svelte-core";
 
-	let { skin = $bindable(), onnewpage } = $props();
+	let { skin = $bindable(), onnewpage, productTag } = $props();
 	let page = $state(),
 		title,
-		link,
-		name;
+		link;
 	const baseLink =
-		"https://github.com/svar-widgets/gantt/tree/main/svelte/demos/cases/";
+		"https://github.com/svar-widgets/" +
+		productTag +
+		"/blob/main/svelte/demos/cases/";
 
 	$effect(() => {
 		if (skin && page) {
@@ -28,9 +30,8 @@
 
 		const tPage = `/${page}/:skin`;
 		const matched = links.find(a => a[0] === tPage);
-		title = matched?.[1] ?? "";
-		name = matched?.[3] ?? "";
-		link = `${baseLink}${name.replace(/\s+/g, "")}.svelte`;
+		title = matched?.[3] ?? "";
+		link = `${baseLink}${title.replace(/\s+/g, "")}.svelte`;
 
 		onnewpage && onnewpage({ page, skin, title, link });
 	}
@@ -39,4 +40,6 @@
 	const routes = getRoutes({}, onRouteChange);
 </script>
 
-<Router {routes} />
+<Locale>
+	<Router {routes} />
+</Locale>

@@ -9,7 +9,7 @@ import {
 } from "./stubs/data";
 import { writable } from "./stubs/writable";
 import GanttDataTree from "../src/GanttDataTree";
-import { DataArray } from "wx-lib-state";
+import { DataArray } from "@svar-ui/lib-state";
 
 import { resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";

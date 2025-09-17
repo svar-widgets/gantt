@@ -1,5 +1,5 @@
 {
-	"name": "wx-gantt-locales",
+	"name": "@svar-ui/gantt-locales",
 	"version": "2.2.1",
 	"description": "Locales for WX Gantt widget",
 	"type": "module",

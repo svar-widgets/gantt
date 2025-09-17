@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, registerScaleUnit } from "../../src/";
-	import { Select } from "wx-svelte-core";
+	import { Select } from "@svar-ui/svelte-core";
 
 	import {
 		startOfMonth,

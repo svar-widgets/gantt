@@ -1,5 +1,5 @@
 {
-	"name": "wx-gantt-store",
+	"name": "@svar-ui/gantt-store",
 	"version": "2.2.1",
 	"type": "module",
 	"main": "dist/index.js",
@@ -18,7 +18,7 @@
 		"license.txt"
 	],
 	"dependencies": {
-		"wx-lib-state": "1.9.3",
+		"@svar-ui/lib-state": "1.9.6",
 		"date-fns": "3.6.0"
 	}
 }

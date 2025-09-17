@@ -6,7 +6,7 @@
 		defaultEditorItems,
 		registerEditorItem,
 	} from "../../src";
-	import { Tasklist } from "wx-svelte-tasklist";
+	import { Tasklist } from "@svar-ui/svelte-tasklist";
 
 	let { skinSettings } = $props();
 

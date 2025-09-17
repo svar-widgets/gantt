@@ -5,7 +5,7 @@
 	import Bars from "./Bars.svelte";
 	import Links from "./Links.svelte";
 
-	import { hotkeys } from "wx-grid-store";
+	import { hotkeys } from "@svar-ui/grid-store";
 
 	let {
 		readonly,

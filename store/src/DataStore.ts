@@ -1,5 +1,5 @@
-import { Store, EventBus, DataArray, DataRouter, tempID } from "wx-lib-state";
-import type { TDataConfig, TWritableCreator, TID } from "wx-lib-state";
+import { Store, EventBus, DataArray, DataRouter, tempID } from "@svar-ui/lib-state";
+import type { TDataConfig, TWritableCreator, TID } from "@svar-ui/lib-state";
 
 import GanttDataTree from "./GanttDataTree";
 import {

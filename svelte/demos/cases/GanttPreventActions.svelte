@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, defaultColumns, Editor } from "../../src/";
-	import { Field, Switch } from "wx-svelte-core";
+	import { Field, Switch } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 

@@ -1,5 +1,5 @@
 {
-	"name": "wx-gantt-data-provider",
+	"name": "@svar-ui/gantt-data-provider",
 	"version": "2.2.1",
 	"type": "module",
 	"main": "dist/index.js",
@@ -17,6 +17,6 @@
 		"dist"
 	],
 	"dependencies": {
-		"wx-lib-data-provider": "1.5.1"
+		"@svar-ui/lib-data-provider": "1.7.1"
 	}
 }

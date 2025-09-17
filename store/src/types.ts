@@ -1,5 +1,5 @@
 import type { IDataMethodsConfig } from "./DataStore";
-import type { DataArray, TID } from "wx-lib-state";
+import type { DataArray, TID } from "@svar-ui/lib-state";
 import type GanttDataTree from "./GanttDataTree";
 
 export type TMethodsConfig = IDataMethodsConfig;

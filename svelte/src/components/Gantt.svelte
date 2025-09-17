@@ -4,16 +4,16 @@
 	import { writable } from "svelte/store";
 
 	// locales
-	import { Locale } from "wx-svelte-core";
-	import { en } from "wx-gantt-locales";
+	import { Locale } from "@svar-ui/svelte-core";
+	import { en } from "@svar-ui/gantt-locales";
 
 	// stores
-	import { EventBusRouter } from "wx-lib-state";
+	import { EventBusRouter } from "@svar-ui/lib-state";
 	import {
 		DataStore,
 		defaultColumns,
 		defaultTaskTypes,
-	} from "wx-gantt-store";
+	} from "@svar-ui/gantt-store";
 
 	//views
 	import Layout from "./Layout.svelte";

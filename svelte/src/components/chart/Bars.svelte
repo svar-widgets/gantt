@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from "svelte";
 
-	import { locate, locateID } from "wx-lib-dom";
+	import { locate, locateID } from "@svar-ui/lib-dom";
 	import { getID } from "../../helpers/locate";
 
 	let { readonly, taskTemplate } = $props();
@@ -396,6 +396,7 @@
 >
 	{#each tasks as task (task.id)}
 		{#if !task.$skip}
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<div
 				class="wx-bar wx-{taskTypeCss(task.type)}"
 				class:wx-touch={touched && taskMove && task.id == taskMove.id}

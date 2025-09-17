@@ -1,14 +1,14 @@
 <script>
 	import { getContext, setContext } from "svelte";
-	import { Toolbar } from "wx-svelte-toolbar";
+	import { Toolbar } from "@svar-ui/svelte-toolbar";
 	import {
 		handleAction,
 		defaultToolbarButtons,
 		isHandledAction,
-	} from "wx-gantt-store";
+	} from "@svar-ui/gantt-store";
 
-	import { locale } from "wx-lib-dom";
-	import { en } from "wx-gantt-locales";
+	import { locale } from "@svar-ui/lib-dom";
+	import { en } from "@svar-ui/gantt-locales";
 
 	let { api = null, items = [...defaultToolbarButtons] } = $props();
 

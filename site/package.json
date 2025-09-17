@@ -1,5 +1,5 @@
 {
-	"name": "wx-site-svelte-gantt",
+	"name": "@svar-ui/site-svelte-gantt",
 	"version": "2.2.1",
 	"type": "module",
 	"scripts": {
@@ -9,7 +9,7 @@
 	},
 	"license": "MIT",
 	"dependencies": {
-		"wx-svelte-core": "2.1.0",
-		"wx-svelte-gantt": "2.2.1"
+		"@svar-ui/svelte-core": "2.2.1",
+		"@svar-ui/svelte-gantt": "2.2.1"
 	}
 }
