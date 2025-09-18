@@ -107,6 +107,7 @@ export interface IMarker {
 export interface IDataConfig {
 	selected?: TID[];
 	activeTask?: TID;
+	selectedLink?: TID | null;
 	tasks: ITask[];
 	links: ILink[];
 	start: Date;
@@ -138,6 +139,8 @@ export interface IData {
 	_selected: ITask[];
 	activeTask: TID;
 	_activeTask: ITask;
+	selectedLink: TID | null;
+	_selectedLink: IGanttLink | null;
 	tasks: GanttDataTree;
 	_tasks: IParsedTask[];
 	links: DataArray<ILink>;

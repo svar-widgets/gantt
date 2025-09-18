@@ -51,6 +51,7 @@ import HeaderMenu from "./cases/GridHeaderMenu.svelte";
 import GridInlineEditors from "./cases/GridInlineEditors.svelte";
 import GanttEditorReadonly from "./cases/GanttEditorReadonly.svelte";
 import GanttEditorValidation from "./cases/GanttEditorValidation.svelte";
+import LinkDeleteTest from "./cases/LinkDeleteTest.svelte";
 
 export const links = [
 	["/base/:skin", "Basic Gantt", BasicInit, "BasicInit"],
@@ -243,4 +244,5 @@ export const links = [
 	],
 	["/editor-readonly/:skin", "Editor: readonly", GanttEditorReadonly],
 	["/editor-validation/:skin", "Editor: validation", GanttEditorValidation],
+	["/link-delete-test/:skin", "Editor: delete link", LinkDeleteTest, "LinkDeleteTest"],
 ];
