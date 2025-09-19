@@ -15,7 +15,13 @@
 			data-action="open-task"
 		></i>
 	{:else}<i class="wx-toggle-placeholder"></i>{/if}
-	<div class="wx-text">{row.text}</div>
+	<div class="wx-text">
+		{#if column._cell}
+			<column._cell {row} {column} />
+		{:else}
+			{row.text}
+		{/if}
+	</div>
 </div>
 
 <style>

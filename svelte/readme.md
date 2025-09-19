@@ -12,9 +12,9 @@
 
 <div align="center">
 
-[![npm](https://img.shields.io/npm/v/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![npm](https://img.shields.io/npm/v/@svar-ui/svelte-gantt.svg)](https://www.npmjs.com/package/@svar-ui/svelte-gantt)
 [![License](https://img.shields.io/github/license/svar-widgets/gantt)](https://github.com/svar-widgets/gantt/blob/main/license.txt)
-[![npm downloads](https://img.shields.io/npm/dm/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![npm downloads](https://img.shields.io/npm/dm/@svar-ui/svelte-gantt.svg)](https://www.npmjs.com/package/@svar-ui/svelte-gantt)
 [![Last Commit](https://img.shields.io/github/last-commit/svar-widgets/gantt)](https://github.com/svar-widgets/gantt)
 
 </div>
@@ -48,7 +48,7 @@ To use the Gantt chart widget, simply import the package and include the compone
 
 ```svelte
 <script>
-	import { Gantt } from "wx-svelte-gantt";
+	import { Gantt } from "@svar-ui/svelte-gantt";
 
 	const tasks = [
 		{

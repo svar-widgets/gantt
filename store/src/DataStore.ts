@@ -26,7 +26,7 @@ import type {
 	IDataConfig,
 	ITask,
 	TMethodsConfig,
-	GanttColumn,
+	IGanttColumn,
 	IGanttTask,
 	IGanttLink,
 	ILink,
@@ -216,7 +216,7 @@ export default class DataStore extends Store<IData> {
 			{
 				tasks: (v: ITask[]) => new GanttDataTree(v),
 				links: (v: ILink[]) => new DataArray(v),
-				columns: (v: GanttColumn[]) => normalizeColumns(v),
+				columns: (v: IGanttColumn[]) => normalizeColumns(v),
 			}
 		);
 
@@ -1304,5 +1304,6 @@ export type IDataMethodsConfig = CombineTypes<
 	},
 	{
 		skipProvider?: boolean;
+		[key: string]: any;
 	}
 >;

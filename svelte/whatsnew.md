@@ -1,3 +1,14 @@
+## 2.3.0
+
+### New features
+
+-   TypeScript definitions
+
+### Fixes
+
+-   Chart renders bars inaccurately on quarter scale
+-   Impossible to provide custom markup for "text" and "action" columns
+
 ## 2.2.1
 
 ### Fixes

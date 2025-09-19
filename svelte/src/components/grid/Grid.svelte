@@ -320,16 +320,26 @@
 	const cols = $derived.by(() => {
 		let cols = $columns.map(col => {
 			col = { ...col };
-			col.header = _(col.header);
+			const header = col.header;
+			if (typeof header === "object") {
+				const text = header.text && _(header.text);
+				col.header = { ...header, text };
+			} else col.header = _(header);
 			return col;
 		});
 		const ti = cols.findIndex(c => c.id === "text");
 		const ai = cols.findIndex(c => c.id === "add-task");
 
-		if (ti !== -1) cols[ti].cell = TextCell;
+		if (ti !== -1) {
+			if (cols[ti].cell) cols[ti]._cell = cols[ti].cell;
+			cols[ti].cell = TextCell;
+		}
 		if (ai !== -1) {
-			cols[ai].cell = ActionCell;
-			cols[ai].header = { text: cols[ai].header, cell: ActionCell };
+			cols[ai].cell = cols[ai].cell || ActionCell;
+
+			const header = cols[ai].header;
+			if (typeof header !== "object") cols[ai].header = { text: header };
+			cols[ai].header.cell = header.cell || ActionCell;
 
 			if (readonly) {
 				cols.splice(ai, 1);

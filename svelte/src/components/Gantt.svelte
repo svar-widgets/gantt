@@ -46,7 +46,6 @@
 		init = null,
 		autoScale = true,
 		unscheduledTasks = false,
-		tableAPI = null,
 		...restProps
 	} = $props();
 
@@ -64,6 +63,8 @@
 		}
 	});
 	firstInRoute.setNext(lastInRoute);
+
+	let tableAPI = $state();
 
 	// public API
 	export const // state

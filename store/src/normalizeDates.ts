@@ -1,13 +1,13 @@
-import type { ITask } from "./types";
+import type { ITask, TDurationUnit } from "./types";
 import { getDiffer, getAdder } from "./time";
 
-const unitAdd = (unit: "day" | "hour") => getAdder(unit);
-const unitDiff = (unit: "day" | "hour") => getDiffer(unit);
+const unitAdd = (unit: TDurationUnit) => getAdder(unit);
+const unitDiff = (unit: TDurationUnit) => getDiffer(unit);
 
 export function prepareTask(
 	currentTask: Partial<ITask>,
 	task: Partial<ITask>,
-	unit: "day" | "hour"
+	unit: TDurationUnit
 ) {
 	fillDates(currentTask, task);
 	if (currentTask.base_start) fillDates(currentTask, task, true);
@@ -16,7 +16,7 @@ export function prepareTask(
 
 export function normalizeDates(
 	task: Partial<ITask>,
-	unit: "day" | "hour",
+	unit: TDurationUnit,
 	edit?: boolean,
 	key?: string
 ) {
@@ -64,7 +64,7 @@ function fillDates(
 
 function calcDates(
 	task: Partial<ITask>,
-	unit: "day" | "hour" = "day",
+	unit: TDurationUnit = "day",
 	isBaseline?: boolean
 ) {
 	const [start, end, duration] = getFields(isBaseline);

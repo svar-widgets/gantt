@@ -19,9 +19,12 @@ export { normalizeDates } from "./normalizeDates";
 
 export type {
 	TID,
+	IApi,
 	ITask,
 	ILink,
+	IConfig,
 	IZoomConfig,
-	GanttColumn,
+	IGanttColumn,
 	TMethodsConfig,
+	IGanttTask,
 } from "./types";

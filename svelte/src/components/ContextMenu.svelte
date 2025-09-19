@@ -135,11 +135,11 @@
 </span>
 
 <style>
-	:global(.wx-menu .wx-item.wx-disabled) {
+	:global(.wx-menu .wx-option.wx-disabled) {
 		pointer-events: none;
 	}
-	:global(.wx-menu .wx-item.wx-disabled .wx-value),
-	:global(.wx-menu .wx-item.wx-disabled .wx-icon) {
+	:global(.wx-menu .wx-option.wx-disabled .wx-value),
+	:global(.wx-menu .wx-option.wx-disabled .wx-icon) {
 		color: var(--wx-color-font-disabled);
 	}
 </style>

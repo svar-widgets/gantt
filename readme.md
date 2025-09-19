@@ -12,9 +12,9 @@
 
 <div align="center">
 
-[![npm](https://img.shields.io/npm/v/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![npm](https://img.shields.io/npm/v/@svar-ui/svelte-gantt.svg)](https://www.npmjs.com/package/@svar-ui/svelte-gantt)
 [![License](https://img.shields.io/github/license/svar-widgets/gantt)](https://github.com/svar-widgets/gantt/blob/main/license.txt)
-[![npm downloads](https://img.shields.io/npm/dm/wx-svelte-gantt.svg)](https://www.npmjs.com/package/wx-svelte-gantt)
+[![npm downloads](https://img.shields.io/npm/dm/@svar-ui/svelte-gantt.svg)](https://www.npmjs.com/package/@svar-ui/svelte-gantt)
 
 </div>
 
@@ -47,7 +47,7 @@ There are two versions of the library: the 1.x version – designed to work with
 To use the SVAR Gantt for Svelte 5, install it as follows:
 
 ```
-npm install wx-svelte-gantt
+npm install @svar-ui/svelte-gantt
 ```
 
 To use the SVAR Gantt for Svelte 4:
@@ -62,7 +62,7 @@ To use the widget, simply import the package and include the component in your S
 
 ```svelte
 <script>
-	import { Gantt } from "wx-svelte-gantt";
+	import { Gantt } from "@svar-ui/svelte-gantt";
 
 	const tasks = [
 		{

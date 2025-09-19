@@ -72,7 +72,7 @@ Cypress.Commands.add(
 			case "menu":
 				return subject.get(".wx-menu");
 			case "menu-option":
-				return subject.get(`.wx-menu .wx-item[data-id="${id}"]`);
+				return subject.get(`.wx-menu .wx-option[data-id="${id}"]`);
 
 			default:
 				throw `not supported arguments for wxG: ${type}, ${id}`;

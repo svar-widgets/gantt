@@ -1,5 +1,5 @@
 <script>
-	const { api, content: Content, data = getTaskObj, children } = $props();
+	const { api, content: Content, children } = $props();
 
 	let area,
 		areaCoords = $state({});
@@ -57,8 +57,8 @@
 		}
 
 		debounce(() => {
-			if (id && data) {
-				tooltipData = data(prepareId(id));
+			if (id) {
+				tooltipData = getTaskObj(prepareId(id));
 			}
 
 			const targetCoords = target.getBoundingClientRect();

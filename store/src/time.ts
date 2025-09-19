@@ -37,6 +37,7 @@ import {
 } from "date-fns";
 
 import { units } from "./scales";
+import type { GanttScaleUnit } from "./types";
 
 const diff: { [name: string]: { (start: Date, end: Date): number } } = {
 	year: differenceInYears,
@@ -93,14 +94,14 @@ function hoursInYear(date: Date): number {
 
 function weeksInQuarter(date: Date): number {
 	const start = startOfQuarter(date);
-	const end = endOfQuarter(date);
+	const end = addDays(startOfDay(endOfQuarter(date)), 1);
 	return differenceInCalendarISOWeeks(end, start);
 }
 function daysInQuarter(date?: Date): number {
 	if (date) {
 		const start = startOfQuarter(date);
 		const end = endOfQuarter(date);
-		return differenceInCalendarDays(end, start);
+		return differenceInCalendarDays(end, start) + 1;
 	}
 	return 91;
 }
@@ -111,7 +112,7 @@ function hoursInQuarter(date: Date): number {
 function weeksInMonth(date?: Date): number {
 	if (date) {
 		const start = startOfMonth(date);
-		const end = endOfMonth(date);
+		const end = addDays(startOfDay(endOfMonth(date)), 1);
 		return differenceInCalendarISOWeeks(end, start);
 	}
 	return 5;
@@ -207,10 +208,16 @@ function getLengthUnitDiff(
 ): number {
 	// if not start of unit
 	let lengthUnitsOfFirstUnit = 0;
-	if (start > getUnitStart(unit, start)) {
-		const unitEnd = getUnitEnd(unit, start);
-		lengthUnitsOfFirstUnit = innerDiff(unit, unitEnd, start, lengthUnit);
-		start = unitEnd;
+	const unitStart = getUnitStart(unit, start);
+	if (start > unitStart) {
+		const nextUnitStart = add[unit](unitStart, 1);
+		lengthUnitsOfFirstUnit = innerDiff(
+			unit,
+			nextUnitStart,
+			start,
+			lengthUnit
+		);
+		start = nextUnitStart;
 	}
 
 	// if lasts 1+ whole units
@@ -296,10 +303,7 @@ const getCount = (count: any) => {
 	return count;
 };
 
-export function registerScaleUnit(
-	unit: string,
-	config: { [name: string]: any }
-) {
+export function registerScaleUnit(unit: string, config: GanttScaleUnit) {
 	for (const key in config) {
 		if (key === "smallerCount") {
 			const childUnits = Object.keys(config[key]);
@@ -320,7 +324,7 @@ export function registerScaleUnit(
 		if (key === "biggerCount") {
 			for (const parentUnit in config[key])
 				smallerCount[parentUnit][unit] = config[key][parentUnit];
-		} else handlers[key][unit] = config[key];
+		} else handlers[key][unit] = config[key as keyof GanttScaleUnit];
 	}
 }
 

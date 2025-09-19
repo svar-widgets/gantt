@@ -1,4 +1,4 @@
-import type { GanttColumn, ITask } from "./types";
+import type { IGanttColumn, ITask } from "./types";
 import { format } from "./time";
 
 const dateFields = ["start", "end", "duration"];
@@ -11,7 +11,10 @@ function isCellEditable(task: ITask, columnId: string) {
 		return !["end", "duration"].includes(columnId);
 	return true;
 }
-function processEditor(id: string, editor: GanttColumn["editor"]) {
+function processEditor(
+	id: string,
+	editor: IGanttColumn["editor"]
+): IGanttColumn["editor"] {
 	if (typeof editor === "function") return editor;
 
 	if (dateFields.includes(id)) {
@@ -21,23 +24,24 @@ function processEditor(id: string, editor: GanttColumn["editor"]) {
 				config: {},
 			};
 		}
+		if (!editor.config) editor.config = {};
 		if (editor.type === "datepicker") {
 			editor.config.buttons = ["today"];
 		}
-		return (task: ITask, column: GanttColumn) => {
-			if (isCellEditable(task, column.id)) return editor;
+		return (task: ITask, column: IGanttColumn) => {
+			if (isCellEditable(task, column.id)) return editor as any;
 			return null;
 		};
 	}
 	return editor;
 }
 
-export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
+export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 	if (!columns || !columns.length) {
 		return [];
 	}
 
-	const resColumns = columns.map<GanttColumn>(a => {
+	const resColumns = columns.map<IGanttColumn>(a => {
 		const align = a.align || "left";
 		const isAddTaskColumn = a.id === "add-task";
 		const flexgrow = !isAddTaskColumn && a.flexgrow ? a.flexgrow : null;
@@ -47,10 +51,11 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 		if (!template) {
 			switch (a.id) {
 				case "start":
-					template = b => format(b, "dd-MM-yyyy");
+					template = (b: Date) => format(b, "dd-MM-yyyy");
 					break;
 				case "end":
-					template = b => (b ? format(b, "dd-MM-yyyy") : "-");
+					template = (b: Date | null) =>
+						b ? format(b, "dd-MM-yyyy") : "-";
 					break;
 			}
 		}
@@ -74,7 +79,7 @@ export function normalizeColumns(columns: GanttColumn[]): GanttColumn[] {
 	return resColumns;
 }
 
-export const defaultColumns: GanttColumn[] = [
+export const defaultColumns: IGanttColumn[] = [
 	{ id: "text", header: "Task name", flexgrow: 1, sort: true },
 	{ id: "start", header: "Start date", align: "center", sort: true },
 	{

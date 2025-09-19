@@ -1,6 +1,14 @@
 import type { IDataMethodsConfig } from "./DataStore";
-import type { DataArray, TID } from "@svar-ui/lib-state";
+import type {
+	DataArray,
+	TID,
+	IEventBus,
+	IPublicWritable,
+	IEventConfig,
+} from "@svar-ui/lib-state";
 import type GanttDataTree from "./GanttDataTree";
+import type DataStore from "./DataStore";
+import type { IApi as ITableApi, IColumn } from "@svar-ui/grid-store";
 
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };
@@ -10,34 +18,33 @@ export interface IActionConfig<T = any> {
 	noSave?: boolean;
 }
 export type TLinkType = "s2s" | "s2e" | "e2s" | "e2e";
-
-export type TTaskType = "task" | "summary" | "milestone";
-
-export type TEditorType = "text" | "combo" | "datepicker" | "richselect";
-export interface IColumnEditor {
-	type: TEditorType;
-	config?: {
-		template?: (v: any) => string;
-		cell?: any;
-		options?: any[];
-		buttons?: boolean | string[];
-	};
-}
-export type TEditorHandler = (
-	row?: ITask,
-	column?: any
-) => TEditorType | IColumnEditor | null;
+export type TTaskType = "task" | "summary" | "milestone" | string;
+export type TLengthUnit =
+	| "minute"
+	| "hour"
+	| "day"
+	| "week"
+	| "month"
+	| "quarter"
+	| "year"
+	| string;
+export type TDurationUnit = "day" | "hour";
 
 export interface ILink {
-	id: TID;
+	id?: TID;
 	type: TLinkType;
 	source: TID;
 	target: TID;
 }
 
+export interface IGanttLink extends ILink {
+	id: TID;
+	$p: string;
+}
+
 export interface ITask {
 	start?: Date;
-	id: TID;
+	id?: TID;
 	end?: Date;
 	duration?: number;
 	data?: ITask[];
@@ -58,9 +65,22 @@ export interface ITask {
 }
 
 export interface IParsedTask extends ITask {
-	parent: TID;
-	data: IParsedTask[];
+	id: TID;
+	parent?: TID;
+	data?: IParsedTask[];
 	$level: number;
+}
+
+export interface IGanttTask extends IParsedTask {
+	$x: number;
+	$y: number;
+	$h: number;
+	$w: number;
+
+	$x_base?: number;
+	$w_base?: number;
+
+	$reorder?: boolean;
 }
 
 export type TDispatch = <A extends keyof TMethodsConfig>(
@@ -85,7 +105,7 @@ export interface IVisibleArea {
 }
 
 export interface IZoomConfig {
-	level: number;
+	level?: number;
 	minCellWidth?: number;
 	maxCellWidth?: number;
 	levels?: Array<IScaleLevel>;
@@ -94,7 +114,7 @@ export interface IZoomConfig {
 export interface IScaleLevel {
 	minCellWidth: number;
 	maxCellWidth: number;
-	scales: GanttScale[];
+	scales: IScaleConfig[];
 }
 
 export interface IMarker {
@@ -104,72 +124,56 @@ export interface IMarker {
 	left?: number;
 }
 
-export interface IDataConfig {
+export interface IConfig {
+	tasks?: ITask[];
+	links?: any[];
+	taskTypes?: ITaskType[];
 	selected?: TID[];
 	activeTask?: TID;
-	tasks: ITask[];
-	links: ILink[];
-	start: Date;
-	end: Date;
-	lengthUnit: string;
-	cellWidth: number;
-	cellHeight: number;
-	scaleHeight: number;
-	scales: any[];
-	columns: GanttColumn[];
+	scales?: IScaleConfig[];
+	columns?: IGanttColumn[];
+	start?: Date;
+	end?: Date;
+	lengthUnit?: TLengthUnit;
+	durationUnit?: TDurationUnit;
+	cellWidth?: number;
+	cellHeight?: number;
+	scaleHeight?: number;
+	zoom?: boolean | IZoomConfig;
+	autoScale?: boolean;
+}
+
+export interface IProConfig extends IConfig {
+	unscheduledTasks?: boolean;
+	baselines?: boolean;
+	markers?: IMarker[];
+}
+
+export interface IDataConfig extends IProConfig {
 	scrollLeft: number;
 	scrollTop: number;
 	area: IVisibleArea;
-	taskTypes?: ITaskType[];
-	baselines?: boolean;
-	zoom: boolean | IZoomConfig;
-	highlightTime?: (date: Date, unit: "day" | "hour") => string;
 	_cellWidth?: number;
 	_sort?: TSort[];
-	autoScale?: boolean;
-	unscheduledTasks?: boolean;
-	markers?: IMarker[];
-	durationUnit: "day" | "hour";
 	_scrollTask?: TScrollTask;
 }
 
-export interface IData {
-	selected: TID[];
-	_selected: ITask[];
-	activeTask: TID;
-	_activeTask: ITask;
+export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
+	zoom?: IZoomConfig;
 	tasks: GanttDataTree;
-	_tasks: IParsedTask[];
 	links: DataArray<ILink>;
+
+	_tasks: IParsedTask[];
 	_links: IGanttLink[];
-	start: Date;
-	_start: Date;
-	end: Date;
-	_end: Date;
-	lengthUnit: string;
-	cellWidth: number;
-	cellHeight: number;
-	scaleHeight: number;
-	scales: GanttScale[];
-	_scales: GanttScaleData;
-	columns: GanttColumn[];
-	scrollTop: number;
-	scrollLeft: number;
-	area: IVisibleArea;
-	taskTypes?: ITaskType[];
-	baselines?: boolean;
-	zoom: IZoomConfig;
-	highlightTime?: (date: Date, unit: "day" | "hour") => string;
-	_cellWidth?: number;
-	_sort?: TSort[];
+	_selected?: ITask[];
+	_activeTask?: ITask;
+	_start?: Date;
+	_end?: Date;
+	_scales?: GanttScaleData;
+	_markers?: IMarker[];
+
 	_scaleDate?: Date;
 	_zoomOffset?: number;
-	autoScale?: boolean;
-	markers?: IMarker[];
-	_markers?: IMarker[];
-	unscheduledTasks?: boolean;
-	durationUnit: "day" | "hour";
-	_scrollTask?: TScrollTask;
 }
 
 export interface DataHash {
@@ -178,8 +182,8 @@ export interface DataHash {
 
 // scales
 
-export type GanttScale = {
-	unit: string;
+export type IScaleConfig = {
+	unit: TLengthUnit;
 	step: number;
 	format?: { (date: Date, next?: Date): string } | string;
 	css?: { (date: Date): string };
@@ -203,56 +207,46 @@ export type GanttScaleData = {
 	height: number;
 	start: Date;
 	end: Date;
-	lengthUnit: string;
+	lengthUnit: TLengthUnit;
 	minUnit: string;
 	lengthUnitWidth: number;
 	diff: {
-		(a: Date, b: Date, lengthUnit?: string, unitSize?: boolean): number;
+		(
+			a: Date,
+			b: Date,
+			lengthUnit?: TLengthUnit,
+			unitSize?: boolean
+		): number;
 	};
 };
 
-export type GanttColumn = {
+export type GanttScaleUnit = {
+	start: (date: Date) => Date;
+	end: (date: Date) => Date;
+	isSame: (date1: Date, date2: Date) => boolean;
+	add: (date: Date, num: number) => Date;
+	diff?: (date1: Date, date2: Date) => number;
+	smallerCount?: {
+		[key: TLengthUnit]: number | ((date: Date) => number);
+	};
+	biggerCount?: {
+		[key: TLengthUnit]: number | ((date: Date) => number);
+	};
+};
+
+export type IGanttColumn = {
 	width?: number;
 	align?: "left" | "right" | "center";
 	flexgrow?: number;
 	resize?: boolean;
-	header:
-		| string
-		| {
-				cell?: string;
-				css?: string;
-				text: string;
-		  };
-	id: string;
-	action?: string;
-	template?: { (b: any, row: any): string };
+	header?: IColumn["header"];
+	id?: string;
+	template?: IColumn["template"];
 	sort?: boolean;
 	cell?: any;
-	editor?: TEditorType | IColumnEditor | TEditorHandler;
-	options?: DataHash[];
+	editor?: IColumn["editor"];
+	options?: IColumn["options"];
 };
-
-export interface IGanttTask extends IParsedTask {
-	end: Date;
-	duration: number;
-
-	unscheduled?: boolean;
-
-	$x: number;
-	$y: number;
-	$h: number;
-	$w: number;
-
-	$x_base?: number;
-	$w_base?: number;
-
-	$reorder?: boolean;
-}
-
-export interface IGanttLink extends ILink {
-	id: TID;
-	$p: string;
-}
 
 export type TCommonShape = {
 	id?: TID;
@@ -320,3 +314,34 @@ export type TSort = {
 export type TSortValue = string | number | Date;
 
 export type TScrollTask = { id: TID; mode?: "x" | "y" | "xy" | boolean };
+
+export interface IApi {
+	exec: <A extends keyof TMethodsConfig | (string & {})>(
+		action: A,
+		params?: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any
+	) => Promise<any>;
+	on: <A extends keyof TMethodsConfig | (string & {})>(
+		action: A,
+		callback: (
+			config: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any
+		) => any,
+		config?: IEventConfig
+	) => void;
+	intercept: <A extends keyof TMethodsConfig | (string & {})>(
+		action: A,
+		callback: (
+			config: A extends keyof TMethodsConfig ? TMethodsConfig[A] : any
+		) => any,
+		config?: IEventConfig
+	) => void;
+	detach: (tag: IEventConfig["tag"]) => void;
+	getState: () => IData;
+	getReactiveState: () => {
+		[Key in keyof IData]: IPublicWritable<IData[Key]>;
+	};
+	setNext: (ev: IEventBus<TMethodsConfig>) => void;
+	getStores: () => { data: DataStore };
+	getTable: (waitRender?: boolean) => Promise<ITableApi> | ITableApi;
+	getTask: (id: TID) => ITask;
+	serialize: () => ITask[];
+}

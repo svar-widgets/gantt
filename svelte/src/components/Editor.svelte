@@ -1,9 +1,11 @@
 <script>
-	import { getContext } from "svelte";
+	import { getContext, setContext } from "svelte";
 	import { Editor, registerEditorItem } from "@svar-ui/svelte-editor";
 	import { Locale } from "@svar-ui/svelte-core";
 	import { defaultEditorItems, normalizeDates } from "@svar-ui/gantt-store";
-	import { dateToString } from "@svar-ui/lib-dom";
+	import { dateToString, locale } from "@svar-ui/lib-dom";
+	import { en } from "@svar-ui/gantt-locales";
+	import { en as coreEn } from "@svar-ui/core-locales";
 
 	import { RichSelect, Slider, Counter, TwoState } from "@svar-ui/svelte-core";
 	import Links from "./editor/Links.svelte";
@@ -19,11 +21,15 @@
 	registerEditorItem("counter", Counter);
 	registerEditorItem("links", Links);
 
-	const locale = getContext("wx-i18n");
-	const l = locale.getRaw();
-	const f = l.gantt?.dateFormat || l.formats?.dateFormat;
-	const dateFormat = dateToString(f, l.calendar);
-	const _ = locale.getGroup("gantt");
+	let l = getContext("wx-i18n");
+	if (!l) {
+		l = locale({ ...en, ...coreEn });
+		setContext("wx-i18n", l);
+	}
+	const _ = l.getGroup("gantt");
+	const i18nData = l.getRaw();
+	const f = i18nData.gantt?.dateFormat || i18nData.formats?.dateFormat;
+	const dateFormat = dateToString(f, i18nData.calendar);
 
 	let {
 		api,

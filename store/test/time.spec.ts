@@ -172,9 +172,9 @@ describe("time calculation", () => {
 		expect(getSmallerUnitCount("month", "quarter", date)).to.eq(1);
 		expect(getSmallerUnitCount("month", "year", date)).to.eq(1);
 
-		expect(getSmallerUnitCount("quarter", "hour", date)).to.eq(2160);
-		expect(getSmallerUnitCount("quarter", "day", date)).to.eq(90);
-		expect(getSmallerUnitCount("quarter", "week", date)).to.eq(12);
+		expect(getSmallerUnitCount("quarter", "hour", date)).to.eq(2184);
+		expect(getSmallerUnitCount("quarter", "day", date)).to.eq(91);
+		expect(getSmallerUnitCount("quarter", "week", date)).to.eq(13);
 		expect(getSmallerUnitCount("quarter", "month", date)).to.eq(3);
 		expect(getSmallerUnitCount("quarter", "quarter", date)).to.eq(1);
 		expect(getSmallerUnitCount("quarter", "year", date)).to.eq(1);

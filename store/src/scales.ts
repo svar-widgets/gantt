@@ -1,8 +1,9 @@
 import type {
-	GanttScale,
+	IScaleConfig,
 	GanttScaleData,
 	IScaleLevel,
 	IZoomConfig,
+	TLengthUnit,
 } from "./types";
 import {
 	getUnitStart,
@@ -13,7 +14,7 @@ import {
 } from "./time";
 import type GanttDataTree from "./GanttDataTree";
 
-export function getMinUnit(scales: GanttScale[]): GanttScale {
+export function getMinUnit(scales: IScaleConfig[]): IScaleConfig {
 	const start = new Date();
 	return scales
 		.map(item => ({ item, len: getAdder(item.unit)(start, 1) }))
@@ -21,7 +22,7 @@ export function getMinUnit(scales: GanttScale[]): GanttScale {
 }
 
 export const units = ["year", "quarter", "month", "week", "day", "hour"];
-const unitFormats: { [name: string]: GanttScale["format"] } = {
+const unitFormats: { [name: string]: IScaleConfig["format"] } = {
 	year: "yyyy",
 	quarter: "QQQ",
 	month: "MMM",
@@ -72,10 +73,10 @@ export function calcScales(
 export function resetScales(
 	start: Date,
 	end: Date,
-	lengthUnit: string,
+	lengthUnit: TLengthUnit,
 	width: number,
 	height: number,
-	scales: GanttScale[]
+	scales: IScaleConfig[]
 ): GanttScaleData | null {
 	const minUnit = getMinUnit(scales).unit;
 	const diff = getDiffer(minUnit);
@@ -150,9 +151,9 @@ export function resetScales(
 
 export function normalizeZoom(
 	zoom: boolean | IZoomConfig,
-	scales: GanttScale[],
+	scales: IScaleConfig[],
 	cellWidth: number
-): { _zoom: IZoomConfig; scales: GanttScale[]; cellWidth: number } {
+): { _zoom: IZoomConfig; scales: IScaleConfig[]; cellWidth: number } {
 	const _zoom: any = typeof zoom === "boolean" ? {} : zoom;
 	const mainScaleLevel = units.indexOf(getMinUnit(scales).unit);
 	if (typeof _zoom.level == "undefined") {
@@ -197,7 +198,7 @@ export function normalizeZoom(
 					scales,
 				});
 			} else {
-				const levelScales: GanttScale[] = [];
+				const levelScales: IScaleConfig[] = [];
 				if (i) {
 					for (let j = numOfScales - 1; j > 0; j--) {
 						const pUnit = units[i - j];
@@ -249,20 +250,23 @@ export function zoomScale(
 	step: number,
 	level: number,
 	nextUnit: any,
-	lengthUnit: string,
-	scales: GanttScale[],
+	lengthUnit: TLengthUnit,
+	scales: IScaleConfig[],
 	cellWidth: number
 ): {
-	scales: GanttScale[];
+	scales: IScaleConfig[];
 	cellWidth: number;
-	lengthUnit: string;
+	lengthUnit: TLengthUnit;
 	zoom: IZoomConfig;
 } {
 	zoom.level = level;
 	let newCellWidth;
 	const nextScales = nextUnit.scales || nextUnit;
 	const nextMinUnit = getMinUnit(nextScales).unit;
-	const nextLengthUnit = setLengthUnit(nextMinUnit, lengthUnit);
+	const nextLengthUnit = setLengthUnit(
+		nextMinUnit,
+		lengthUnit
+	) as TLengthUnit;
 
 	if (step === -1) {
 		const count = getSmallerUnitCount(nextMinUnit, lengthUnit);
