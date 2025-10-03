@@ -39,6 +39,7 @@
 -   Zooming with scroll
 -   Fast performance with large data sets
 -   Light and dark skins
+-   Full TypeScript support
 
 ### 🔧 Svelte 4 and Svelte 5 versions
 
