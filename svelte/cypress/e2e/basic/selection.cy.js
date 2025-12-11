@@ -2,6 +2,7 @@ context("Selection", () => {
 	it("grid and chart works with multiselection", () => {
 		cy.visit(`/index.html#/local-data`);
 		cy.viewport(1300, 900);
+		cy.wait(500);
 
 		cy.wxG("grid-item", 10).click();
 		cy.wxG("grid-item", 10).should("have.class", "wx-selected");

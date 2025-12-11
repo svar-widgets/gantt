@@ -22,36 +22,36 @@
 		switch (lengthUnit) {
 			case "minute":
 				scales = [
-					{ unit: "day", step: 1, format: "MMM d" },
-					{ unit: "hour", step: 1, format: "HH:mm" },
+					{ unit: "day", step: 1, format: "%M %j" },
+					{ unit: "hour", step: 1, format: "%H:%i" },
 				];
 				break;
 			case "hour":
 				scales = [
-					{ unit: "month", step: 1, format: "MMM" },
-					{ unit: "day", step: 1, format: "MMM d" },
+					{ unit: "month", step: 1, format: "%M" },
+					{ unit: "day", step: 1, format: "%M %j" },
 				];
 				break;
 			case "day":
 				scales = [
-					{ unit: "month", step: 1, format: "MMM" },
-					{ unit: "week", step: 1, format: "w" },
+					{ unit: "month", step: 1, format: "%M" },
+					{ unit: "week", step: 1, format: "%w" },
 				];
 				break;
 			case "week":
 				scales = [
-					{ unit: "year", step: 1, format: "yyyy" },
-					{ unit: "month", step: 1, format: "MMM" },
+					{ unit: "year", step: 1, format: "%Y" },
+					{ unit: "month", step: 1, format: "%M" },
 				];
 				break;
 			case "month":
 				scales = [
-					{ unit: "year", step: 1, format: "yyyy" },
-					{ unit: "quarter", step: 1, format: "QQQ" },
+					{ unit: "year", step: 1, format: "%Y" },
+					{ unit: "quarter", step: 1, format: "%Q" },
 				];
 				break;
 			case "quarter":
-				scales = [{ unit: "year", step: 1, format: "yyyy" }];
+				scales = [{ unit: "year", step: 1, format: "%Y" }];
 				break;
 			default:
 				scales = bigScales;

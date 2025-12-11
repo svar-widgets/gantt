@@ -6,29 +6,34 @@ import {
 	cellHeight,
 	scaleHeight,
 	cellWidth,
+	unitFormats,
 } from "./stubs/data";
 import { writable } from "./stubs/writable";
 import GanttDataTree from "../src/GanttDataTree";
 import { DataArray } from "@svar-ui/lib-state";
 
-import { resetScales } from "../src/scales";
+import { normalizeZoom, resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";
 import { updateLink } from "../src/links";
 import { normalizeColumns, defaultColumns } from "../src/columns";
+import { parseTaskDates } from "../src/normalizeDates";
 
-import {
+import type {
 	GanttScaleData,
 	IGanttLink,
 	IGanttTask,
 	ILink,
 	ITask,
+	IData,
 } from "../src/types";
 
 let store: DataStore;
 
 function resetState(data?: any) {
 	if (!data) data = getData();
+	parseTaskDates(data.tasks, "day");
 	store = new DataStore(writable);
+
 	store.init({ ...data });
 }
 
@@ -51,7 +56,11 @@ describe("datastore", () => {
 			resetState();
 			const data = getData();
 
-			const tasks = new GanttDataTree(data.tasks as ITask[]);
+			const normalizedTasks = data.tasks.map((t: any) => {
+				t = { ...t };
+				return t;
+			});
+			const tasks = new GanttDataTree(normalizedTasks as ITask[]);
 			const links = new DataArray(data.links as ILink[]);
 			const scales = getData().scales;
 
@@ -61,20 +70,16 @@ describe("datastore", () => {
 				"day",
 				cellWidth,
 				scaleHeight,
+				1,
 				scales
 			) as GanttScaleData;
-			const _tasks = tasks
-				.toArray()
-				.map((task, i) =>
-					updateTask(
-						task as IGanttTask,
-						i,
-						cellWidth,
-						cellHeight,
-						_scales,
-						false
-					)
-				);
+			const _tasks = tasks.toArray().map((task, i) =>
+				updateTask(task as IGanttTask, i, {
+					cellWidth,
+					cellHeight,
+					_scales,
+				})
+			);
 			const _links = links.map(l =>
 				updateLink(
 					l as IGanttLink,
@@ -85,7 +90,7 @@ describe("datastore", () => {
 				)
 			);
 
-			const defaultState = {
+			const defaultState: any = {
 				_activeTask: null,
 				selected: [],
 				_selected: [],
@@ -112,6 +117,7 @@ describe("datastore", () => {
 				markers: [],
 				_markers: [],
 				durationUnit: "day",
+				_unitFormats: unitFormats,
 			};
 
 			vi.advanceTimersByTime(1);
@@ -120,38 +126,36 @@ describe("datastore", () => {
 
 			for (const key in state) {
 				if (key !== "_scales" && key !== "columns")
-					expect(state[key], key).to.deep.eq(defaultState[key]);
+					expect(state[key as keyof IData], key).to.deep.eq(
+						defaultState[key as keyof IData]
+					);
 			}
 
 			// skip comparison for diff function
 			for (const key in state["_scales"]) {
 				if (key !== "diff")
-					expect(state["_scales"][key]).to.deep.eq(
-						defaultState["_scales"]?.[key]
+					expect(
+						state["_scales"][key as keyof GanttScaleData]
+					).to.deep.eq(
+						defaultState["_scales"]?.[key as keyof GanttScaleData]
 					);
 			}
 
 			// skip comparison for templates
-			for (const col in state["columns"]) {
-				expect(state["columns"][col].width).to.eq(
-					defaultState["columns"][col].width
+			state["columns"]?.forEach((column, i) => {
+				expect(column.width).to.eq(defaultState["columns"]?.[i].width);
+				expect(column.align).to.eq(defaultState["columns"]?.[i].align);
+				expect(column.header).to.eq(
+					defaultState["columns"]?.[i].header
 				);
-				expect(state["columns"][col].align).to.eq(
-					defaultState["columns"][col].align
+				expect(column.resize).to.eq(
+					defaultState["columns"]?.[i].resize
 				);
-				expect(state["columns"][col].header).to.eq(
-					defaultState["columns"][col].header
+				expect(column.id).to.eq(defaultState["columns"]?.[i].id);
+				expect(column.flexgrow).to.eq(
+					defaultState["columns"]?.[i].flexgrow
 				);
-				expect(state["columns"][col].resize).to.eq(
-					defaultState["columns"][col].resize
-				);
-				expect(state["columns"][col].id).to.eq(
-					defaultState["columns"][col].id
-				);
-				expect(state["columns"][col].flexgrow).to.eq(
-					defaultState["columns"][col].flexgrow
-				);
-			}
+			});
 		});
 	});
 
@@ -244,16 +248,18 @@ describe("datastore", () => {
 				target: 1,
 				task: { text: "Task 3", id: 3, parent: 2 },
 				mode: "child",
+				show: true,
 			});
 
 			store.in.exec("add-task", {
 				task: { text: "Task 4", id: 4, parent: 2 },
+				show: true,
 			});
 
 			vi.advanceTimersByTime(1);
 
 			expect(tasks.toArray().length).to.eq(4);
-			expect(tasks.byId(2).data.length).to.eq(1);
+			expect(tasks.byId(2).data?.length).to.eq(1);
 
 			expect(tasks.byId(1).open).to.eq(true);
 			expect(tasks.byId(2).open).to.eq(true);
@@ -1005,7 +1011,7 @@ describe("datastore", () => {
 			vi.advanceTimersByTime(1);
 
 			const vIndex = tasks.toArray().findIndex(t => t.id === 2);
-			const branchLength = tasks.byId(2).data.length;
+			const branchLength = tasks.byId(2).data!.length;
 			const cTask = tasks.toArray()[vIndex + (branchLength + 1)];
 
 			expect(tasks.toArray().length).to.eq(24);
@@ -1017,12 +1023,12 @@ describe("datastore", () => {
 			}
 
 			// check children
-			cTask.data.forEach((task, i) => {
+			cTask.data?.forEach((task, i) => {
 				for (const key in task) {
 					if (key === "parent") expect(task[key]).to.eq(cTask.id);
 					else if (key !== "id" && key !== "$y")
 						expect(task[key]).to.deep.eq(
-							tasks.byId(2).data[i][key]
+							tasks.byId(2).data?.[i][key]
 						);
 				}
 			});
@@ -1152,7 +1158,7 @@ describe("datastore", () => {
 			expect(tasks.toArray().length).to.eq(19);
 			expect(tasks.toArray()[8]).to.deep.eq(tasks.byId(2));
 			expect(tasks.getIndexById(2)).to.eq(2);
-			expect(tasks.byId(2).data.length).to.eq(4);
+			expect(tasks.byId(2).data?.length).to.eq(4);
 		});
 
 		test("can't move tasks inside self", () => {
@@ -1286,7 +1292,7 @@ describe("datastore", () => {
 			expect(tasks.toArray()[4]).to.deep.eq(tasks.byId(20));
 			expect(tasks.byId(20).parent).to.eq(0);
 			expect(tasks.byId(20).$level).to.eq(1);
-			expect(tasks.byId(2).data.length).to.eq(3);
+			expect(tasks.byId(2).data?.length).to.eq(3);
 		});
 
 		test("stop updates to task positions on DnD finish", () => {
@@ -1449,6 +1455,24 @@ describe("datastore", () => {
 			expect(links.map(l => l)[links.map(l => l).length - 1].type).to.eq(
 				"e2e"
 			);
+		});
+
+		test("links are sorted by length", () => {
+			resetState(getData("full"));
+
+			store.in.exec("add-link", {
+				link: {
+					id: 999,
+					source: 20,
+					target: 23,
+					type: "e2s",
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { _links } = store.getState();
+			expect(_links.findIndex(l => l.id === 7)).to.eq(0);
+			expect(_links.findIndex(l => l.id === 999)).to.eq(1);
 		});
 
 		test("incorrect links are ignored", () => {
@@ -1636,16 +1660,18 @@ describe("datastore", () => {
 		const diff = 4; // diff between scale start and target date
 
 		test("can zoom in", () => {
-			resetState({ ...getData("full"), zoom: true });
+			const data = getData("full");
+			const config = normalizeZoom(true, unitFormats, data.scales, 100);
+			resetState({ ...data, ...config });
 			let { scrollLeft, zoom } = store.getState();
 
-			expect(zoom.level).to.eq(4);
-			expect(zoom.levels?.length).to.eq(6);
+			expect(zoom?.level).to.eq(4);
+			expect(zoom?.levels?.length).to.eq(6);
 
 			// imitate zooming in on a single point
 			for (let i = initialZoomStep; i <= zoomSteps; i++) {
 				let { cellWidth } = store.getState();
-				const cw = cellWidth;
+				const cw = cellWidth as number;
 
 				store.in.exec("zoom-scale", {
 					dir: 1,
@@ -1655,7 +1681,7 @@ describe("datastore", () => {
 
 				({ scrollLeft, cellWidth, zoom } = store.getState());
 
-				expect(zoom.level).to.eq(i < zoomSteps ? 4 : 5);
+				expect(zoom?.level).to.eq(i < zoomSteps ? 4 : 5);
 				expect(cellWidth).to.eq(
 					cw + zoomDelta > maxCellWidth
 						? minCellWidth
@@ -1668,16 +1694,18 @@ describe("datastore", () => {
 		});
 
 		test("can zoom in and out", () => {
-			resetState({ ...getData("full"), zoom: true });
+			const data = getData("full");
+			const config = normalizeZoom(true, unitFormats, data.scales, 100);
+			resetState({ ...data, ...config });
 			let { scrollLeft, zoom } = store.getState();
 
-			expect(zoom.level).to.eq(4);
-			expect(zoom.levels?.length).to.eq(6);
+			expect(zoom?.level).to.eq(4);
+			expect(zoom?.levels?.length).to.eq(6);
 
 			// zoom in
 			for (let i = initialZoomStep; i <= zoomSteps; i++) {
 				let { cellWidth } = store.getState();
-				const cw = cellWidth;
+				const cw = cellWidth as number;
 
 				store.in.exec("zoom-scale", {
 					dir: 1,
@@ -1687,7 +1715,7 @@ describe("datastore", () => {
 
 				({ scrollLeft, cellWidth, zoom } = store.getState());
 
-				expect(zoom.level).to.eq(i < zoomSteps ? 4 : 5);
+				expect(zoom?.level).to.eq(i < zoomSteps ? 4 : 5);
 				expect(cellWidth).to.eq(
 					cw + zoomDelta > maxCellWidth
 						? minCellWidth
@@ -1701,7 +1729,7 @@ describe("datastore", () => {
 			// zoom out
 			for (let i = initialZoomStep; i <= zoomSteps; i++) {
 				let { cellWidth } = store.getState();
-				const cw = cellWidth;
+				const cw = cellWidth as number;
 
 				store.in.exec("zoom-scale", {
 					dir: -1,
@@ -1736,22 +1764,22 @@ describe("datastore", () => {
 					{
 						minCellWidth: 50,
 						maxCellWidth: 300,
-						scales: [{ unit: "year", step: 1, format: "yyyy" }],
+						scales: [{ unit: "year", step: 1, format: "%Y" }],
 					},
 					{
 						minCellWidth: 50,
 						maxCellWidth: 300,
-						scales: [{ unit: "quarter", step: 1, format: "QQQ" }],
+						scales: [{ unit: "quarter", step: 1, format: "%Q" }],
 					},
 					{
 						minCellWidth: 50,
 						maxCellWidth: 300,
-						scales: [{ unit: "month", step: 1, format: "MMM" }],
+						scales: [{ unit: "month", step: 1, format: "%M" }],
 					},
 					{
 						minCellWidth: 50,
 						maxCellWidth: 300,
-						scales: [{ unit: "week", step: 1, format: "w" }],
+						scales: [{ unit: "week", step: 1, format: "%w" }],
 					},
 				],
 			};
@@ -1760,7 +1788,7 @@ describe("datastore", () => {
 			const { zoom } = store.getState();
 
 			// Each level should use its specific min/max settings, not the root settings
-			zoom.levels?.forEach((level, index) => {
+			zoom?.levels?.forEach((level, index) => {
 				expect(level.minCellWidth).to.eq(
 					baseZoomConfig.levels[index].minCellWidth
 				);
@@ -1779,10 +1807,10 @@ describe("datastore", () => {
 
 			resetState({ ...getData("full"), zoom: simpleZoomConfig });
 			const { zoom } = store.getState();
-			const defaultLevels = zoom.levels!;
+			const defaultLevels = zoom?.levels || [];
 
 			// Check that each default level has been adjusted to respect the root min/max settings
-			zoom.levels?.forEach((level, index) => {
+			zoom?.levels?.forEach((level, index) => {
 				const expectedMin = Math.max(
 					defaultLevels[index].minCellWidth,
 					simpleZoomConfig.minCellWidth
@@ -1828,8 +1856,8 @@ describe("datastore", () => {
 
 			expect(_start).to.deep.eq(new Date(2024, 3, 1));
 			expect(_end).to.deep.eq(new Date(2024, 3, 9));
-			expect(_scales.start).to.deep.eq(new Date(2024, 3, 1));
-			expect(_scales.end).to.deep.eq(new Date(2024, 3, 9));
+			expect(_scales?.start).to.deep.eq(new Date(2024, 3, 1));
+			expect(_scales?.end).to.deep.eq(new Date(2024, 3, 9));
 		});
 	});
 
@@ -1942,7 +1970,7 @@ describe("datastore", () => {
 			const { tasks, links } = store.getState();
 
 			expect(tasks.toArray().length).to.eq(6);
-			expect(tasks.byId(2).data.length).to.eq(4);
+			expect(tasks.byId(2).data?.length).to.eq(4);
 			expect(links.map(l => l).length).to.eq(4);
 
 			expect(tasks.byId(2).lazy).to.eq(false);
@@ -1957,7 +1985,204 @@ describe("datastore", () => {
 
 		const { tasks, _tasks } = store.getState();
 		const branch = tasks.getBranch(12);
-		expect(branch[0].id).to.eq(12);
+		expect(branch?.[0].id).to.eq(12);
 		expect(_tasks[0].id).not.to.equal(1);
+	});
+
+	describe("support of forwart strategy", () => {
+		test("can add tasks", () => {
+			resetState();
+			const { tasks } = store.getState();
+
+			store.in.exec("add-task", {
+				task: {
+					text: "Task 3",
+					id: 3,
+					start: new Date(2024, 4, 8),
+					duration: 10,
+					end: new Date(2024, 4, 10),
+				},
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(3).start).to.deep.eq(new Date(2024, 4, 8));
+			expect(tasks.byId(3).duration).to.eq(10);
+			expect(tasks.byId(3).end).to.deep.equal(new Date(2024, 4, 18));
+		});
+		test("can update task", () => {
+			resetState();
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 11),
+					duration: 4,
+				},
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 11));
+			expect(tasks.byId(2).duration).to.eq(4);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 15));
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 16),
+					duration: 5,
+					end: new Date(2024, 3, 18),
+				},
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 16));
+			expect(tasks.byId(2).duration).to.eq(5);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 21));
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 5),
+					end: new Date(2024, 3, 9),
+				},
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 5));
+			expect(tasks.byId(2).duration).to.eq(4);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 9));
+		});
+
+		test("can update task on DnD finish", () => {
+			resetState();
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 6),
+					end: new Date(2024, 3, 8),
+				},
+				diff: 3,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 9));
+			expect(tasks.byId(2).duration).to.eq(2);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 11));
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 9),
+				},
+				diff: -2,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 7));
+			expect(tasks.byId(2).duration).to.eq(4);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 11));
+
+			store.in.exec("update-task", {
+				id: 2,
+				task: {
+					end: new Date(2024, 3, 11),
+				},
+				diff: 5,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 7));
+			expect(tasks.byId(2).duration).to.eq(9);
+			expect(tasks.byId(2).end).to.deep.equal(new Date(2024, 3, 16));
+		});
+	});
+
+	describe("autoscheduling", () => {
+		test("can delete invalid links in autoscheduling mode on init", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			const { links } = store.getState();
+
+			expect(links.map(l => l).length).to.eq(2);
+			expect(links.byId(6).id).to.exist;
+			expect(links.byId(7).id).to.exist;
+		});
+		test("can delete invalid links in autoscheduling mode on move-task", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			store.in.exec("move-task", {
+				id: 2,
+				target: 1,
+				mode: "after",
+			});
+
+			vi.advanceTimersByTime(1);
+			const { links } = store.getState();
+
+			expect(links.map(l => l).length).to.eq(2);
+			expect(links.byId(6).id).to.exist;
+			expect(links.byId(7).id).to.exist;
+		});
+		test("can delete invalid links in autoscheduling mode on indent-task", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+
+			store.in.exec("indent-task", {
+				id: 2,
+				mode: true,
+			});
+
+			vi.advanceTimersByTime(1);
+			const indentedState = store.getState();
+
+			expect(indentedState.links.map(l => l).length).to.eq(1);
+			expect(indentedState.links.byId(6).id).to.exist;
+		});
+		test("add-link prevents invalid links in autoscheduling mode", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			store.in.exec("add-link", {
+				link: {
+					id: 8,
+					source: 1,
+					target: 13,
+					type: "e2s",
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { links } = store.getState();
+			expect(links.map(l => l).length).to.eq(2);
+			expect(links.byId(6).id).to.exist;
+			expect(links.byId(7).id).to.exist;
+		});
 	});
 });

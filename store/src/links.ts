@@ -1,4 +1,5 @@
-import type { IGanttTask, IGanttLink } from "./types";
+import { tempID } from "@svar-ui/lib-state";
+import type { IGanttTask, IGanttLink, ILink } from "./types";
 
 const delta = 20;
 
@@ -20,6 +21,7 @@ export const updateLink = function (
 		endTask.$skip
 	) {
 		link.$p = "";
+		link.$pl = 0;
 		return link;
 	}
 
@@ -63,10 +65,30 @@ export const updateLink = function (
 
 		const arrowCoords = getArrowCoords(ex, ey + dy, e_start);
 		link.$p = `${lineCoords},${arrowCoords}`;
+		link.$pl = getPolylineLength(link.$p);
 	}
 
 	return link;
 };
+
+function getPolylineLength(pointsString: string) {
+	const nums = pointsString.split(",").map(Number);
+	const points = [];
+
+	for (let i = 0; i < nums.length; i += 2) {
+		if (i + 1 < nums.length) {
+			points.push([nums[i], nums[i + 1]]);
+		}
+	}
+
+	let length = 0;
+	for (let i = 0; i < points.length - 1; i++) {
+		const [x1, y1] = points[i];
+		const [x2, y2] = points[i + 1];
+		length += Math.hypot(x2 - x1, y2 - y1);
+	}
+	return length;
+}
 
 function getLineCoords(
 	sx: number,
@@ -141,4 +163,11 @@ export function placeLink(
 	} else {
 		return null;
 	}
+}
+
+export function normalizeLinks(links: ILink[]) {
+	return links.map(link => {
+		const id = link.id || tempID();
+		return { ...link, id };
+	});
 }

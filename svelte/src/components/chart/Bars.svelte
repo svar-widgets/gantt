@@ -3,10 +3,15 @@
 
 	import { locate, locateID } from "@svar-ui/lib-dom";
 	import { getID } from "../../helpers/locate";
+	import Links from "./Links.svelte";
+	import { Button } from "@svar-ui/svelte-core";
+	import { isSegmentMoveAllowed, extendDragOptions } from "@svar-ui/gantt-store";
 
 	let { readonly, taskTemplate } = $props();
 
 	const api = getContext("gantt-store");
+
+	import BarSegments from "./BarSegments.svelte";
 
 	const {
 		_tasks: rTasks,
@@ -17,6 +22,10 @@
 		baselines,
 		_selected: selected,
 		_scrollTask: scrollTask,
+		criticalPath,
+		tasks: tree,
+		schedule,
+		splitTasks,
 	} = api.getReactiveState();
 
 	// let tasks = $derived($rTasks.slice($area.start, $area.end));
@@ -33,6 +42,8 @@
 	// task moving
 	let taskMove = $state(null);
 	let progressFrom = null;
+
+	let selectedLink = $state(null);
 
 	let touched = $state();
 	let touchTimer;
@@ -61,7 +72,7 @@
 		const id = getID(node);
 		const task = api.getTask(id);
 		const css = point.target.classList;
-
+		if (point.target.closest(".wx-delete-button")) return;
 		if (!readonly) {
 			if (css.contains("wx-progress-marker")) {
 				const { progress } = api.getTask(id);
@@ -85,19 +96,30 @@
 					l: task.$x,
 					w: task.$w,
 				};
+
+				if ($splitTasks && task.segments?.length) {
+					const segNode = locate(point, "data-segment");
+					if (segNode) {
+						taskMove.segmentIndex = segNode.dataset["segment"] * 1;
+						extendDragOptions(task, taskMove);
+					}
+				}
 			}
 			startDrag();
 		}
 	}
 
 	function getMoveMode(node, e, task) {
+		if (e.target.classList.contains("wx-line")) return "";
 		if (!task) task = api.getTask(getID(node));
-		if (task.type === "milestone" || task.type == "summary") return "";
+		if (task.type === "milestone" || task.type === "summary") return "";
 
-		const rect = node.getBoundingClientRect();
-		const p = (e.clientX - rect.left) / rect.width;
-		let delta = 0.2 / (rect.width > 200 ? rect.width / 200 : 1);
+		const segmentNode = locate(e, "data-segment");
+		if (segmentNode) node = segmentNode;
 
+		const { left, width } = node.getBoundingClientRect();
+		const p = (e.clientX - left) / width;
+		let delta = 0.2 / (width > 200 ? width / 200 : 1);
 		if (p < delta) return "start";
 		if (p > 1 - delta) return "end";
 		return "";
@@ -138,15 +160,18 @@
 					inProgress: true,
 				});
 			} else if (taskMove) {
-				const { mode, l, w, x, id, start } = taskMove;
+				onSelectLink(null);
+				const { mode, l, w, x, id, start, segment, index } = taskMove;
+				const task = api.getTask(id);
 				const dx = clientX - x;
 				if (
 					(!start && Math.abs(dx) < 20) ||
 					(mode === "start" && w - dx < lengthUnitWidth) ||
 					(mode === "end" && w + dx < lengthUnitWidth) ||
-					(mode == "move" &&
+					(mode === "move" &&
 						((dx < 0 && l + dx < 0) ||
-							(dx > 0 && l + w + dx > totalWidth)))
+							(dx > 0 && l + w + dx > totalWidth))) ||
+					(taskMove.segment && !isSegmentMoveAllowed(task, taskMove))
 				)
 					return;
 
@@ -164,31 +189,32 @@
 					width = w;
 				}
 
-				let ev = {
+				api.exec("drag-task", {
 					id,
 					width: width,
 					left: left,
 					inProgress: true,
-				};
-
-				api.exec("drag-task", ev);
+					...(segment && { segmentIndex: index }),
+				});
 
 				//dnd may be blocked, check positions
-				const task = api.getTask(id);
 				if (
 					!taskMove.start &&
-					((mode == "move" && task.$x == l) ||
-						(mode != "move" && task.$w == w))
+					((mode === "move" && task.$x == l) ||
+						(mode !== "move" && task.$w == w))
 				) {
 					ignoreNextClick = true;
 					return up();
 				}
 				taskMove.start = true;
 			} else {
-				const mnode = locate(e);
-				if (mnode) {
-					const mode = getMoveMode(mnode, point);
-					mnode.style.cursor =
+				const taskNode = locate(e);
+				if (taskNode) {
+					const task = api.getTask(getID(taskNode));
+					const segNode = locate(e, "data-segment");
+					const barNode = segNode || taskNode;
+					const mode = getMoveMode(barNode, point, task);
+					barNode.style.cursor =
 						mode && !readonly ? "col-resize" : "pointer";
 				}
 			}
@@ -214,13 +240,17 @@
 			const { dx, id, marker, value } = progressFrom;
 			progressFrom = null;
 			if (typeof value != "undefined" && dx)
-				api.exec("update-task", { id, task: { progress: value } });
+				api.exec("update-task", {
+					id,
+					task: { progress: value },
+					inProgress: false,
+				});
 			marker.classList.remove("wx-progress-in-drag");
 
 			ignoreNextClick = true;
 			endDrag();
 		} else if (taskMove) {
-			const { id, mode, dx, l, w, start } = taskMove;
+			const { id, mode, dx, l, w, start, segment, index } = taskMove;
 			taskMove = null;
 			if (start) {
 				const diff = Math.round(dx / lengthUnitWidth);
@@ -232,19 +262,23 @@
 						width: w,
 						left: l,
 						inProgress: false,
+						...(segment && { segmentIndex: index }),
 					});
 				} else {
 					let update = {};
 					let task = api.getTask(id);
-					if (mode == "move") {
+					if (segment) task = task.segments[index];
+
+					if (mode === "move") {
 						update.start = task.start;
 						update.end = task.end;
 					} else update[mode] = task[mode];
 
 					api.exec("update-task", {
 						id,
-						task: update,
 						diff,
+						task: update,
+						...(segment && { segmentIndex: index }),
 					});
 				}
 				ignoreNextClick = true;
@@ -264,8 +298,13 @@
 	function onDblClick(e) {
 		if (!readonly) {
 			const id = locateID(e.target);
-			if (id && !e.target.classList.contains("wx-link"))
-				api.exec("show-editor", { id });
+			if (id && !e.target.classList.contains("wx-link")) {
+				const segmentIndex = locateID(e.target, "data-segment");
+				api.exec("show-editor", {
+					id,
+					...(segmentIndex !== null && { segmentIndex }),
+				});
+			}
 		}
 	}
 	function onClick(e) {
@@ -293,11 +332,18 @@
 						},
 					});
 				}
+			} else if (css.contains("wx-delete-button-icon")) {
+				api.exec("delete-link", { id: selectedLink.id });
+				selectedLink = null;
 			} else {
+				let segmentIndex;
+				const segmentNode = locate(e, "data-segment");
+				if (segmentNode) segmentIndex = segmentNode.dataset.segment * 1;
 				api.exec("select-task", {
 					id,
 					toggle: e.ctrlKey || e.metaKey,
 					range: e.shiftKey,
+					segmentIndex,
 				});
 			}
 		}
@@ -345,10 +391,16 @@
 		}
 	}
 
+	function onSelectLink(id) {
+		selectedLink = id && { ...$rLinks.find(link => link.id === id) };
+	}
+
+	const taskTypeIds = $derived($taskTypes.map(t => t.id));
 	function taskTypeCss(type) {
-		let css = $taskTypes.some(t => type === t.id) ? type : "task";
-		if (css !== "task" && css !== "milestone" && css !== "summary")
+		let css = taskTypeIds.includes(type) ? type : "task";
+		if (!["task", "milestone", "summary"].includes(type)) {
 			css = `task ${css}`;
+		}
 		return css;
 	}
 
@@ -373,6 +425,28 @@
 			if (node) node.focus();
 		}
 	});
+
+	const isTaskCritical = taskId => {
+		return criticalPath && $tree.byId(taskId).$critical;
+	};
+	function isLinkMarkerVisible(id) {
+		if ($schedule.auto) {
+			const summaryIds = $tree.getSummaryId(id, true);
+			const linkFromSummaryIds = $tree.getSummaryId(linkFrom.id, true);
+			return (
+				linkFrom?.id &&
+				!(
+					Array.isArray(summaryIds) ? summaryIds : [summaryIds]
+				).includes(linkFrom.id) &&
+				!(
+					Array.isArray(linkFromSummaryIds)
+						? linkFromSummaryIds
+						: [linkFromSummaryIds]
+				).includes(id)
+			);
+		}
+		return linkFrom;
+	}
 </script>
 
 <svelte:window onmouseup={mouseup} />
@@ -394,6 +468,7 @@
 	ondblclick={onDblClick}
 	ondragstart={() => false}
 >
+	<Links {onSelectLink} {selectedLink} {readonly} />
 	{#each tasks as task (task.id)}
 		{#if !task.$skip}
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -401,28 +476,41 @@
 				class="wx-bar wx-{taskTypeCss(task.type)}"
 				class:wx-touch={touched && taskMove && task.id == taskMove.id}
 				class:wx-selected={linkFrom && linkFrom.id === task.id}
+				class:wx-critical={isTaskCritical(task.id)}
 				class:wx-reorder-task={task.$reorder}
+				class:wx-split={$splitTasks && task.segments}
 				style={taskStyle(task)}
 				data-tooltip-id={task.id}
 				data-id={task.id}
 				tabindex={focused === task.id ? "0" : "-1"}
 			>
 				{#if !readonly}
-					<div
-						class="wx-link wx-left"
-						class:wx-visible={linkFrom}
-						class:wx-target={!linkFrom ||
-							!alreadyLinked(task.id, true)}
-						class:wx-selected={linkFrom &&
-							linkFrom.id === task.id &&
-							linkFrom.start}
-					>
-						<div class="wx-inner"></div>
-					</div>
+					{#if task.id === selectedLink?.target && selectedLink?.type[2] === "s"}
+						<Button
+							type="danger"
+							css="wx-left wx-delete-button wx-delete-link"
+						>
+							<i class="wxi-close wx-delete-button-icon"></i>
+						</Button>
+					{:else}
+						<div
+							class="wx-link wx-left"
+							class:wx-visible={linkFrom}
+							class:wx-target={!linkFrom ||
+								(!alreadyLinked(task.id, true) &&
+									isLinkMarkerVisible(task.id))}
+							class:wx-selected={linkFrom &&
+								linkFrom.id === task.id &&
+								linkFrom.start}
+							class:wx-critical={isTaskCritical(task.id)}
+						>
+							<div class="wx-inner"></div>
+						</div>
+					{/if}
 				{/if}
 
 				{#if task.type !== "milestone"}
-					{#if task.progress}
+					{#if task.progress && !($splitTasks && task.segments)}
 						<div class="wx-progress-wrapper">
 							<div
 								class="wx-progress-percent"
@@ -430,7 +518,7 @@
 							></div>
 						</div>
 					{/if}
-					{#if !readonly}
+					{#if !readonly && !($splitTasks && task.segments)}
 						<div
 							class="wx-progress-marker"
 							style="left:calc({task.progress}% - 10px);"
@@ -441,6 +529,8 @@
 					{#if taskTemplate}
 						{@const SvelteComponent = taskTemplate}
 						<SvelteComponent data={task} {api} onaction={forward} />
+					{:else if $splitTasks && task.segments}
+						<BarSegments {task} type={taskTypeCss(task.type)} />
 					{:else}
 						<div class="wx-content">{task.text || ""}</div>
 					{/if}
@@ -459,17 +549,28 @@
 				{/if}
 
 				{#if !readonly}
-					<div
-						class="wx-link wx-right"
-						class:wx-visible={linkFrom}
-						class:wx-target={!linkFrom ||
-							!alreadyLinked(task.id, false)}
-						class:wx-selected={linkFrom &&
-							linkFrom.id === task.id &&
-							!linkFrom.start}
-					>
-						<div class="wx-inner"></div>
-					</div>
+					{#if task.id === selectedLink?.target && selectedLink?.type[2] === "e"}
+						<Button
+							type="danger"
+							css="wx-right wx-delete-button wx-delete-link"
+						>
+							<i class="wxi-close wx-delete-button-icon"></i>
+						</Button>
+					{:else}
+						<div
+							class="wx-link wx-right"
+							class:wx-visible={linkFrom}
+							class:wx-target={!linkFrom ||
+								(!alreadyLinked(task.id, false) &&
+									isLinkMarkerVisible(task.id))}
+							class:wx-selected={linkFrom &&
+								linkFrom.id === task.id &&
+								!linkFrom.start}
+							class:wx-critical={isTaskCritical(task.id)}
+						>
+							<div class="wx-inner"></div>
+						</div>
+					{/if}
 				{/if}
 			</div>
 		{/if}
@@ -503,7 +604,9 @@
 		overflow: hidden;
 	}
 
-	.wx-bar {
+	.wx-bar,
+	.wx-bar :global(.wx-segment) {
+		pointer-events: all;
 		box-sizing: border-box;
 		position: absolute;
 		border-radius: var(--wx-gantt-bar-border-radius);
@@ -523,22 +626,24 @@
 	.wx-bar.wx-reorder-task {
 		z-index: 3;
 	}
-	.wx-content {
+	.wx-bar :global(.wx-content) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.wx-task {
+	.wx-task:not(.wx-split),
+	.wx-task :global(.wx-segment) {
 		color: var(--wx-gantt-task-font-color);
 		background-color: var(--wx-gantt-task-color);
 		border: var(--wx-gantt-task-border);
 	}
 
-	.wx-task.wx-selected {
+	.wx-task.wx-selected:not(.wx-split) {
 		border: 1px solid var(--wx-gantt-task-border-color);
 		box-shadow: var(--wx-gantt-bar-shadow);
 	}
 
-	.wx-task:hover {
+	.wx-task:not(.wx-split):hover,
+	.wx-task :global(.wx-segment:hover) {
 		box-shadow: var(--wx-gantt-bar-shadow);
 	}
 
@@ -566,7 +671,7 @@
 		z-index: 2;
 	}
 
-	.wx-bar:not(.wx-milestone) .wx-content {
+	.wx-bar:not(.wx-milestone) :global(.wx-content) {
 		position: relative;
 		z-index: 2;
 	}
@@ -595,7 +700,7 @@
 		border-radius: var(--wx-gantt-milestone-border-radius);
 	}
 
-	.wx-progress-wrapper {
+	.wx-bar :global(.wx-progress-wrapper) {
 		position: absolute;
 		width: 100%;
 		height: 100%;
@@ -604,7 +709,7 @@
 		overflow: hidden;
 	}
 
-	.wx-progress-percent {
+	.wx-bar :global(.wx-progress-percent) {
 		height: 100%;
 	}
 
@@ -676,14 +781,28 @@
 		pointer-events: none;
 	}
 
+	.wx-bar :global(button.wx-button.wx-delete-button) {
+		position: absolute;
+		z-index: 4;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 16px;
+		height: 16px;
+		padding: 0;
+	}
+	.wx-delete-button-icon {
+		display: block;
+		line-height: 14px;
+		font-size: 10px;
+	}
+	.wx-bar :global(.wx-delete-button.wx-left),
 	.wx-link.wx-left {
 		left: -16px;
 	}
-
+	.wx-bar :global(.wx-delete-button.wx-right),
 	.wx-link.wx-right {
 		right: -16px;
 	}
-
 	.wx-link.wx-target:hover,
 	.wx-link.wx-selected,
 	.wx-bar:hover .wx-link.wx-target,
@@ -692,11 +811,10 @@
 		cursor: pointer;
 	}
 
-	.wx-link.wx-selected {
+	.wx-bar:not(.wx-split) .wx-link.wx-selected {
 		border-color: inherit;
 	}
-
-	.wx-link.wx-selected .wx-inner {
+	.wx-bar:not(.wx-split) .wx-link.wx-selected .wx-inner {
 		border-color: inherit;
 	}
 
@@ -720,5 +838,57 @@
 	.wx-milestone:focus .wx-content {
 		outline: 1px solid var(--wx-color-primary);
 		outline-offset: 1.6px;
+	}
+	/* critical path markers */
+	.wx-task.wx-critical {
+		background-color: var(--wx-gantt-task-critical-color);
+	}
+	.wx-task.wx-critical.wx-selected {
+		border: 1px solid var(--wx-gantt-task-critical-color);
+	}
+	.wx-task.wx-critical .wx-progress-percent {
+		background-color: var(--wx-gantt-task-critical-fill-color);
+	}
+	.wx-milestone.wx-critical .wx-content {
+		background-color: var(--wx-gantt-critical-color);
+	}
+	.wx-milestone.wx-critical {
+		border-color: var(--wx-gantt-critical-color);
+	}
+	.wx-summary.wx-critical {
+		background-color: var(--wx-gantt-summary-critical-color);
+	}
+	.wx-summary.wx-critical .wx-progress-percent {
+		background-color: var(--wx-gantt-summary-critical-fill-color);
+	}
+	.wx-summary.wx-critical.wx-selected {
+		border: 1px solid var(--wx-gantt-summary-critical-color);
+	}
+
+	/*split tasks*/
+	.wx-split.wx-selected {
+		border-color: var(--wx-gantt-task-border-color);
+	}
+	.wx-bars .wx-split.wx-bar {
+		background: transparent;
+		border-color: transparent;
+	}
+	.wx-split .wx-link.wx-selected,
+	.wx-split .wx-link.wx-selected .wx-inner {
+		border-color: var(--wx-gantt-task-border-color);
+	}
+
+	.wx-critical :global(.wx-segment) {
+		background-color: var(--wx-gantt-task-critical-color);
+	}
+	.wx-critical.wx-selected :global(.wx-segment) {
+		border: 1px solid var(--wx-gantt-task-critical-color);
+	}
+	.wx-critical :global(.wx-segment .wx-progress-percent) {
+		background-color: var(--wx-gantt-task-critical-fill-color);
+	}
+	.wx-critical.wx-split .wx-link.wx-selected,
+	.wx-critical.wx-split .wx-link.wx-selected .wx-inner {
+		border-color: var(--wx-gantt-task-critical-color);
 	}
 </style>

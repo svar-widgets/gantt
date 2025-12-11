@@ -1,24 +1,26 @@
 {
-	"name": "@svar-ui/gantt-store",
-	"version": "2.3.0",
-	"type": "module",
-	"main": "dist/index.js",
-	"module": "dist/index.js",
-	"types": "dist/types/index.d.ts",
-	"license": "MIT",
-	"scripts": {
-		"build": "vite build",
-		"watch": "vite build --mode development -w",
-		"lint": "yarn eslint ./src",
-		"test": "vitest --run",
-		"coverage": "vitest --run --coverage"
-	},
-	"files": [
-		"dist",
-		"license.txt"
-	],
-	"dependencies": {
-		"@svar-ui/lib-state": "1.9.6",
-		"date-fns": "3.6.0"
-	}
+  "name": "@svar-ui/gantt-store",
+  "version": "2.4.0",
+  "description": "Internal state management used by SVAR Gantt component",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --mode development -w",
+    "lint": "yarn eslint ./src",
+    "test": "vitest --run",
+    "coverage": "vitest --run --coverage"
+  },
+  "files": [
+    "dist",
+    "licenses",
+    "license.txt"
+  ],
+  "dependencies": {
+    "date-fns": "3.6.0",
+    "@svar-ui/lib-state": "1.9.6"
+  }
 }

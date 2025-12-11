@@ -32,6 +32,17 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+	"keyDown",
+	{
+		prevSubject: "optional",
+	},
+	(subject, code) => {
+		subject = subject ? cy.wrap(subject) : cy.root();
+		subject.trigger("keydown", { key: code, code });
+	}
+);
+
+Cypress.Commands.add(
 	"wxG",
 	{
 		prevSubject: "optional",
@@ -69,6 +80,10 @@ Cypress.Commands.add(
 				return subject
 					.get(`.wx-bar[data-id="${id}"]`)
 					.find(`.wx-link.wx-${side}`);
+			case "polyline":
+				return subject
+					.get(`.wx-links`)
+					.find(`.wx-line[data-link-id="${id}"]`);
 			case "menu":
 				return subject.get(".wx-menu");
 			case "menu-option":

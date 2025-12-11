@@ -22,17 +22,15 @@ describe("tasks", () => {
 			"day",
 			cellWidth,
 			scaleHeight,
+			1,
 			scales
 		) as GanttScaleData;
 
-		const updatedTask = updateTask(
-			task as any,
-			0,
+		const updatedTask = updateTask(task as any, 0, {
 			cellWidth,
 			cellHeight,
 			_scales,
-			false
-		);
+		});
 
 		expect(updatedTask.$x).to.eq(100);
 		expect(updatedTask.$y).to.eq(3); // 0 + default padding
@@ -58,17 +56,15 @@ describe("tasks", () => {
 			"day",
 			cellWidth,
 			scaleHeight,
+			1,
 			scales
 		) as GanttScaleData;
 
-		const updatedTask = updateTask(
-			task as any,
-			0,
+		const updatedTask = updateTask(task as any, 0, {
 			cellWidth,
 			cellHeight,
 			_scales,
-			false
-		);
+		});
 
 		expect(updatedTask.$x).to.eq(84.5);
 		expect(updatedTask.$y).to.eq(3); // 0 + default padding
@@ -95,17 +91,16 @@ describe("tasks", () => {
 			"day",
 			cellWidth,
 			scaleHeight,
+			1,
 			scales
 		) as GanttScaleData;
 
-		const updatedTask = updateTask(
-			task as any,
-			0,
+		const updatedTask = updateTask(task as any, 0, {
 			cellWidth,
 			cellHeight,
 			_scales,
-			true
-		);
+			baselines: true,
+		});
 
 		expect(updatedTask.$x).to.eq(100);
 		expect(updatedTask.$y).to.eq(3); // 0 + default padding

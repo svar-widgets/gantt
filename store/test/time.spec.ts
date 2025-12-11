@@ -50,7 +50,7 @@ describe("time calculation", () => {
 		const date = new Date(2024, 5, 15);
 
 		expect(getUnitStart("day", date)).to.deep.eq(new Date(2024, 5, 15));
-		expect(getUnitStart("week", date)).to.deep.eq(new Date(2024, 5, 10));
+		expect(getUnitStart("week", date)).to.deep.eq(new Date(2024, 5, 9));
 		expect(getUnitStart("month", date)).to.deep.eq(new Date(2024, 5, 1));
 		expect(getUnitStart("quarter", date)).to.deep.eq(new Date(2024, 3, 1));
 		expect(getUnitStart("year", date)).to.deep.eq(new Date(2024, 0, 1));
@@ -63,7 +63,7 @@ describe("time calculation", () => {
 			new Date(new Date(2024, 5, 16).valueOf() - 1)
 		);
 		expect(getUnitEnd("week", date)).to.deep.eq(
-			new Date(new Date(2024, 5, 17).valueOf() - 1)
+			new Date(new Date(2024, 5, 16).valueOf() - 1)
 		);
 		expect(getUnitEnd("month", date)).to.deep.eq(
 			new Date(new Date(2024, 5, 31).valueOf() - 1)

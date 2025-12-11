@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu, Editor, defaultEditorItems } from "../../src";
+	import { Gantt, ContextMenu, Editor, getEditorItems } from "../../src";
 	import { RadioButtonGroup } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
@@ -12,17 +12,17 @@
 	};
 
 	const options = [
-		{ id: "hour", label: "Hour" },
 		{ id: "day", label: "Day" },
+		{ id: "hour", label: "Hour" },
 	];
 
-	let durationUnit = $state("hour");
-	let scales = $state(scalesMap["hour"]);
+	let durationUnit = $state("day");
+	let scales = $state(scalesMap["day"]);
 
 	let api = $state();
 
 	let items = $derived(
-		defaultEditorItems.map(ed => ({
+		getEditorItems().map(ed => ({
 			...ed,
 			...(ed.comp === "date" && {
 				config: { time: durationUnit === "hour" },

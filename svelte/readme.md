@@ -28,6 +28,8 @@
 
 ### :sparkles: Key Features
 
+Core features designed for flexible and interactive project timeline management:
+
 -   Interactive drag-and-drop interface
 -   Intuitive and customizable task edit form
 -   Set task dependencies on the timeline or in a popup form
@@ -35,16 +37,38 @@
 -   Hierarchical view of sub tasks
 -   Reordering tasks in grid with drag-and-drop
 -   Configurable timeline (hours, days, weeks)
+-   Flexible time units: support for hours and minutes
+-   Custom time scales: define custom periods like sprints or stages
 -   Ability to use custom HTML in grid cells
 -   Toolbar and context menu
 -   Tooltips for taskbars
+-   Weekends/holidays highlights
+-   Sorting tasks in grid
 -   Zooming with scroll
--   Fast performance with big data sets
+-   Hotkeys support for common actions
+-   Fast performance with large data sets
+-   Localization
 -   Light and dark skins
+-   Full TypeScript support
+
+### 🚀 PRO Edition
+
+SVAR Svelte Gantt is available in open-source and PRO Editions. The PRO Edition offers additional features and automation logic:
+
+-   Work days calendar
+-   Auto-scheduling (forward mode and Finish-to-Start dependencies)
+-   Critical path
+-   Baselines
+-   Split tasks
+-   Vertical markers
+-   Unscheduled tasks
+-   Undo/redo
+
+Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for full feature comparison and licensing details.
 
 ### :hammer_and_wrench: How to Use
 
-To use the Gantt chart widget, simply import the package and include the component in your Svelte file:
+To use the Gantt chart, simply import the package and include the component in your Svelte file:
 
 ```svelte
 <script>
@@ -65,24 +89,24 @@ To use the Gantt chart widget, simply import the package and include the compone
 	];
 	const links = [];
 	const scales = [
-		{ unit: "month", step: 1, format: "MMMM yyy" },
-		{ unit: "day", step: 1, format: "d", css: dayStyle },
+		{ unit: "month", step: 1, format: "%F %Y" },
+		{ unit: "day", step: 1, format: "%j", css: dayStyle },
 	];
 </script>
 
 <Gantt {tasks} {links} {scales} />
 ```
 
-For further instructions, follow the deatailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
+For further instructions, follow the detailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
-### :computer: How to Modify
+### How to Modify
 
 Typically, you don't need to modify the code. However, if you wish to do so, follow these steps:
 
 1. Run `yarn` to install dependencies. Note that this project is a monorepo using `yarn` workspaces, so npm will not work
 2. Start the project in development mode with `yarn start`
 
-### :white_check_mark: Run Tests
+### Run Tests
 
 To run the test:
 

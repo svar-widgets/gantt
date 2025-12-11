@@ -1,7 +1,6 @@
 import { DataTree, tempID, TID } from "@svar-ui/lib-state";
 import type { ITask, IParsedTask, TSort } from "./types";
 import { sort } from "./helpers/sort";
-import { setSummaryDates } from "./tasks";
 
 export default class GanttDataTree extends DataTree<IParsedTask> {
 	private _sort: TSort[];
@@ -60,7 +59,7 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		return ids;
 	}
 
-	normalizeTask(task: Partial<ITask>, tasks?: Partial<ITask>[]): ITask {
+	normalizeTask(task: Partial<ITask>): ITask {
 		const id = task.id || tempID();
 		const parentId = task.parent || 0;
 		const text = task.text || "";
@@ -77,23 +76,31 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			type,
 			details,
 		};
+		if (task.segments) res.segments = task.segments.map(s => ({ ...s }));
 
-		if (res.type === "summary" && !(res.start && res.end)) {
-			const { start: pStart, end: pEnd } = setSummaryDates(
-				{ ...(res as IParsedTask) },
-				tasks
-			);
-			res.start = pStart;
-			res.end = pEnd;
-		}
+		if (task.segments) res.segments = task.segments.map(s => ({ ...s }));
 
 		return res;
 	}
 
-	getSummaryId(id: TID): TID | null {
+	getSummaryId(id: TID): TID | null;
+	getSummaryId(id: TID, all: true): TID[] | null;
+	getSummaryId(id: TID, all: boolean = false): TID | TID[] | null {
 		const task = this._pool.get(id);
 		if (!task.parent) return null;
 		const parent = this._pool.get(task.parent);
+		if (all) {
+			let currentId = id;
+			let parentId = this.getSummaryId(currentId);
+			const parents = [];
+
+			while (parentId) {
+				currentId = parentId as TID;
+				parents.push(parentId);
+				parentId = this.getSummaryId(currentId);
+			}
+			return parents as TID[];
+		}
 		if (parent.type === "summary") return parent.id;
 		return this.getSummaryId(parent.id);
 	}

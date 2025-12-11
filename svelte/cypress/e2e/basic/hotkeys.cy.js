@@ -3,36 +3,34 @@ context("Hotkeys", () => {
 		cy.visit("/index.html#/local-data");
 		cy.viewport(1300, 900);
 
-		cy.wxG("grid").trigger("keydown", { code: "arrowDown" });
+		cy.wxG("grid").keyDown("arrowDown");
 		cy.wxG("grid-item", 1).should("have.class", "wx-selected");
 
 		cy.wxG("grid-item", 1).click({ force: true, ctrlKey: true });
-		cy.wxG("grid").trigger("keydown", { code: "arrowUp" });
+		cy.wxG("grid").keyDown("arrowUp");
 		cy.wxG("grid-item", 5).should("have.class", "wx-selected");
 
 		cy.wxG("grid-item", 11).click({ force: true });
-		cy.wxG("grid").trigger("keydown", { code: "arrowDown" });
+		cy.wxG("grid").keyDown("arrowDown");
 		cy.wxG("grid-item", 12).should("have.class", "wx-selected");
 
-		for (let i = 0; i < 3; i++)
-			cy.wxG("grid").trigger("keydown", { code: "arrowDown" });
+		for (let i = 0; i < 3; i++) cy.wxG("grid").keyDown("arrowDown");
 		cy.wxG("grid-item", 21).should("have.class", "wx-selected");
 
-		cy.wxG("grid").trigger("keydown", { code: "arrowUp" });
+		cy.wxG("grid").keyDown("arrowUp");
 		cy.wxG("grid-item", 20).should("have.class", "wx-selected");
 
-		for (let i = 0; i < 3; i++)
-			cy.wxG("grid").trigger("keydown", { code: "arrowUp" });
+		for (let i = 0; i < 3; i++) cy.wxG("grid").keyDown("arrowUp");
 		cy.wxG("grid-item", 11).should("have.class", "wx-selected");
 
 		cy.wxG("grid-item", 11).click({ force: true });
 		cy.wxG("grid-item", 2).click({ force: true, shiftKey: true });
-		cy.wxG("grid").trigger("keydown", { code: "arrowDown" });
+		cy.wxG("grid").keyDown("arrowDown");
 		cy.wxG("grid-item", 20).should("have.class", "wx-selected");
 
 		cy.wxG("grid-item", 3).click({ force: true });
 		cy.wxG("grid-item", 22).click({ force: true, shiftKey: true });
-		cy.wxG("grid").trigger("keydown", { code: "arrowUp" });
+		cy.wxG("grid").keyDown("arrowUp");
 		cy.wxG("grid-item", 21).should("have.class", "wx-selected");
 
 		cy.shot("rows-selected-by-arrows");
@@ -81,12 +79,12 @@ context("Hotkeys", () => {
 		cy.viewport(1300, 900);
 
 		cy.wxG("grid-item", 10).click();
-		cy.wxG("grid").trigger("keydown", { code: "Backspace" });
+		cy.wxG("grid").keyDown("Backspace");
 		cy.shot("delete-task-by-backspace");
 
 		cy.wxG("grid-item", 12).click();
 		cy.wxG("grid-item", 2).click({ ctrlKey: true });
-		cy.wxG("grid").trigger("keydown", { code: "Backspace" });
+		cy.wxG("grid").keyDown("Backspace");
 		cy.shot("delete-tasks-by-backspace");
 
 		cy.wxG("grid-item", 30).click();
@@ -107,7 +105,7 @@ context("Hotkeys", () => {
 		cy.wxG("grid").trigger("keydown", { ctrlKey: true, code: "E" });
 		cy.shot("editor-opened-by-hotkey");
 
-		cy.wxG("grid").trigger("keydown", { code: "Escape" });
+		cy.wxG("grid").keyDown("Escape");
 		cy.shot("editor-closed-by-hotkey");
 
 		cy.wxG("grid-item", 10).click();
@@ -115,7 +113,7 @@ context("Hotkeys", () => {
 		cy.wxG("grid").trigger("keydown", { ctrlKey: true, code: "E" });
 		cy.shot("editor-opened-by-hotkey-multiselect");
 
-		cy.wxG("grid").trigger("keydown", { code: "Escape" });
+		cy.wxG("grid").keyDown("Escape");
 		cy.shot("editor-closed-by-hotkey-multiselect");
 	});
 });

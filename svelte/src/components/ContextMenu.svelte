@@ -3,26 +3,26 @@
 	import { ContextMenu } from "@svar-ui/svelte-menu";
 	import {
 		handleAction,
-		defaultMenuOptions,
+		getMenuOptions,
 		isHandledAction,
 	} from "@svar-ui/gantt-store";
 
-	import { locale } from "@svar-ui/lib-dom";
+	import { locale, locateID } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
 	import { en as coreEn } from "@svar-ui/core-locales";
 
 	let {
-		options = [...defaultMenuOptions],
+		options = [],
 		api = null,
 		resolver = null,
 		filter = null,
 		at = "point",
 		children,
 		onclick,
+		css,
 	} = $props();
 
 	let activeId = null;
-	let rState, rTaskTypes, rSelected, rTasks, rSelectedTasks;
 	// set locale
 	let l = getContext("wx-i18n");
 	if (!l) {
@@ -31,16 +31,23 @@
 	}
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
+	let state = $derived(api?.getReactiveState());
+	let { taskTypes, selected, _selected, splitTasks } = $derived(state || {});
+	const fullOptions = getMenuOptions({ splitTasks: true });
+
 	function getOptions() {
-		const convertOption = options.find(o => o.id === "convert-task");
+		const finalOptions = options.length
+			? options
+			: getMenuOptions({ splitTasks: $splitTasks });
+		const convertOption = finalOptions.find(o => o.id === "convert-task");
 		if (convertOption) {
 			convertOption.data = [];
-			$rTaskTypes.forEach(t => {
+			$taskTypes.forEach(t => {
 				convertOption.data.push(convertOption.dataFactory(t));
 			});
 		}
 
-		return applyLocale(options);
+		return applyLocale(finalOptions);
 	}
 
 	function applyLocale(options) {
@@ -61,10 +68,11 @@
 		}
 		if (task) {
 			//resolver runs earlier than $derived for cOptions
-			rSelected = api.getReactiveState().selected;
-			activeId = task.id;
+			const segmentIndex = locateID(ev.target, "data-segment");
+			if (segmentIndex !== null) activeId = { id: task.id, segmentIndex };
+			else activeId = task.id;
 
-			if (!$rSelected.includes(task.id)) {
+			if (!$selected.includes(task.id)) {
 				api.exec("select-task", { id: task.id });
 			}
 		}
@@ -75,44 +83,40 @@
 	function menuAction(ev) {
 		const action = ev.action;
 		if (action) {
-			const isAction = isHandledAction(defaultMenuOptions, action.id);
+			const isAction = isHandledAction(fullOptions, action.id);
 			if (isAction) handleAction(api, action.id, activeId, _);
 			onclick && onclick(ev);
 		}
 	}
 
 	function filterMenu(item, task) {
-		// for single selection from resolver selectedTasks are empty
+		// for single selection from resolver _selected are empty
 		// due to setAsyncState causing _selected to lag
-		const tasks = selectedTasks.length ? selectedTasks : task ? [task] : [];
+		const tasks = $_selected.length ? $_selected : task ? [task] : [];
 
-		let result = filter ? filter(item, task) : true;
-		if (item.check && result) {
-			const isDisabled = tasks.some(task => !item.check(task, $rTasks));
+		let result = filter ? tasks.every(task => filter(item, task)) : true;
 
-			item.css = isDisabled ? "wx-disabled" : "";
+		if (result) {
+			if (item.isHidden)
+				result = !tasks.some(task =>
+					item.isHidden(task, api.getState(), activeId)
+				);
+			if (item.isDisabled) {
+				const disabled = tasks.some(task =>
+					item.isDisabled(task, api.getState(), activeId)
+				);
+				item.disabled = disabled;
+			}
 		}
 		return result;
 	}
 
 	const cOptions = $derived.by(() => {
-		if (api) {
-			rState = api.getReactiveState();
-			rTaskTypes = rState.taskTypes;
-			rTasks = rState._tasks;
-			rSelected = rState.selected;
-			rSelectedTasks = rState._selected;
+		api.on("scroll-chart", () => menu.show());
+		api.on("drag-task", () => menu.show());
 
-			api.on("scroll-chart", () => menu.show());
-			api.on("drag-task", () => menu.show());
-
-			return getOptions();
-		}
-
-		return null;
+		return getOptions();
 	});
-
-	let selectedTasks = $derived($rSelectedTasks || []);
 
 	let menu = $state();
 	export function show(ev, obj) {
@@ -126,6 +130,7 @@
 	dataKey={"id"}
 	resolver={itemResolver}
 	onclick={menuAction}
+	{css}
 	{at}
 	bind:this={menu}
 />

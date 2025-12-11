@@ -4,7 +4,6 @@
 	import { hotkeys } from "@svar-ui/grid-store";
 
 	// views
-	import TimeScales from "./TimeScale.svelte";
 	import Grid from "./grid/Grid.svelte";
 	import Chart from "./chart/Chart.svelte";
 	import Resizer from "./Resizer.svelte";
@@ -27,8 +26,9 @@
 		_scales: rScales,
 		cellHeight: rCellHeight,
 		columns: rColumns,
-		scrollTop,
 		_scrollTask: rScrollTask,
+		scrollTop: rScrollTop,
+		undo,
 	} = api.getReactiveState();
 
 	// resize
@@ -100,6 +100,11 @@
 			if (ro) ro.disconnect();
 		};
 	});
+	$effect(() => {
+		fullWidth;
+		expandScale();
+	});
+
 	function expandScale() {
 		tick().then(() => {
 			if (ganttWidth > totalWidth) {
@@ -111,21 +116,22 @@
 
 	// scroll
 	let ganttDiv = $state();
-	function syncScroll() {
-		if (ganttDiv && $scrollTop !== ganttDiv.scrollTop)
-			ganttDiv.scrollTop = $scrollTop;
-	}
-
-	$effect(() => {
-		$scrollTop;
-		syncScroll();
-	});
 
 	function onScroll() {
 		api.exec("scroll-chart", {
 			top: ganttDiv.scrollTop,
 		});
 	}
+	//[FIXME] don't use this effect it in react
+	function syncScroll() {
+		if (ganttDiv && $rScrollTop !== ganttDiv.scrollTop)
+			ganttDiv.scrollTop = $rScrollTop;
+	}
+
+	$effect(() => {
+		$rScrollTop;
+		syncScroll();
+	});
 
 	// Scroll to task
 	function scrollToTask(value) {
@@ -179,6 +185,8 @@
 						"ctrl+x": true,
 						"ctrl+d": true,
 						backspace: true,
+						"ctrl+z": $undo,
+						"ctrl+y": $undo,
 					},
 					exec: ev => {
 						if (!ev.isInput) api.exec("hotkey", ev);
@@ -199,14 +207,11 @@
 						bind:value={gridWidth}
 						bind:display
 						{compactMode}
-						minValue="50"
-						maxValue="800"
+						containerWidth={ganttWidth}
 					/>
 				{/if}
 
 				<div class="wx-content" bind:this={chart}>
-					<TimeScales {highlightTime} />
-
 					<Chart
 						{readonly}
 						{fullWidth}

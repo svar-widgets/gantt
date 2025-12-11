@@ -2,6 +2,7 @@ context("Scale", () => {
 	it("scale works with local data", () => {
 		cy.visit("/index.html#/zoom/willow");
 		cy.viewport(1300, 900);
+		cy.wait(500);
 
 		let cellWidth = 100;
 		const zoomSteps = 6;
@@ -37,7 +38,7 @@ context("Scale", () => {
 			);
 
 			i < zoomSteps
-				? cy.get("@topRowScale").should("contain", "April 2024")
+				? cy.get("@topRowScale").should("contain", "April 2026")
 				: cy.get("@topRowScale").should("contain", "Apr 6");
 		}
 
@@ -57,7 +58,7 @@ context("Scale", () => {
 				`${cellWidth}px`
 			);
 
-			cy.get("@topRowScale").should("contain", "April 2024");
+			cy.get("@topRowScale").should("contain", "April 2026");
 		}
 
 		cy.shot("zoom-out works");

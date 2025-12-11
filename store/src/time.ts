@@ -34,10 +34,11 @@ import {
 	endOfWeek,
 	endOfDay,
 	endOfHour,
+	Day,
 } from "date-fns";
 
 import { units } from "./scales";
-import type { GanttScaleUnit } from "./types";
+import type { GanttScaleUnit, Calendar } from "./types";
 
 const diff: { [name: string]: { (start: Date, end: Date): number } } = {
 	year: differenceInYears,
@@ -157,18 +158,48 @@ const add: { [name: string]: { (start: number | Date, step: number): Date } } =
 		minute: addMinutes,
 	};
 
-export function getDiffer(unit: string): {
+export function getDiffer(
+	unit: string,
+	calendar?: Calendar,
+	_weekStart?: Day
+): {
 	(start: Date, end: Date, lengthUnit?: string, unitSize?: boolean): number;
 } {
+	if (calendar) {
+		if (unit === "day") {
+			return (start: Date, end: Date) => {
+				return calendar.getWorkingDays(end, start, true);
+			};
+		}
+		if (unit === "hour") {
+			return (start: Date, end: Date) => {
+				return calendar.getWorkingHours(end, start, true);
+			};
+		}
+	}
 	return (next, prev, lengthUnit, unitSize) => {
 		if (
 			!smallerCount[unit][lengthUnit] ||
 			typeof smallerCount[unit][lengthUnit] === "number" ||
-			isSameUnit(unit, next, prev)
+			isSameUnit(unit, next, prev, _weekStart)
 		) {
-			return innerDiff(unit, next, prev, lengthUnit, unitSize);
+			return innerDiff(
+				unit,
+				next,
+				prev,
+				lengthUnit,
+				unitSize,
+				_weekStart
+			);
 		} else {
-			return getLengthUnitDiff(next, prev, unit, lengthUnit, unitSize);
+			return getLengthUnitDiff(
+				next,
+				prev,
+				unit,
+				lengthUnit,
+				unitSize,
+				_weekStart
+			);
 		}
 	};
 }
@@ -178,15 +209,16 @@ function innerDiff(
 	next: Date,
 	prev: Date,
 	lengthUnit?: string,
-	unitSize?: boolean
+	unitSize?: boolean,
+	_weekStart?: Day
 ): number {
 	const minUnit = lengthUnit || unit;
 
 	let start = prev;
 	let end = next;
 	if (unitSize) {
-		start = getUnitStart(minUnit, prev);
-		end = getUnitStart(minUnit, next);
+		start = getUnitStart(minUnit, prev, _weekStart);
+		end = getUnitStart(minUnit, next, _weekStart);
 		if (end < next) end = getAdder(minUnit)(end, 1);
 	}
 
@@ -204,89 +236,120 @@ function getLengthUnitDiff(
 	start: Date,
 	unit: string,
 	lengthUnit: string,
-	unitSize?: boolean
+	unitSize?: boolean,
+	_weekStart?: Day
 ): number {
 	// if not start of unit
 	let lengthUnitsOfFirstUnit = 0;
-	const unitStart = getUnitStart(unit, start);
+	const unitStart = getUnitStart(unit, start, _weekStart);
 	if (start > unitStart) {
 		const nextUnitStart = add[unit](unitStart, 1);
 		lengthUnitsOfFirstUnit = innerDiff(
 			unit,
 			nextUnitStart,
 			start,
-			lengthUnit
+			lengthUnit,
+			undefined,
+			_weekStart
 		);
 		start = nextUnitStart;
 	}
 
 	// if lasts 1+ whole units
 	let units = 0;
-	if (!isSameUnit(unit, start, end)) {
-		units = innerDiff(unit, getUnitStart(unit, end), start); // int part
+	if (!isSameUnit(unit, start, end, _weekStart)) {
+		units = innerDiff(
+			unit,
+			getUnitStart(unit, end, _weekStart),
+			start,
+			undefined,
+			undefined,
+			_weekStart
+		); // int part
 		start = add[unit](start, units);
 	}
 
 	// all above plus lenUns of last unit if any
-	units += lengthUnitsOfFirstUnit + innerDiff(unit, end, start, lengthUnit);
+	units +=
+		lengthUnitsOfFirstUnit +
+		innerDiff(unit, end, start, lengthUnit, undefined, _weekStart);
 
 	if (!units && unitSize) {
 		// ugly hack for weeks and tasks that are between larger units
-		units = innerDiff(unit, end, start, lengthUnit, unitSize);
+		units = innerDiff(unit, end, start, lengthUnit, unitSize, _weekStart);
 	}
 
 	return units;
 }
 
-export function getAdder(unit: string): {
+export function getAdder(
+	unit: string,
+	calendar?: Calendar
+): {
 	(start: number | Date, step: number): Date;
 } {
+	if (calendar) {
+		if (unit === "day") {
+			return (date, amount) =>
+				calendar.addWorkingDays(date as Date, amount, true);
+		} else if (unit === "hour") {
+			return (date, amount) =>
+				calendar.addWorkingHours(date as Date, amount);
+		}
+	}
 	return add[unit];
 }
 
 const startHandlers: {
-	[name: string]: { (start: number | Date): Date };
+	[name: string]: (start: number | Date, _weekStart?: Day) => Date;
 } = {
 	year: startOfYear,
 	quarter: startOfQuarter,
 	month: startOfMonth,
-	week: (start: Date) => startOfWeek(start, { weekStartsOn: 1 }),
+	week: (start, _weekStart) =>
+		startOfWeek(start, { weekStartsOn: _weekStart }),
 	day: startOfDay,
 	hour: startOfHour,
 };
 
-export function getUnitStart(unit: string, date: Date): Date {
+export function getUnitStart(unit: string, date: Date, _weekStart?: Day): Date {
 	const handler = startHandlers[unit];
-	return handler ? handler(date) : new Date(date);
+	return handler ? handler(date, _weekStart) : new Date(date);
 }
 const endHandlers: {
-	[name: string]: { (end: number | Date): Date };
+	[name: string]: { (end: number | Date, _weekStart?: Day): Date };
 } = {
 	year: endOfYear,
 	quarter: endOfQuarter,
 	month: endOfMonth,
-	week: (end: Date) => endOfWeek(end, { weekStartsOn: 1 }),
+	week: (end: Date, _weekStart?: Day) =>
+		endOfWeek(end, { weekStartsOn: _weekStart }),
 	day: endOfDay,
 	hour: endOfHour,
 };
-export function getUnitEnd(unit: string, date: Date): Date {
+export function getUnitEnd(unit: string, date: Date, _weekStart?: Day): Date {
 	const handler = endHandlers[unit];
-	return handler ? handler(date) : new Date(date);
+	return handler ? handler(date, _weekStart) : new Date(date);
 }
 
 const sameHandlers: {
-	[unit: string]: { (a: Date, b: Date): boolean };
+	[unit: string]: { (a: Date, b: Date, _weekStart?: Day): boolean };
 } = {
 	year: isSameYear,
 	quarter: isSameQuarter,
 	month: isSameMonth,
-	week: (a, b) => isSameWeek(a, b, { weekStartsOn: 1 }),
+	week: (a, b, _weekStart) => isSameWeek(a, b, { weekStartsOn: _weekStart }),
 	day: isSameDay,
 };
 
-export function isSameUnit(unit: string, a: Date, b: Date): boolean {
+export function isSameUnit(
+	unit: string,
+	a: Date,
+	b: Date,
+	_weekStart?: Day
+): boolean {
 	const handler = sameHandlers[unit];
-	return handler ? handler(a, b) : false;
+	return handler ? handler(a, b, _weekStart) : false;
 }
 
 const handlers: { [name: string]: any } = {
@@ -326,6 +389,35 @@ export function registerScaleUnit(unit: string, config: GanttScaleUnit) {
 				smallerCount[parentUnit][unit] = config[key][parentUnit];
 		} else handlers[key][unit] = config[key as keyof GanttScaleUnit];
 	}
+}
+
+export function adjustToWorkingDay(
+	start: Date,
+	diff: number = 1,
+	calendar: Calendar
+): Date {
+	if (!calendar.isWorkingDay(start))
+		start =
+			diff > 0
+				? calendar.getNextWorkingDay(start)
+				: calendar.getPreviousWorkingDay(start);
+	return start;
+}
+
+export function shiftByWorkingDays(calendar: Calendar) {
+	return (date: Date, diff: number) => {
+		if (diff > 0) {
+			for (let i = 0; i < diff; i++) {
+				date = calendar.getNextWorkingDay(date);
+			}
+		}
+		if (diff < 0) {
+			for (let i = 0; i > diff; i--) {
+				date = calendar.getPreviousWorkingDay(date);
+			}
+		}
+		return date;
+	};
 }
 
 export { format };

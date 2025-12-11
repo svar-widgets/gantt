@@ -61,67 +61,49 @@
 		</div>
 		<div class="body">
 			<Field label="Name">
-				{#snippet children({ id })}
-					<Text
-						{id}
-						focus={true}
-						value={task.text}
-						onchange={ev => handleChange(ev, "text")}
-					/>
-				{/snippet}
+				<Text
+					focus={true}
+					value={task.text}
+					onchange={ev => handleChange(ev, "text")}
+				/>
 			</Field>
 
 			<Field label="Description">
-				{#snippet children({ id })}
-					<TextArea
-						{id}
-						value={task.details}
-						onchange={ev => handleChange(ev, "details")}
-					/>
-				{/snippet}
+				<TextArea
+					value={task.details}
+					onchange={ev => handleChange(ev, "details")}
+				/>
 			</Field>
 
 			{#if taskTypes.length > 1}
 				<Field label="Type">
-					{#snippet children({ id })}
-						<Select
-							{id}
-							value={task.type}
-							options={taskTypes}
-							onchange={ev => handleChange(ev, "type")}
-						/>
-					{/snippet}
+					<Select
+						value={task.type}
+						options={taskTypes}
+						onchange={ev => handleChange(ev, "type")}
+					/>
 				</Field>
 			{/if}
 
 			<Field label="Start date">
-				{#snippet children({ id })}
-					<DatePicker
-						{id}
-						value={task.start}
-						onchange={ev => handleChange(ev, "start")}
-					/>
-				{/snippet}
+				<DatePicker
+					value={task.start}
+					onchange={ev => handleChange(ev, "start")}
+				/>
 			</Field>
 
 			{#if task.type !== "milestone"}
 				<Field label="End date">
-					{#snippet children({ id })}
-						<DatePicker
-							{id}
-							value={task.end}
-							onchange={ev => handleChange(ev, "end")}
-						/>
-					{/snippet}
+					<DatePicker
+						value={task.end}
+						onchange={ev => handleChange(ev, "end")}
+					/>
 				</Field>
 				<Field label="Progress: {task.progress}%">
-					{#snippet children({ id })}
-						<Slider
-							{id}
-							value={task.progress}
-							onchange={ev => handleChange(ev, "progress")}
-						/>
-					{/snippet}
+					<Slider
+						value={task.progress}
+						onchange={ev => handleChange(ev, "progress")}
+					/>
 				</Field>
 			{/if}
 

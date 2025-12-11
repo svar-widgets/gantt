@@ -2,7 +2,7 @@
 	import { getContext, setContext } from "svelte";
 	import { Editor, registerEditorItem } from "@svar-ui/svelte-editor";
 	import { Locale } from "@svar-ui/svelte-core";
-	import { defaultEditorItems, normalizeDates } from "@svar-ui/gantt-store";
+	import { getEditorItems, prepareEditTask } from "@svar-ui/gantt-store";
 	import { dateToString, locale } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
 	import { en as coreEn } from "@svar-ui/core-locales";
@@ -33,7 +33,7 @@
 
 	let {
 		api,
-		items = defaultEditorItems,
+		items = [],
 		css = "",
 		layout = "default",
 		readonly = false,
@@ -42,6 +42,7 @@
 		topBar = true,
 		autoSave = true,
 		focus = false,
+		hotkeys = {},
 	} = $props();
 
 	let normalizedTopBar = $derived.by(() => {
@@ -92,37 +93,36 @@
 	let state = $derived(api?.getReactiveState());
 	let activeTask = $derived(state?._activeTask ?? null);
 	let taskId = $derived(state?.activeTask ?? null);
-	let unit = $derived(state?.durationUnit);
 	let unscheduledTasks = $derived(state?.unscheduledTasks);
+	let links = $derived(state?.links);
+	let segmentIndex = $derived(state?.splitTasks && $taskId?.segmentIndex);
+	let isSegment = $derived(segmentIndex || segmentIndex === 0);
+	let baseItems = $derived(
+		getEditorItems({ unscheduledTasks: $unscheduledTasks })
+	);
+	let undo = $derived(state?.undo);
 
-	let taskType = $state();
-	let taskUnscheduled = $state();
 	let linksActionsMap = $state({});
+	let inProgress = $state(null);
 
-	$effect(() => {
-		taskType = $activeTask?.type;
-		taskUnscheduled = $activeTask?.unscheduled;
-	});
-	$effect(() => {
-		$taskId;
-		linksActionsMap = {};
-	});
+	let editorValues = $state();
+	let editorErrors = $state(null);
 
 	let taskTypes = $derived(state?.taskTypes);
-	let milestone = $derived(taskType === "milestone");
-	let summary = $derived(taskType === "summary");
-
-	const editorItems = $derived.by(() => {
-		const eItems = prepareEditorItems(items, taskUnscheduled);
-		return filterEditorItems(eItems);
-	});
 
 	let task = $derived.by(() => {
-		if (readonly && $activeTask) {
-			let values = {};
-			editorItems.forEach(({ key, comp }) => {
+		if (!$activeTask) return null;
+		let data;
+		if (isSegment && $activeTask.segments)
+			data = { ...$activeTask.segments[segmentIndex] };
+		else data = { ...$activeTask };
+
+		if (readonly) {
+			// preserve parent to differentiate between segment and task
+			let values = { parent: data.parent };
+			baseItems.forEach(({ key, comp }) => {
 				if (comp !== "links") {
-					const value = $activeTask[key];
+					const value = data[key];
 					if (comp === "date" && value instanceof Date) {
 						values[key] = dateFormat(value);
 					} else if (comp === "slider" && key === "progress") {
@@ -134,12 +134,33 @@
 			});
 			return values;
 		}
-		return $activeTask ? { ...$activeTask } : null;
+		return data || null;
 	});
 
-	function prepareEditorItems(items, isUnscheduled) {
-		const dates = { start: 1, end: 1, duration: 1 };
+	$effect(() => {
+		editorValues = task;
+	});
 
+	$effect(() => {
+		$taskId;
+		linksActionsMap = {};
+		editorErrors = null;
+		inProgress = null;
+	});
+
+	const editorItems = $derived.by(() => {
+		let eItems = items.length ? items : baseItems;
+		eItems = prepareEditorItems(eItems, editorValues);
+		if (!editorValues) return eItems;
+		return eItems.filter(
+			item =>
+				!item.isHidden || !item.isHidden(editorValues, api.getState())
+		);
+	});
+
+	const editorKeys = $derived(editorItems.map(i => i.key));
+
+	function prepareEditorItems(items, task) {
 		return items.map(a => {
 			const item = { ...a };
 			if (a.config) item.config = { ...item.config };
@@ -149,7 +170,7 @@
 				item.onlinkschange = handleLinksChange;
 			}
 			if (item.comp === "select" && item.key === "type") {
-				let options = item.options ?? (taskTypes ? $taskTypes : []);
+				const options = item.options ?? (taskTypes ? $taskTypes : []);
 				item.options = options.map(t => ({
 					...t,
 					label: _(t.label),
@@ -164,42 +185,12 @@
 			if (item.config?.placeholder)
 				item.config.placeholder = _(item.config.placeholder);
 
-			if ($unscheduledTasks && dates[item.key]) {
-				if (isUnscheduled) {
+			if (task) {
+				if (item.isDisabled && item.isDisabled(task, api.getState())) {
 					item.disabled = true;
-				} else {
-					delete item.disabled;
-				}
+				} else delete item.disabled;
 			}
-
 			return item;
-		});
-	}
-
-	function filterEditorItems(items) {
-		return items.filter(({ comp, key, options }) => {
-			switch (comp) {
-				case "date": {
-					return (
-						(!milestone || (key !== "end" && key !== "base_end")) &&
-						!summary
-					);
-				}
-				case "select": {
-					return options.length > 1;
-				}
-				case "twostate": {
-					return $unscheduledTasks && !summary;
-				}
-				case "counter": {
-					return !summary && !milestone;
-				}
-				case "slider": {
-					return !milestone;
-				}
-				default:
-					return true;
-			}
 		});
 	}
 
@@ -209,13 +200,28 @@
 
 	function saveLinks() {
 		for (let link in linksActionsMap) {
-			const { action, data } = linksActionsMap[link];
-			api.exec(action, data);
+			if ($links.byId(link)) {
+				const { action, data } = linksActionsMap[link];
+				api.exec(action, data);
+			}
 		}
 	}
 
 	function deleteTask() {
-		api.exec("delete-task", { id: $taskId });
+		const id = $taskId.id || $taskId;
+		if (isSegment) {
+			if ($activeTask.segments) {
+				const segments = $activeTask.segments.filter(
+					(s, index) => index !== segmentIndex
+				);
+				api.exec("update-task", {
+					id,
+					task: { segments },
+				});
+			}
+		} else {
+			api.exec("delete-task", { id });
+		}
 	}
 
 	function hide() {
@@ -235,26 +241,40 @@
 	}
 
 	function handleChange(ev) {
-		let { update, key, value } = ev;
+		let { update, key, input } = ev;
 
-		ev.update = normalizeTask({ ...update }, key);
+		if (input) inProgress = true;
 
-		if (!autoSave) {
-			if (key === "type") taskType = value;
-			taskUnscheduled = update.unscheduled;
+		ev.update = normalizeTask({ ...update }, key, input);
+
+		if (!autoSave) editorValues = ev.update;
+		else if (!editorErrors && !input) {
+			const item = editorItems.find(i => i.key === key);
+			const v = update[key];
+			const isValid = !item.validation || item.validation(v);
+			if (isValid && (!item.required || v)) save(ev.update);
 		}
 	}
 
-	function normalizeTask(task, key) {
+	function normalizeTask(task, key, input) {
 		if ($unscheduledTasks && task.type === "summary")
 			task.unscheduled = false;
 
-		normalizeDates(task, $unit, true, key);
+		prepareEditTask(task, api.getState(), key);
+		if (!input) inProgress = false;
 		return task;
 	}
 
 	function handleSave(ev) {
-		let { values } = ev;
+		if (!autoSave) save(ev.values);
+	}
+
+	function handleValidation(check) {
+		// get all errors after onchange action
+		editorErrors = check.errors;
+	}
+
+	function save(values) {
 		values = {
 			...values,
 			unscheduled:
@@ -265,13 +285,38 @@
 		delete values.links;
 		delete values.data;
 
-		api.exec("update-task", {
-			id: $taskId,
+		if (
+			editorKeys.indexOf("duration") === -1 ||
+			(values.segments && !values.duration)
+		)
+			delete values.duration;
+
+		const data = {
+			id: $taskId.id || $taskId,
 			task: values,
-		});
+			...(isSegment && { segmentIndex }),
+		};
+		if (autoSave && inProgress) data.inProgress = inProgress;
+
+		api.exec("update-task", data);
 
 		if (!autoSave) saveLinks();
 	}
+
+	const defaultHotkeys = $derived(
+		$undo
+			? {
+					"ctrl+z": ev => {
+						ev.preventDefault();
+						api.exec("undo");
+					},
+					"ctrl+y": ev => {
+						ev.preventDefault();
+						api.exec("redo");
+					},
+				}
+			: {}
+	);
 </script>
 
 {#if task}
@@ -289,14 +334,16 @@
 			{focus}
 			onaction={handleAction}
 			onsave={handleSave}
+			onvalidation={handleValidation}
 			onchange={handleChange}
+			hotkeys={hotkeys && { ...defaultHotkeys, ...hotkeys }}
 		/>
 	</Locale>
 {/if}
 
 <style>
 	:global(.wx-sidearea .wx-gantt-editor) {
-		width: 400px;
+		width: 450px;
 	}
 	:global(.wx-sidearea .wx-gantt-editor.wx-full-screen) {
 		width: 100%;

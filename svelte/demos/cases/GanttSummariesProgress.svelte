@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, Editor, defaultEditorItems, ContextMenu } from "../../src";
+	import { Gantt, Editor, getEditorItems, ContextMenu } from "../../src";
 
 	let { skinSettings } = $props();
 
@@ -13,7 +13,7 @@
 
 	let tasks = data.tasks;
 	let gApi = $state();
-	let items = $state(defaultEditorItems);
+	let items = $state(getEditorItems());
 
 	/**
      * 
@@ -98,7 +98,7 @@
 		api.on("show-editor", ({ id }) => {
 			if (id) {
 				const type = api.getTask(id).type;
-				items = defaultEditorItems.map(ed => ({
+				items = getEditorItems().map(ed => ({
 					...ed,
 					...(ed.key == "progress" && {
 						config: { disabled: type === "summary" },

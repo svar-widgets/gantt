@@ -51,6 +51,7 @@ context("Grid", () => {
 		});
 		cy.visit("/index.html#/local-data");
 		cy.viewport(1300, 900);
+		cy.wait(500);
 		cy.shot("all-content-in-default-mode");
 
 		cy.wxG("grid-header").children().should("have.length", 4);

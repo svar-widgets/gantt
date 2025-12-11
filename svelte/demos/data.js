@@ -1,10 +1,6 @@
 import { format } from "date-fns";
 
 export const weekScaleTemplate = (a, b) => {
-	return `${a.getMonth()} - ${b.getMonth()}`;
-};
-
-export const weekScaleAltTemplate = (a, b) => {
 	return `${format(a, "MMM d")} - ${format(b, "MMM d")}`;
 };
 
@@ -14,17 +10,17 @@ export const dayStyle = a => {
 };
 
 export const complexScales = [
-	{ unit: "year", step: 1, format: "yyyy" },
-	{ unit: "month", step: 2, format: "MMMM yyy" },
-	{ unit: "week", step: 1, format: "w" },
-	{ unit: "day", step: 1, format: "d", css: dayStyle },
+	{ unit: "year", step: 1, format: "%Y" },
+	{ unit: "month", step: 2, format: "%F %Y" },
+	{ unit: "week", step: 1, format: "%w" },
+	{ unit: "day", step: 1, format: "%j", css: dayStyle },
 ];
 
 export const bigScales = [
-	{ unit: "year", step: 1, format: "yyyy" },
-	{ unit: "quarter", step: 1, format: "QQQQ yyyy" },
-	{ unit: "month", step: 1, format: "MMMM yyy" },
-	{ unit: "week", step: 1, format: weekScaleAltTemplate },
+	{ unit: "year", step: 1, format: "%Y" },
+	{ unit: "quarter", step: 1, format: "%Q %Y" },
+	{ unit: "month", step: 1, format: "%F %Y" },
+	{ unit: "week", step: 1, format: weekScaleTemplate },
 ];
 
 const generatedLinks = [
@@ -42,7 +38,7 @@ const generatedLinks = [
 	{ id: 4, source: 8, target: 6, type: "s2s" },
 ];
 
-function getTasks(prefix, maxSize, maxYears) {
+function getGeneratedTasks(prefix, maxSize, maxYears) {
 	maxYears = maxYears || 100;
 	maxSize = maxSize || 50;
 	prefix = prefix || "";
@@ -84,15 +80,15 @@ function getTasks(prefix, maxSize, maxYears) {
 }
 
 export function getGeneratedData(prefix, maxSize, maxYears) {
-	const tasks = getTasks(prefix, maxSize, maxYears);
+	const tasks = getGeneratedTasks(prefix, maxSize, maxYears);
 	return { tasks, generatedLinks, scales };
 }
 
 const tasks = [
 	{
 		id: 1,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 17),
+		base_start: new Date(2026, 3, 2),
+		base_end: new Date(2026, 3, 16),
 		text: "Project planning",
 		progress: 30,
 		parent: 0,
@@ -103,8 +99,8 @@ const tasks = [
 	},
 	{
 		id: 10,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 5),
+		start: new Date(2026, 3, 2),
+		duration: 3,
 		text: "Marketing analysis",
 		progress: 100,
 		parent: 1,
@@ -114,8 +110,8 @@ const tasks = [
 	},
 	{
 		id: 11,
-		start: new Date(2024, 3, 5),
-		end: new Date(2024, 3, 7),
+		start: new Date(2026, 3, 5),
+		duration: 2,
 		text: "Discussions",
 		progress: 100,
 		parent: 1,
@@ -125,8 +121,8 @@ const tasks = [
 	},
 	{
 		id: 110,
-		start: new Date(2024, 3, 6),
-		end: new Date(2024, 3, 9),
+		start: new Date(2026, 3, 6),
+		duration: 3,
 		text: "Initial design",
 		progress: 60,
 		parent: 11,
@@ -136,7 +132,7 @@ const tasks = [
 	},
 	{
 		id: 111,
-		start: new Date(2024, 3, 9),
+		start: new Date(2026, 3, 9),
 		text: "Presentation",
 		progress: 0,
 		parent: 11,
@@ -146,8 +142,8 @@ const tasks = [
 	},
 	{
 		id: 112,
-		start: new Date(2024, 3, 7),
-		end: new Date(2024, 3, 12),
+		start: new Date(2026, 3, 7),
+		duration: 5,
 		text: "Prototyping",
 		progress: 10,
 		parent: 11,
@@ -156,8 +152,8 @@ const tasks = [
 	},
 	{
 		id: 113,
-		start: new Date(2024, 3, 8),
-		end: new Date(2024, 3, 17),
+		start: new Date(2026, 3, 12),
+		duration: 4,
 		text: "User testing",
 		progress: 0,
 		parent: 11,
@@ -167,7 +163,7 @@ const tasks = [
 
 	{
 		id: 12,
-		start: new Date(2024, 3, 8),
+		start: new Date(2026, 3, 8),
 		text: "Approval of strategy",
 		progress: 100,
 		parent: 1,
@@ -177,8 +173,8 @@ const tasks = [
 
 	{
 		id: 2,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 12),
+		base_start: new Date(2026, 3, 2),
+		base_end: new Date(2026, 3, 12),
 		text: "Project management",
 		progress: 10,
 		parent: 0,
@@ -188,8 +184,8 @@ const tasks = [
 	},
 	{
 		id: 20,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 6),
+		start: new Date(2026, 3, 2),
+		duration: 4,
 		text: "Resource planning",
 		progress: 10,
 		parent: 2,
@@ -198,8 +194,8 @@ const tasks = [
 	},
 	{
 		id: 21,
-		start: new Date(2024, 3, 6),
-		end: new Date(2024, 3, 8),
+		start: new Date(2026, 3, 6),
+		duration: 2,
 		text: "Getting approval",
 		progress: 10,
 		parent: 2,
@@ -208,8 +204,8 @@ const tasks = [
 	},
 	{
 		id: 22,
-		start: new Date(2024, 3, 8),
-		end: new Date(2024, 3, 10),
+		start: new Date(2026, 3, 8),
+		duration: 2,
 		text: "Team introduction",
 		progress: 0,
 		parent: 2,
@@ -218,8 +214,8 @@ const tasks = [
 	},
 	{
 		id: 23,
-		start: new Date(2024, 3, 10),
-		end: new Date(2024, 3, 12),
+		start: new Date(2026, 3, 10),
+		duration: 2,
 		text: "Resource management",
 		progress: 10,
 		parent: 2,
@@ -229,8 +225,8 @@ const tasks = [
 
 	{
 		id: 3,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 4, 15),
+		base_start: new Date(2026, 3, 9),
+		base_end: new Date(2026, 3, 30),
 		text: "Development",
 		progress: 30,
 		parent: 0,
@@ -240,8 +236,8 @@ const tasks = [
 	},
 	{
 		id: 30,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 9),
+		duration: 6,
 		text: "Prototyping",
 		progress: 3,
 		parent: 3,
@@ -250,8 +246,8 @@ const tasks = [
 	},
 	{
 		id: 31,
-		start: new Date(2024, 3, 15),
-		end: new Date(2024, 3, 30),
+		start: new Date(2026, 3, 15),
+		duration: 8,
 		text: "Basic functionality",
 		progress: 0,
 		parent: 3,
@@ -260,8 +256,8 @@ const tasks = [
 	},
 	{
 		id: 32,
-		start: new Date(2024, 3, 30),
-		end: new Date(2024, 4, 15),
+		start: new Date(2026, 3, 23),
+		duration: 7,
 		text: "Finalizing MVA",
 		progress: 0,
 		parent: 3,
@@ -271,8 +267,8 @@ const tasks = [
 
 	{
 		id: 4,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 4, 25),
+		base_start: new Date(2026, 3, 9),
+		base_end: new Date(2026, 4, 3),
 		text: "Testing",
 		progress: 3,
 		parent: 0,
@@ -282,8 +278,8 @@ const tasks = [
 	},
 	{
 		id: 40,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 9),
+		duration: 4,
 		text: "Testing prototype",
 		progress: 3,
 		parent: 4,
@@ -292,8 +288,8 @@ const tasks = [
 	},
 	{
 		id: 41,
-		start: new Date(2024, 3, 15),
-		end: new Date(2024, 3, 30),
+		start: new Date(2026, 3, 15),
+		duration: 6,
 		text: "Testing basic features",
 		progress: 0,
 		parent: 4,
@@ -302,8 +298,8 @@ const tasks = [
 	},
 	{
 		id: 42,
-		start: new Date(2024, 3, 30),
-		end: new Date(2024, 4, 15),
+		start: new Date(2026, 3, 30),
+		duration: 3,
 		text: "Testing MVA",
 		progress: 0,
 		parent: 4,
@@ -312,8 +308,8 @@ const tasks = [
 	},
 	{
 		id: 43,
-		start: new Date(2024, 4, 15),
-		end: new Date(2024, 4, 25),
+		start: new Date(2026, 3, 23),
+		duration: 10,
 		text: "Beta testing",
 		progress: 0,
 		parent: 4,
@@ -325,7 +321,253 @@ const tasks = [
 
 	{
 		id: 5,
-		start: new Date(2024, 4, 25),
+		start: new Date(2026, 4, 3),
+		text: "Release 1.0.0",
+		progress: 0,
+		parent: 0,
+		type: "milestone",
+		details: "Official release of version 1.0.0 to the public.",
+		assigned: "",
+	},
+];
+
+const calendarTasks = [
+	{
+		id: 1,
+		//start: new Date(2026, 3, 2),
+		//end: new Date(2026, 3, 18),
+		text: "Project planning",
+		progress: 30,
+		parent: 0,
+		type: "summary",
+		open: true,
+		details: "Outline the project's scope and resources.",
+		assigned: "",
+	},
+	{
+		id: 10,
+		start: new Date(2026, 3, 2),
+		duration: 3,
+		text: "Marketing analysis",
+		progress: 100,
+		parent: 1,
+		type: "task",
+		details: "Analyze market trends and competitors.",
+		assigned: 1,
+	},
+	{
+		id: 11,
+		start: new Date(2026, 3, 7),
+		duration: 2,
+		text: "Discussions",
+		progress: 100,
+		parent: 1,
+		type: "task",
+		details: "Team discussions on project strategies.",
+		assigned: "",
+	},
+	{
+		id: 110,
+		start: new Date(2026, 3, 6),
+		duration: 4,
+		text: "Initial design",
+		progress: 60,
+		parent: 11,
+		type: "task",
+		details: "Draft initial design concepts.",
+		assigned: "",
+	},
+	{
+		id: 111,
+		start: new Date(2026, 3, 11),
+		text: "Presentation",
+		progress: 0,
+		parent: 11,
+		type: "milestone",
+		details: "Present initial designs to stakeholders.",
+		assigned: "",
+	},
+	{
+		id: 112,
+		start: new Date(2026, 3, 13),
+		duration: 3,
+		text: "Prototyping",
+		progress: 10,
+		parent: 11,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 113,
+		start: new Date(2026, 3, 16),
+		duration: 4,
+		text: "User testing",
+		progress: 0,
+		parent: 11,
+		type: "task",
+		assigned: "",
+	},
+
+	{
+		id: 12,
+		start: new Date(2026, 3, 9),
+		text: "Approval of strategy",
+		progress: 100,
+		parent: 1,
+		type: "milestone",
+		assigned: "",
+	},
+
+	{
+		id: 2,
+		//start: new Date(2026, 3, 2),
+		//end: new Date(2026, 3, 14),
+		text: "Project management",
+		progress: 10,
+		parent: 0,
+		type: "summary",
+		open: true,
+		assigned: 2,
+	},
+	{
+		id: 20,
+		start: new Date(2026, 3, 2),
+		duration: 3,
+		text: "Resource planning",
+		progress: 10,
+		parent: 2,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 21,
+		start: new Date(2026, 3, 8),
+		text: "Getting approval",
+		progress: 10,
+		parent: 2,
+		type: "milestone",
+		assigned: "",
+	},
+	{
+		id: 22,
+		start: new Date(2026, 3, 8),
+		duration: 2,
+		text: "Team introduction",
+		progress: 0,
+		parent: 2,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 23,
+		start: new Date(2026, 3, 10),
+		duration: 2,
+		text: "Resource management",
+		progress: 10,
+		parent: 2,
+		type: "task",
+		assigned: "",
+	},
+
+	{
+		id: 3,
+		//start: new Date(2026, 3, 9),
+		//end: new Date(2026, 4, 8),
+		text: "Development",
+		progress: 30,
+		parent: 0,
+		type: "summary",
+		open: true,
+		assigned: "",
+	},
+	{
+		id: 30,
+		start: new Date(2026, 3, 13),
+		duration: 4,
+		text: "Prototyping",
+		progress: 3,
+		parent: 3,
+		type: "task",
+		assigned: 3,
+	},
+	{
+		id: 31,
+		start: new Date(2026, 3, 17),
+		duration: 8,
+		text: "Basic functionality",
+		progress: 0,
+		parent: 3,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 32,
+		start: new Date(2026, 3, 29),
+		duration: 7,
+		text: "Finalizing MVA",
+		progress: 0,
+		parent: 3,
+		type: "task",
+		assigned: "",
+	},
+
+	{
+		id: 4,
+		//start: new Date(2026, 3, 9),
+		//end: new Date(2026, 4, 13),
+		text: "Testing",
+		progress: 3,
+		parent: 0,
+		type: "summary",
+		open: true,
+		assigned: "",
+	},
+	{
+		id: 40,
+		start: new Date(2026, 3, 17),
+		duration: 4,
+		text: "Testing prototype",
+		progress: 3,
+		parent: 4,
+		type: "task",
+		assigned: 4,
+	},
+	{
+		id: 41,
+		start: new Date(2026, 3, 29),
+		duration: 6,
+		text: "Testing basic features",
+		progress: 0,
+		parent: 4,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 42,
+		start: new Date(2026, 4, 8),
+		duration: 3,
+		text: "Testing MVA",
+		progress: 0,
+		parent: 4,
+		type: "task",
+		assigned: "",
+	},
+	{
+		id: 43,
+		start: new Date(2026, 4, 13),
+		duration: 3,
+		text: "Beta testing",
+		progress: 0,
+		parent: 4,
+		type: "task",
+		details:
+			"Comprehensive testing of the beta version before the final release.",
+		assigned: "",
+	},
+
+	{
+		id: 5,
+		start: new Date(2026, 4, 18),
 		text: "Release 1.0.0",
 		progress: 0,
 		parent: 0,
@@ -377,11 +619,35 @@ const links = [
 		target: 5,
 		type: "e2s",
 	},
+	{
+		id: 8,
+		source: 112,
+		target: 113,
+		type: "e2s",
+	},
+	{
+		id: 9,
+		source: 30,
+		target: 31,
+		type: "e2s",
+	},
+	{
+		id: 10,
+		source: 31,
+		target: 32,
+		type: "e2s",
+	},
+	{
+		id: 11,
+		source: 32,
+		target: 42,
+		type: "e2s",
+	},
 ];
 
 const scales = [
-	{ unit: "month", step: 1, format: "MMMM yyy" },
-	{ unit: "day", step: 1, format: "d", css: dayStyle },
+	{ unit: "month", step: 1, format: "%F %Y" },
+	{ unit: "day", step: 1, format: "%j", css: dayStyle },
 ];
 
 const tasksHour = [
@@ -525,8 +791,253 @@ const linksHour = [
 ];
 
 const scalesHour = [
-	{ unit: "day", step: 1, format: "MMM d" },
-	{ unit: "hour", step: 1, format: "HH:mm" },
+	{ unit: "day", step: 1, format: "%M %j" },
+	{ unit: "hour", step: 1, format: "%H:%i" },
+];
+
+const critTasks = [
+	{
+		id: 10,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 5),
+		text: "Marketing analysis",
+		progress: 100,
+		type: "task",
+		details: "Analyze market trends and competitors.",
+	},
+	{
+		id: 11,
+		start: new Date(2026, 3, 5),
+		end: new Date(2026, 3, 7),
+		text: "Discussions",
+		progress: 100,
+		type: "task",
+		open: true,
+		details: "Team discussions on project strategies.",
+	},
+	{
+		id: 110,
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 9),
+		text: "Initial design",
+		progress: 60,
+		parent: 11,
+		type: "task",
+		details: "Draft initial design concepts.",
+	},
+	{
+		id: 111,
+		start: new Date(2026, 3, 9),
+		text: "Presentation",
+		progress: 0,
+		parent: 11,
+		type: "milestone",
+		details: "Present initial designs to stakeholders.",
+	},
+	{
+		id: 112,
+		start: new Date(2026, 3, 7),
+		end: new Date(2026, 3, 12),
+		text: "Prototyping",
+		progress: 10,
+		parent: 11,
+		type: "task",
+	},
+	{
+		id: 113,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 10),
+		text: "User testing",
+		progress: 0,
+		parent: 11,
+		type: "task",
+	},
+
+	{
+		id: 12,
+		start: new Date(2026, 3, 8),
+		text: "Approval of strategy",
+		progress: 100,
+		type: "milestone",
+	},
+	{
+		id: 2,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 12),
+		text: "Project management 1",
+		progress: 10,
+		parent: 0,
+		type: "summary",
+		open: true,
+	},
+	{
+		id: 20,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 6),
+		text: "Resource planning",
+		progress: 10,
+		type: "task",
+		parent: 2,
+	},
+	{
+		id: 21,
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 8),
+		text: "Getting approval",
+		progress: 10,
+		type: "task",
+		parent: 2,
+	},
+	{
+		id: 22,
+		start: new Date(2026, 3, 8),
+		end: new Date(2026, 3, 10),
+		text: "Team introduction",
+		progress: 0,
+		type: "task",
+		parent: 2,
+	},
+	{
+		id: 23,
+		start: new Date(2026, 3, 10),
+		end: new Date(2026, 3, 12),
+		text: "Resource management 1",
+		progress: 10,
+		type: "task",
+		parent: 2,
+	},
+	{
+		id: 24,
+		start: new Date(2026, 3, 12),
+		text: "Phase 1",
+		progress: 100,
+		type: "milestone",
+		parent: 2,
+	},
+	{
+		id: 3,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 12),
+		text: "Project management 2",
+		progress: 10,
+		parent: 0,
+		type: "summary",
+		open: true,
+	},
+	{
+		id: 30,
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 6),
+		text: "Resource planning",
+		progress: 10,
+		type: "task",
+		parent: 3,
+	},
+	{
+		id: 31,
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 8),
+		text: "Getting approval",
+		progress: 10,
+		type: "task",
+		parent: 3,
+	},
+	{
+		id: 32,
+		start: new Date(2026, 3, 8),
+		end: new Date(2026, 3, 10),
+		text: "Team introduction",
+		progress: 0,
+		type: "task",
+		parent: 3,
+	},
+	{
+		id: 33,
+		start: new Date(2026, 3, 10),
+		end: new Date(2026, 3, 12),
+		text: "Resource management 1",
+		progress: 10,
+		type: "task",
+		parent: 3,
+	},
+	{
+		id: 34,
+		start: new Date(2026, 3, 10),
+		end: new Date(2026, 3, 12),
+		text: "Resource management 2",
+		progress: 10,
+		type: "task",
+		parent: 3,
+	},
+];
+
+const critLinks = [
+	{
+		id: 1,
+		source: 10,
+		target: 11,
+		type: "e2s",
+	},
+	{
+		id: 2,
+		source: 11,
+		target: 12,
+		type: "e2s",
+	},
+	{
+		id: 3,
+		source: 110,
+		target: 111,
+		type: "e2s",
+	},
+	{
+		id: 4,
+		source: 20,
+		target: 21,
+		type: "e2s",
+	},
+	{
+		id: 5,
+		source: 21,
+		target: 22,
+		type: "e2s",
+	},
+	{
+		id: 6,
+		source: 22,
+		target: 23,
+		type: "e2s",
+	},
+	{
+		id: 7,
+		source: 23,
+		target: 24,
+		type: "e2s",
+	},
+	{
+		id: 8,
+		source: 30,
+		target: 31,
+		type: "e2s",
+	},
+	{
+		id: 9,
+		source: 31,
+		target: 32,
+		type: "e2s",
+	},
+	{
+		id: 10,
+		source: 32,
+		target: 33,
+		type: "e2s",
+	},
+	{
+		id: 11,
+		source: 32,
+		target: 34,
+		type: "e2s",
+	},
 ];
 
 export const users = [
@@ -536,25 +1047,55 @@ export const users = [
 	{ id: 4, label: "John Doe" },
 ];
 
-export function getData(name) {
-	name = name || "day";
-	return datasets[name];
+function addDays(d, n) {
+	return new Date(new Date(d).setDate(d.getDate() + n));
+}
+
+export function getData(name, config) {
+	const data = datasets[name || "day"];
+
+	if (config?.baselines) {
+		data.tasks = data.tasks.map(t => {
+			if (!t.base_start) {
+				t.base_start = t.start;
+				t.base_end = t.end;
+				t.base_duration = t.duration;
+			}
+			return t;
+		});
+	}
+	if (config?.splitTasks) {
+		const t = data.tasks.find(t => t.id === 20);
+		let { start } = t;
+
+		t.segments = [
+			{
+				start,
+				duration: 1,
+				text: "Part A",
+			},
+			{
+				start: addDays(start, name === "calendar" ? 4 : 2),
+				duration: 2,
+				text: "Part B",
+			},
+		];
+	}
+	if (config?.unscheduledTasks) {
+		const t = data.tasks.find(t => t.id === 22);
+		t.unscheduled = true;
+		t.end = new Date(2026, 3, 10);
+	}
+
+	return data;
 }
 
 const datasets = {
 	day: { tasks, links, scales },
 	hour: { tasks: tasksHour, links: linksHour, scales: scalesHour },
+	critical: { tasks: critTasks, links: critLinks, scales },
+	calendar: { tasks: calendarTasks, links, scales },
 };
-
-export function getBaselinesData() {
-	const t = tasks.map(t => ({
-		...t,
-		base_start: t.start,
-		base_end: t.end,
-	}));
-
-	return { tasks: t, links, scales };
-}
 
 export const taskTypes = [
 	{ id: "task", label: "Task" },
@@ -587,51 +1128,51 @@ export const zoomConfig = {
 		{
 			minCellWidth: 200,
 			maxCellWidth: 400,
-			scales: [{ unit: "year", step: 1, format: "yyyy" }],
+			scales: [{ unit: "year", step: 1, format: "%Y" }],
 		},
 		{
 			minCellWidth: 150,
 			maxCellWidth: 400,
 			scales: [
-				{ unit: "year", step: 1, format: "yyyy" },
-				{ unit: "quarter", step: 1, format: "QQQQ" },
+				{ unit: "year", step: 1, format: "%Y" },
+				{ unit: "quarter", step: 1, format: "%Q" },
 			],
 		},
 		{
 			minCellWidth: 250,
 			maxCellWidth: 350,
 			scales: [
-				{ unit: "quarter", step: 1, format: "QQQQ" },
-				{ unit: "month", step: 1, format: "MMMM yyy" },
+				{ unit: "quarter", step: 1, format: "%Q" },
+				{ unit: "month", step: 1, format: "%F %Y" },
 			],
 		},
 		{
 			minCellWidth: 100,
 			scales: [
-				{ unit: "month", step: 1, format: "MMMM yyy" },
-				{ unit: "week", step: 1, format: "'week' w" },
+				{ unit: "month", step: 1, format: "%F %Y" },
+				{ unit: "week", step: 1, format: "Week %W" },
 			],
 		},
 		{
 			maxCellWidth: 200,
 			scales: [
-				{ unit: "month", step: 1, format: "MMMM yyy" },
-				{ unit: "day", step: 1, format: "d", css: dayStyle },
+				{ unit: "month", step: 1, format: "%F %Y" },
+				{ unit: "day", step: 1, format: "%j", css: dayStyle },
 			],
 		},
 		{
 			minCellWidth: 25,
 			maxCellWidth: 100,
 			scales: [
-				{ unit: "day", step: 1, format: "MMM d", css: dayStyle },
+				{ unit: "day", step: 1, format: "%M %j", css: dayStyle },
 				{ unit: "hour", step: 6, format: hoursTemplate },
 			],
 		},
 		{
 			maxCellWidth: 120,
 			scales: [
-				{ unit: "day", step: 1, format: "MMM d", css: dayStyle },
-				{ unit: "hour", step: 1, format: "HH:mm" },
+				{ unit: "day", step: 1, format: "%M %j", css: dayStyle },
+				{ unit: "hour", step: 1, format: "%H:%i" },
 			],
 		},
 	],

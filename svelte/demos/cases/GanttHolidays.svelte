@@ -7,11 +7,10 @@
 	const data = getData();
 
 	const scales = [
-		{ unit: "year", step: 1, format: "yyyy" },
-		{ unit: "month", step: 2, format: "MMMM yyy" },
-		{ unit: "week", step: 1, format: "wo" },
-		{ unit: "day", step: 1, format: "d, EEEE" /* , css: dayStyle */ },
-		{ unit: "hour", step: 1, format: "HH:mm" },
+		{ unit: "year", step: 1, format: "%Y" },
+		{ unit: "month", step: 2, format: "%F %Y" },
+		{ unit: "week", step: 1, format: "Week %W" },
+		{ unit: "day", step: 1, format: "%j, %l" },
 	];
 
 	function isDayOff(date) {

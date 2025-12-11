@@ -1,6 +1,7 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, Fullscreen } from "../../src/";
+	import { Gantt } from "../../src/";
+	import { Fullscreen } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 	const data = getData();

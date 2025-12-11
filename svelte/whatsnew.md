@@ -1,3 +1,38 @@
+## 2.4.0
+
+### New features
+
+-   Ability to remove links from Chart UI
+-   Locale-based scale formatting
+
+### Pro edition features
+
+-   Basic auto scheduling
+-   Handling of invalid links
+-   Critical path calculation
+-   Global calendar to define working schedule
+-   Unscheduled tasks
+-   Vertical markers on timeline
+-   Baselines
+-   Split tasks
+-   Undo/redo
+
+### Updates
+
+-   Resizer line can be dragged to expand current display mode
+
+### Fixes
+
+-   Summary task size is sometimes incorrect while dragging
+-   Excess reactivity triggers during zooming
+-   ContextMenu css cannot be set
+-   Editing tasks breakes dynamic width of narrow scales cells
+
+### Breaking changes
+
+-   Scales format string is changed from date-fns to SVAR locale
+-   Fullscreen helper is moved to SVAR Svelte Core
+
 ## 2.3.0
 
 ### New features

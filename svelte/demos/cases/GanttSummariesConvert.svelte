@@ -4,7 +4,7 @@
 		Gantt,
 		ContextMenu,
 		Editor,
-		defaultEditorItems,
+		getEditorItems,
 		defaultTaskTypes,
 	} from "../../src/";
 
@@ -65,7 +65,7 @@
 	const items = $derived.by(() => {
 		const task = activeTaskId ? gApi.getTask($activeTaskId) : null;
 		if (task) {
-			return defaultEditorItems.map(item => {
+			return getEditorItems().map(item => {
 				item = { ...item };
 				if (item.comp === "select" && item.key === "type") {
 					item.options =

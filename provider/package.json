@@ -1,6 +1,7 @@
 {
 	"name": "@svar-ui/gantt-data-provider",
-	"version": "2.3.0",
+	"version": "2.4.0",
+	"description": "Backend integration helper for SVAR Gantt component",
 	"type": "module",
 	"main": "dist/index.js",
 	"module": "dist/index.js",
@@ -14,7 +15,8 @@
 		"coverage": "vitest --run --coverage"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"license.txt"
 	],
 	"dependencies": {
 		"@svar-ui/lib-data-provider": "1.7.1"

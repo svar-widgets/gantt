@@ -1,11 +1,17 @@
 <script>
-	import { getContext } from "svelte";
-	import { Field, Combo } from "@svar-ui/svelte-core";
+	import { getContext, setContext } from "svelte";
+	import { Field, Combo, Text } from "@svar-ui/svelte-core";
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	let { api, autoSave, onlinkschange: onchange } = $props();
 
-	const { activeTask, _links: links } = api.getReactiveState();
+	const {
+		activeTask,
+		_activeTask,
+		_links: links,
+		schedule,
+		unscheduledTasks,
+	} = api.getReactiveState();
 
 	let linksData = $state();
 	$effect(() => {
@@ -53,19 +59,18 @@
 		}
 	}
 
-	function handleChange(ev, id) {
-		const value = ev.value;
+	function handleChange(id, update) {
 		if (autoSave) {
 			api.exec("update-link", {
 				id,
-				link: { type: value },
+				link: update,
 			});
 		} else {
 			linksData = linksData.map(group => ({
 				...group,
 				data: group.data.map(item =>
 					item.link.id === id
-						? { ...item, link: { ...item.link, type: value } }
+						? { ...item, link: { ...item.link, ...update } }
 						: item
 				),
 			}));
@@ -75,7 +80,7 @@
 					action: "update-link",
 					data: {
 						id,
-						link: { type: value },
+						link: update,
 					},
 				});
 		}
@@ -88,6 +93,7 @@
 			<Field label={links.title} position="top">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+				{setContext("wx-input-id", null)}
 				<table>
 					<tbody>
 						{#each links.data as obj}
@@ -97,15 +103,33 @@
 										{obj.task.text || ""}
 									</div>
 								</td>
-
+								{#if $schedule?.auto && obj.link.type == "e2s"}
+									<td class="wx-cell wx-link-lag">
+										<Text
+											type="number"
+											placeholder={_("Lag")}
+											value={obj.link.lag}
+											disabled={$unscheduledTasks &&
+												$_activeTask.unscheduled}
+											onchange={ev => {
+												if (!ev.input)
+													handleChange(obj.link.id, {
+														lag: ev.value,
+													});
+											}}
+										/>
+									</td>
+								{/if}
 								<td class="wx-cell">
 									<div class="wx-wrapper">
 										<Combo
 											value={obj.link.type}
 											placeholder={_("Select link type")}
 											options={list}
-											onchange={e =>
-												handleChange(e, obj.link.id)}
+											onchange={ev =>
+												handleChange(obj.link.id, {
+													type: ev.value,
+												})}
 										>
 											{#snippet children({ option })}
 												{option.label}
@@ -150,6 +174,9 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+	}
+	.wx-link-lag {
+		width: 60px;
 	}
 
 	.wx-wrapper {

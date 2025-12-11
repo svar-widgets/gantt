@@ -2,17 +2,13 @@ import type {
 	IScaleConfig,
 	GanttScaleData,
 	IScaleLevel,
+	IUnitFormats,
 	IZoomConfig,
 	TLengthUnit,
 } from "./types";
-import {
-	getUnitStart,
-	getAdder,
-	getDiffer,
-	format,
-	getSmallerUnitCount,
-} from "./time";
+import { getUnitStart, getAdder, getDiffer, getSmallerUnitCount } from "./time";
 import type GanttDataTree from "./GanttDataTree";
+import { Day } from "date-fns";
 
 export function getMinUnit(scales: IScaleConfig[]): IScaleConfig {
 	const start = new Date();
@@ -22,14 +18,6 @@ export function getMinUnit(scales: IScaleConfig[]): IScaleConfig {
 }
 
 export const units = ["year", "quarter", "month", "week", "day", "hour"];
-const unitFormats: { [name: string]: IScaleConfig["format"] } = {
-	year: "yyyy",
-	quarter: "QQQ",
-	month: "MMM",
-	week: "w",
-	day: "MMM d",
-	hour: "HH:mm",
-};
 const defaultMinCellWidth = 50;
 const defaultMaxCellWidth = 300;
 
@@ -76,14 +64,15 @@ export function resetScales(
 	lengthUnit: TLengthUnit,
 	width: number,
 	height: number,
+	_weekStart: Day,
 	scales: IScaleConfig[]
 ): GanttScaleData | null {
 	const minUnit = getMinUnit(scales).unit;
-	const diff = getDiffer(minUnit);
+	const diff = getDiffer(minUnit, undefined, _weekStart);
 	const numOfMinUnits = diff(end, start, "", true);
 
-	const tempEnd = getUnitStart(minUnit, end);
-	start = getUnitStart(minUnit, start);
+	const tempEnd = getUnitStart(minUnit, end, _weekStart);
+	start = getUnitStart(minUnit, start, _weekStart);
 	end = tempEnd < end ? getAdder(minUnit)(tempEnd, 1) : tempEnd;
 
 	const fullWidth = numOfMinUnits * width;
@@ -92,23 +81,19 @@ export function resetScales(
 		const cells = [];
 		const add = getAdder(line.unit);
 
-		let date = getUnitStart(line.unit, start);
+		let date = getUnitStart(line.unit, start, _weekStart);
 		while (date < end) {
-			let next = add(date, line.step);
+			const next = add(date, line.step);
 
-			if (date < start) date = start;
-			if (next > end) next = end;
+			const cellStart = date < start ? start : date;
+			const cellEnd = next > end ? end : next;
 
-			const cellWidth = diff(next, date, "", true) * width;
+			const cellWidth = diff(cellEnd, cellStart, "", true) * width;
 
 			const value =
 				typeof line.format === "function"
 					? line.format(date, next)
-					: format(date, line.format, {
-							firstWeekContainsDate: 4,
-							weekStartsOn: 1,
-						});
-
+					: line.format;
 			let css = "";
 			if (line.css)
 				css +=
@@ -117,7 +102,7 @@ export function resetScales(
 			cells.push({
 				width: cellWidth,
 				value,
-				date,
+				date: cellStart,
 				css,
 				unit: line.unit,
 			});
@@ -151,9 +136,10 @@ export function resetScales(
 
 export function normalizeZoom(
 	zoom: boolean | IZoomConfig,
+	unitFormats: IUnitFormats,
 	scales: IScaleConfig[],
 	cellWidth: number
-): { _zoom: IZoomConfig; scales: IScaleConfig[]; cellWidth: number } {
+): { zoom: IZoomConfig; scales: IScaleConfig[]; cellWidth: number } {
 	const _zoom: any = typeof zoom === "boolean" ? {} : zoom;
 	const mainScaleLevel = units.indexOf(getMinUnit(scales).unit);
 	if (typeof _zoom.level == "undefined") {
@@ -185,6 +171,7 @@ export function normalizeZoom(
 			defaultMaxCellWidth
 		);
 
+		// adds a format from a custom unit config to the format collection to be used during zoom
 		scales.forEach(s => {
 			if (s.format && !unitFormats[s.unit])
 				unitFormats[s.unit] = s.format;
@@ -239,7 +226,7 @@ export function normalizeZoom(
 	);
 
 	return {
-		_zoom,
+		zoom: _zoom,
 		scales: currentLevel.scales,
 		cellWidth: adjustedCellWidth,
 	};

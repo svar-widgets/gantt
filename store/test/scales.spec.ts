@@ -29,6 +29,7 @@ describe("scales", () => {
 			"day",
 			cellWidth,
 			scaleHeight,
+			1,
 			scales
 		) as GanttScaleData;
 

@@ -1,5 +1,4 @@
 import type { IGanttColumn, ITask } from "./types";
-import { format } from "./time";
 
 const dateFields = ["start", "end", "duration"];
 
@@ -47,19 +46,6 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 		const flexgrow = !isAddTaskColumn && a.flexgrow ? a.flexgrow : null;
 		const width = flexgrow ? 1 : a.width || (isAddTaskColumn ? 50 : 120);
 
-		let template = a.template;
-		if (!template) {
-			switch (a.id) {
-				case "start":
-					template = (b: Date) => format(b, "dd-MM-yyyy");
-					break;
-				case "end":
-					template = (b: Date | null) =>
-						b ? format(b, "dd-MM-yyyy") : "-";
-					break;
-			}
-		}
-
 		const editor = a.editor && processEditor(a.id, a.editor);
 
 		return {
@@ -67,7 +53,8 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 			align,
 			header: a.header,
 			id: a.id,
-			template,
+			template: a.template,
+			_template: a._template,
 			...(flexgrow && { flexgrow }),
 			cell: a.cell,
 			resize: a.resize ?? true,

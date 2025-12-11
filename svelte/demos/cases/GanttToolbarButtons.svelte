@@ -1,7 +1,7 @@
 <script>
 	import { getContext } from "svelte";
 	import { getData } from "../data";
-	import { Gantt, Toolbar, Editor, defaultToolbarButtons } from "../../src/";
+	import { Gantt, Toolbar, Editor, getToolbarButtons } from "../../src/";
 
 	const helpers = getContext("wx-helpers");
 	let { skinSettings } = $props();
@@ -10,7 +10,7 @@
 	const data = getData();
 
 	//remove indentation buttons
-	const items = defaultToolbarButtons.filter(b => {
+	const items = getToolbarButtons().filter(b => {
 		return b.id?.indexOf("indent") === -1;
 	});
 

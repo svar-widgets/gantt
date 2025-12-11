@@ -3,7 +3,7 @@
 	import {
 		Gantt,
 		Editor,
-		defaultEditorItems,
+		getEditorItems,
 		registerEditorItem,
 	} from "../../src";
 	import { Tasklist } from "@svar-ui/svelte-tasklist";
@@ -71,7 +71,7 @@
 	let api = $state();
 
 	const keys = ["text", "details"];
-	const items = defaultEditorItems.filter(op => keys.indexOf(op.key) >= 0);
+	const items = getEditorItems().filter(op => keys.indexOf(op.key) >= 0);
 	items.push({
 		key: "tasks",
 		comp: "tasks",

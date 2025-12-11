@@ -7,8 +7,8 @@
 	let { skinSettings } = $props();
 
 	const data = getData();
-	let start = $state(new Date(2024, 3, 5)),
-		end = $state(new Date(2024, 4, 1)),
+	let start = $state(new Date(2026, 3, 5)),
+		end = $state(new Date(2026, 4, 1)),
 		autoScale = $state(false);
 </script>
 
@@ -16,21 +16,15 @@
 	<Locale>
 		<div class="bar">
 			<Field label="Start" position="left">
-				{#snippet children({ id })}
-					<DatePicker bind:value={start} {id} />
-				{/snippet}
+				<DatePicker bind:value={start} />
 			</Field>
 			<Field label="End" position="left">
-				{#snippet children({ id })}
-					<DatePicker bind:value={end} {id} />
-				{/snippet}
+				<DatePicker bind:value={end} />
 			</Field>
 			<Field label="autoScale" position="left">
-				{#snippet children({ id })}
-					<div class="input">
-						<Switch bind:value={autoScale} {id} />
-					</div>
-				{/snippet}
+				<div class="input">
+					<Switch bind:value={autoScale} />
+				</div>
 			</Field>
 		</div>
 	</Locale>

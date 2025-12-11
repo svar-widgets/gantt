@@ -12,7 +12,7 @@
 	tasks={data.tasks}
 	links={data.links}
 	scales={complexScales}
-	start={new Date(2024, 3, 1)}
-	end={new Date(2024, 4, 12)}
+	start={new Date(2026, 3, 1)}
+	end={new Date(2026, 4, 12)}
 	cellWidth={60}
 />

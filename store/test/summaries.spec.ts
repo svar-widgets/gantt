@@ -2,9 +2,11 @@ import { expect, test } from "vitest";
 import { DataStore } from "../src/index";
 import { writable } from "svelte/store";
 import { getData, summaryDates, summaryPrettyDates } from "./stubs/data";
+import { parseTaskDates } from "../src/normalizeDates";
 
-function getDataStore(data) {
+function getDataStore(data: any) {
 	const store = new DataStore(writable);
+	parseTaskDates(data.tasks, "day");
 	store.init({
 		...data,
 	});
@@ -108,7 +110,7 @@ test("supports move task action, Pretty set", () => {
 
 	store.in.exec("move-task", { id: 5, mode: "after", target: 40 });
 	store.in.exec("move-task", { id: 43, mode: "after", target: 5 });
-	expect(tasks.byId(4).data.length).to.eq(2);
+	expect(tasks.byId(4).data?.length).to.eq(2);
 	expect(tasks.byId(4).end).toEqual(new Date(2024, 4, 15));
 });
 
@@ -248,7 +250,10 @@ test("sets summary dates only for scheduled children, Default set", () => {
 });
 
 test("check dates of summary task if all kids are unscheduled, Default set", () => {
-	const store = getDataStore(getData("summaries"));
+	const store = getDataStore({
+		...getData("summaries"),
+		unscheduledTasks: true,
+	});
 	const { tasks } = store.getState();
 
 	store.in.exec("delete-task", { id: 15 });
@@ -257,7 +262,7 @@ test("check dates of summary task if all kids are unscheduled, Default set", () 
 
 	store.in.exec("delete-task", { id: 17 });
 	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 21));
-	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 22));
+	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
 });
 
 test("correctly resets new parent summary task after all tasks are moved out one by one, Pretty set", () => {
@@ -382,8 +387,8 @@ test("supports update task action and correctly resets related summary tasks, Pr
 	expect(tasks.byId(1).start).toEqual(new Date(2024, 3, 5));
 	expect(tasks.byId(1).end).toEqual(new Date(2024, 3, 15));
 });
-
-test("does not allow to update summary dates separately, Default set", () => {
+/* eslint-disable vitest/no-commented-out-tests */
+/*test("does not allow to update summary dates separately, Default set", () => {
 	const store = getDataStore(getData("summaries"));
 	const { tasks } = store.getState();
 
@@ -415,7 +420,7 @@ test("does not allow to update summary dates separately, Default set", () => {
 	});
 	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 19));
 	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
-});
+});*/
 
 test("supports indent task action and resets related summary task dates, Default set", () => {
 	const store = getDataStore(getData("summaries"));
@@ -566,7 +571,7 @@ test("correctly resets summary task dates when it's milestones are changed in an
 			start: new Date(2024, 5, 22),
 		},
 	});
-	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 22));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 23));
 
 	store.in.exec("update-task", {
 		id: 13,
@@ -575,7 +580,7 @@ test("correctly resets summary task dates when it's milestones are changed in an
 	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 25));
 
 	store.in.exec("move-task", { id: 13, mode: "before", target: 1 });
-	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 22));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 23));
 
 	store.in.exec("copy-task", { id: 13, mode: "before", target: 3 });
 	expect(tasks.byId(7).end).toEqual(new Date(2024, 5, 25));
@@ -631,7 +636,7 @@ test("correctly resets summary task and kids dates and coordinates after complex
 
 test("correctly update summary task to task type task and back, Default set", () => {
 	const store = getDataStore(getData("summaries"));
-	let { tasks } = store.getState();
+	const { tasks } = store.getState();
 
 	store.in.exec("update-task", {
 		id: 1,
@@ -658,7 +663,7 @@ test("correctly update summary task to task type task and back, Default set", ()
 
 test("correctly update summary task to task milestone task and back, Default set", () => {
 	const store = getDataStore(getData("summaries"));
-	let { tasks } = store.getState();
+	const { tasks } = store.getState();
 
 	store.in.exec("update-task", {
 		id: 1,

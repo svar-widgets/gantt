@@ -4,15 +4,15 @@ const dayStyle = a => {
 };
 
 const scales = [
-	{ unit: "month", step: 1, format: "MMMM yyy" },
-	{ unit: "day", step: 1, format: "d", css: dayStyle },
+	{ unit: "month", step: 1, format: "%F %Y" },
+	{ unit: "day", step: 1, format: "%j", css: dayStyle },
 ];
 
 const tasks = [
 	{
 		id: 1,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 17),
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 17),
 		text: "Project planning",
 		progress: 30,
 		parent: 0,
@@ -22,8 +22,8 @@ const tasks = [
 	},
 	{
 		id: 10,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 5),
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 5),
 		text: "Marketing analysis",
 		progress: 100,
 		parent: 1,
@@ -32,8 +32,8 @@ const tasks = [
 	},
 	{
 		id: 11,
-		start: new Date(2024, 3, 5),
-		end: new Date(2024, 3, 7),
+		start: new Date(2026, 3, 5),
+		end: new Date(2026, 3, 7),
 		text: "Discussions",
 		progress: 100,
 		parent: 1,
@@ -42,8 +42,8 @@ const tasks = [
 	},
 	{
 		id: 110,
-		start: new Date(2024, 3, 6),
-		end: new Date(2024, 3, 9),
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 9),
 		text: "Initial design",
 		progress: 60,
 		parent: 11,
@@ -52,7 +52,7 @@ const tasks = [
 	},
 	{
 		id: 111,
-		start: new Date(2024, 3, 9),
+		start: new Date(2026, 3, 9),
 		text: "Presentation",
 		progress: 0,
 		parent: 11,
@@ -61,8 +61,8 @@ const tasks = [
 	},
 	{
 		id: 112,
-		start: new Date(2024, 3, 7),
-		end: new Date(2024, 3, 12),
+		start: new Date(2026, 3, 7),
+		end: new Date(2026, 3, 12),
 		text: "Prototyping",
 		progress: 10,
 		parent: 11,
@@ -70,8 +70,8 @@ const tasks = [
 	},
 	{
 		id: 113,
-		start: new Date(2024, 3, 8),
-		end: new Date(2024, 3, 17),
+		start: new Date(2026, 3, 8),
+		end: new Date(2026, 3, 17),
 		text: "User testing",
 		progress: 0,
 		parent: 11,
@@ -80,7 +80,7 @@ const tasks = [
 
 	{
 		id: 12,
-		start: new Date(2024, 3, 9),
+		start: new Date(2026, 3, 9),
 		text: "Approval of strategy",
 		progress: 100,
 		parent: 1,
@@ -89,8 +89,8 @@ const tasks = [
 
 	{
 		id: 2,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 15),
 		text: "Project management",
 		progress: 10,
 		parent: 0,
@@ -99,8 +99,8 @@ const tasks = [
 	},
 	{
 		id: 20,
-		start: new Date(2024, 3, 2),
-		end: new Date(2024, 3, 5),
+		start: new Date(2026, 3, 2),
+		end: new Date(2026, 3, 5),
 		text: "Resource planning",
 		progress: 10,
 		parent: 2,
@@ -108,8 +108,8 @@ const tasks = [
 	},
 	{
 		id: 21,
-		start: new Date(2024, 3, 5),
-		end: new Date(2024, 3, 8),
+		start: new Date(2026, 3, 5),
+		end: new Date(2026, 3, 8),
 		text: "Getting approval",
 		progress: 10,
 		parent: 2,
@@ -117,8 +117,8 @@ const tasks = [
 	},
 	{
 		id: 22,
-		start: new Date(2024, 3, 8),
-		end: new Date(2024, 3, 11),
+		start: new Date(2026, 3, 8),
+		end: new Date(2026, 3, 11),
 		text: "Team introduction",
 		progress: 0,
 		parent: 2,
@@ -126,8 +126,8 @@ const tasks = [
 	},
 	{
 		id: 23,
-		start: new Date(2024, 3, 11),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 11),
+		end: new Date(2026, 3, 15),
 		text: "Resource management",
 		progress: 10,
 		parent: 2,
@@ -136,8 +136,8 @@ const tasks = [
 
 	{
 		id: 3,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 4, 15),
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 4, 15),
 		text: "Development",
 		progress: 30,
 		parent: 0,
@@ -146,8 +146,8 @@ const tasks = [
 	},
 	{
 		id: 30,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 3, 15),
 		text: "Prototyping",
 		progress: 3,
 		parent: 3,
@@ -155,8 +155,8 @@ const tasks = [
 	},
 	{
 		id: 31,
-		start: new Date(2024, 3, 15),
-		end: new Date(2024, 3, 30),
+		start: new Date(2026, 3, 15),
+		end: new Date(2026, 3, 30),
 		text: "Basic functionality",
 		progress: 0,
 		parent: 3,
@@ -164,8 +164,8 @@ const tasks = [
 	},
 	{
 		id: 32,
-		start: new Date(2024, 3, 30),
-		end: new Date(2024, 4, 15),
+		start: new Date(2026, 3, 30),
+		end: new Date(2026, 4, 15),
 		text: "Finalizing MVA",
 		progress: 0,
 		parent: 3,
@@ -174,8 +174,8 @@ const tasks = [
 
 	{
 		id: 4,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 4, 25),
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 4, 25),
 		text: "Testing",
 		progress: 3,
 		parent: 0,
@@ -184,8 +184,8 @@ const tasks = [
 	},
 	{
 		id: 40,
-		start: new Date(2024, 3, 9),
-		end: new Date(2024, 3, 15),
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 3, 15),
 		text: "Testing prototype",
 		progress: 3,
 		parent: 4,
@@ -193,8 +193,8 @@ const tasks = [
 	},
 	{
 		id: 41,
-		start: new Date(2024, 3, 15),
-		end: new Date(2024, 3, 30),
+		start: new Date(2026, 3, 15),
+		end: new Date(2026, 3, 30),
 		text: "Testing basic features",
 		progress: 0,
 		parent: 4,
@@ -202,8 +202,8 @@ const tasks = [
 	},
 	{
 		id: 42,
-		start: new Date(2024, 3, 30),
-		end: new Date(2024, 4, 15),
+		start: new Date(2026, 3, 30),
+		end: new Date(2026, 4, 15),
 		text: "Testing MVA",
 		progress: 0,
 		parent: 4,
@@ -211,8 +211,8 @@ const tasks = [
 	},
 	{
 		id: 43,
-		start: new Date(2024, 4, 15),
-		end: new Date(2024, 4, 25),
+		start: new Date(2026, 4, 15),
+		end: new Date(2026, 4, 25),
 		text: "Beta testing",
 		progress: 0,
 		parent: 4,
@@ -223,7 +223,7 @@ const tasks = [
 
 	{
 		id: 5,
-		start: new Date(2024, 4, 25),
+		start: new Date(2026, 4, 25),
 		text: "Release 1.0.0",
 		progress: 0,
 		parent: 0,

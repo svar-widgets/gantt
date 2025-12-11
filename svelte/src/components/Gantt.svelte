@@ -1,11 +1,12 @@
 <script>
 	// svelte core
-	import { setContext } from "svelte";
+	import { setContext, untrack } from "svelte";
 	import { writable } from "svelte/store";
 
 	// locales
-	import { Locale } from "@svar-ui/svelte-core";
+	import { locale as l } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
+	import { en as coreEn } from "@svar-ui/core-locales";
 
 	// stores
 	import { EventBusRouter } from "@svar-ui/lib-state";
@@ -13,10 +14,22 @@
 		DataStore,
 		defaultColumns,
 		defaultTaskTypes,
+		parseTaskDates,
+		normalizeZoom,
+		normalizeLinks,
 	} from "@svar-ui/gantt-store";
+	import { getContext } from "svelte";
 
 	//views
 	import Layout from "./Layout.svelte";
+
+	// helpers
+	import {
+		prepareScales,
+		prepareFormats,
+		prepareColumns,
+		prepareZoom,
+	} from "../helpers/prepareConfig.js";
 
 	let {
 		taskTemplate = null,
@@ -27,8 +40,8 @@
 		activeTask = null,
 		links = [],
 		scales = [
-			{ unit: "month", step: 1, format: "MMMM yyy" },
-			{ unit: "day", step: 1, format: "d" },
+			{ unit: "month", step: 1, format: "%F %Y" },
+			{ unit: "day", step: 1, format: "%j" },
 		],
 		columns = defaultColumns,
 		start = null,
@@ -46,11 +59,58 @@
 		init = null,
 		autoScale = true,
 		unscheduledTasks = false,
+		criticalPath = null,
+		schedule = { type: "forward" },
+		projectStart = null,
+		projectEnd = null,
+		calendar,
+		undo = false,
+		splitTasks = false,
 		...restProps
 	} = $props();
 
 	// init stores
 	const dataStore = new DataStore(writable);
+
+	// locale and formats
+	// uses same logic as the Locale component
+	const words = { ...coreEn, ...en };
+	let locale = getContext("wx-i18n");
+	if (!locale) locale = l(words);
+	else locale = locale.extend(words, true);
+	setContext("wx-i18n", locale);
+
+	// prepare configuration objects
+	const { calendar: lCalendar } = locale.getRaw();
+
+	let normalizedConfig = $derived.by(() => {
+		let config = {
+			zoom: prepareZoom(zoom, lCalendar),
+			scales: prepareScales(scales, lCalendar),
+			columns: prepareColumns(columns, lCalendar),
+			links: normalizeLinks(links),
+			cellWidth,
+		};
+		if (config.zoom) {
+			config = {
+				...config,
+				...normalizeZoom(
+					config.zoom,
+					prepareFormats(lCalendar, locale.getGroup("gantt")),
+					config.scales,
+					cellWidth
+				),
+			};
+		}
+		return config;
+	});
+
+	$effect.pre(() => {
+		tasks, durationUnit, calendar;
+		untrack(() =>
+			parseTaskDates(tasks, { durationUnit, splitTasks, calendar })
+		);
+	});
 
 	// define event route
 	let firstInRoute = dataStore.in;
@@ -83,7 +143,8 @@
 		getTable = waitRender =>
 			waitRender
 				? new Promise(res => setTimeout(() => res(tableAPI), 1))
-				: tableAPI;
+				: tableAPI,
+		getHistory = () => dataStore.getHistory();
 
 	const api = {
 		getState,
@@ -97,6 +158,7 @@
 		getTable,
 		getTask,
 		serialize,
+		getHistory,
 	};
 
 	// common API available in components
@@ -110,17 +172,17 @@
 	const reinitStore = () => {
 		dataStore.init({
 			tasks,
-			links,
+			links: normalizedConfig.links,
 			start,
-			columns,
+			columns: normalizedConfig.columns,
 			end,
 			lengthUnit,
-			cellWidth,
+			cellWidth: normalizedConfig.cellWidth,
 			cellHeight,
 			scaleHeight,
-			scales,
+			scales: normalizedConfig.scales,
 			taskTypes,
-			zoom,
+			zoom: normalizedConfig.zoom,
 			selected,
 			activeTask,
 			baselines,
@@ -128,6 +190,14 @@
 			unscheduledTasks,
 			markers,
 			durationUnit,
+			criticalPath,
+			schedule,
+			projectStart,
+			projectEnd,
+			calendar,
+			undo,
+			_weekStart: lCalendar.weekStart,
+			splitTasks,
 		});
 
 		if (init_once && init) {
@@ -138,14 +208,18 @@
 
 	reinitStore();
 	$effect(reinitStore);
+
+	$effect(() => {
+		if (calendar && tasks) {
+			highlightTime = (day, unit) => {
+				if (unit == "day" && !calendar.getDayHours(day))
+					return "wx-weekend";
+				if (unit == "hour" && !calendar.getDayHours(day))
+					return "wx-weekend";
+				return "";
+			};
+		}
+	});
 </script>
 
-<Locale words={en} optional={true}>
-	<Layout
-		{taskTemplate}
-		{readonly}
-		{cellBorders}
-		{highlightTime}
-		bind:tableAPI
-	/>
-</Locale>
+<Layout {taskTemplate} {readonly} {cellBorders} {highlightTime} bind:tableAPI />

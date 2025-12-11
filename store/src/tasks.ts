@@ -1,11 +1,14 @@
-import type {
+import {
 	IGanttTask,
 	GanttScaleData,
 	IParsedTask,
 	GanttDataTree,
 	ITask,
+	IData,
+	IDataHash,
 } from "./types";
 import { isEqual } from "date-fns";
+import { isCommunity } from "./package";
 
 const baselineHeight = 8;
 const baselineTopPadding = 4;
@@ -13,11 +16,18 @@ const defaultPadding = 3;
 const heightAdjustment = 7;
 const baselineAdjustment = baselineHeight + baselineTopPadding;
 
-export function dragSummaryKids(task: IParsedTask, dx: number) {
+export function dragSummaryKids(
+	task: IParsedTask,
+	dx: number,
+	_scales: GanttScaleData,
+	cellWidth: number
+) {
 	if (task.open || task.type != "summary") {
 		task.data?.forEach(kid => {
+			if (typeof kid.$x === "undefined")
+				setTaskSizes(kid, _scales, cellWidth);
 			kid.$x += dx;
-			dragSummaryKids(kid, dx);
+			dragSummaryKids(kid, dx, _scales, cellWidth);
 		});
 	}
 }
@@ -49,18 +59,10 @@ function getSummaryBarSize(
 	_scales: GanttScaleData,
 	cellWidth: number
 ) {
-	const { lengthUnit, start } = _scales;
 	task.data?.forEach(kid => {
 		if (!kid.unscheduled) {
-			if (typeof kid.$x === "undefined") {
-				kid.$x = Math.round(
-					_scales.diff(kid.start, start, lengthUnit) * cellWidth
-				);
-				kid.$w = Math.round(
-					_scales.diff(kid.end, kid.start, lengthUnit, true) *
-						cellWidth
-				);
-			}
+			if (typeof kid.$x === "undefined")
+				setTaskSizes(kid, _scales, cellWidth);
 			const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
 			if (coords.xMin > kid.$x) {
 				coords.xMin = kid.$x + mD;
@@ -76,18 +78,22 @@ function getSummaryBarSize(
 	});
 }
 
-export function setSummaryDates(
-	task: IParsedTask,
-	tasks?: Partial<ITask>[]
-): IParsedTask {
+function setTaskSizes(task: IParsedTask, s: GanttScaleData, cellWidth: number) {
+	task.$x = Math.round(s.diff(task.start, s.start, s.lengthUnit) * cellWidth);
+	task.$w = Math.round(
+		s.diff(task.end, task.start, s.lengthUnit, true) * cellWidth
+	);
+}
+
+export function setSummaryDates(task: ITask, tasks?: Partial<ITask>[]): ITask {
 	let data;
 	if (tasks) {
 		data = tasks.filter(t => t.parent == task.id);
 	}
 
-	const copy = { data, ...task };
+	const copy = { data, ...task } as IParsedTask;
 	if (copy.data?.length) {
-		copy.data.forEach((kid: IParsedTask) => {
+		copy.data.forEach((kid: ITask) => {
 			if (kid.unscheduled && !kid.data) return;
 			if (tasks || (kid.type != "summary" && kid.data)) {
 				if (kid.unscheduled)
@@ -98,7 +104,8 @@ export function setSummaryDates(
 			if (kid.start && (!copy.start || copy.start > kid.start)) {
 				copy.start = new Date(kid.start);
 			}
-			const end = kid.type === "milestone" ? kid.start : kid.end;
+
+			const end = kid.end || kid.start;
 			if (end && (!copy.end || copy.end < end)) {
 				copy.end = new Date(end);
 			}
@@ -115,31 +122,20 @@ export function setSummaryDates(
 export function updateTask(
 	t: IGanttTask,
 	i: number,
-	cellWidth: number,
-	cellHeight: number,
-	scales: GanttScaleData,
-	baselines: boolean
+	state: Partial<IData>
 ): IGanttTask {
-	calculateTaskDimensions(
-		t,
-		i,
-		cellWidth,
-		cellHeight,
-		scales,
-		baselines,
-		false
-	);
-
-	if (baselines) {
-		calculateTaskDimensions(
-			t,
-			i,
-			cellWidth,
-			cellHeight,
-			scales,
-			baselines,
-			true
-		);
+	calculateTaskDimensions(t, i, state, false);
+	if (state.splitTasks) {
+		t.segments?.forEach((s: Partial<IGanttTask>) => {
+			updateTask(s as IGanttTask, i, {
+				...state,
+				baselines: false,
+			});
+			s.$x -= t.$x;
+		});
+	}
+	if (state.baselines) {
+		calculateTaskDimensions(t, i, state, true);
 	}
 
 	return t;
@@ -148,13 +144,11 @@ export function updateTask(
 function calculateTaskDimensions(
 	t: IGanttTask,
 	i: number,
-	cellWidth: number,
-	cellHeight: number,
-	scales: GanttScaleData,
-	baselines: boolean,
+	state: Partial<IData>,
 	isBaseline: boolean
 ) {
-	const { start: scaleStart, end: scaleEnd, lengthUnit, diff } = scales;
+	const { cellWidth, cellHeight, _scales, baselines } = state;
+	const { start: scaleStart, end: scaleEnd, lengthUnit, diff } = _scales;
 	const start = (isBaseline ? "base_" : "") + "start";
 	const end = (isBaseline ? "base_" : "") + "end";
 	const x = "$x" + (isBaseline ? "_base" : "");
@@ -201,6 +195,42 @@ function calculateTaskDimensions(
 		}
 	}
 
-	if (t.unscheduled && !isBaseline) t["$skip"] = true;
+	if (state.unscheduledTasks && t.unscheduled && !isBaseline)
+		t["$skip"] = true;
 	else t[skip] = isEqual(startDate, endDate);
+}
+
+export function isSegmentMoveAllowed(task: IGanttTask, moveOptions: IDataHash) {
+	if (isCommunity()) return false;
+	const { mode, l, w, dx, index } = moveOptions;
+	const { segments } = task;
+	if (index || mode === "end") {
+		if (dx > 0 && index < segments.length - 1) {
+			if (l + w + dx > segments[index + 1].$x + task.$x) {
+				return false;
+			}
+		} else if (dx < 0 && index) {
+			const d = mode === "end" ? w : 0;
+			if (
+				l + dx + d <
+				segments[index - 1].$x + task.$x + segments[index - 1].$w
+			) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+export function extendDragOptions(task: ITask, options: IDataHash) {
+	if (isCommunity()) return;
+	const { segments } = task;
+	const { segmentIndex, mode } = options;
+	const s = segments[segmentIndex];
+	if (segmentIndex || mode !== "move") {
+		options.index = segmentIndex;
+		options.l = s.$x + task.$x;
+		options.w = s.$w;
+		options.segment = true;
+	}
 }

@@ -3,7 +3,7 @@
 		Gantt,
 		ContextMenu,
 		Editor,
-		defaultEditorItems,
+		getEditorItems,
 		defaultColumns,
 	} from "../../src";
 	import { format } from "date-fns";
@@ -15,7 +15,7 @@
 
 	let api = $state();
 
-	const items = defaultEditorItems.map(ed => ({
+	const items = getEditorItems().map(ed => ({
 		...ed,
 		...(ed.comp === "date" && { config: { time: true } }),
 	}));

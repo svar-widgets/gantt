@@ -1,24 +1,23 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, defaultColumns, Editor } from "../../src/";
+	import { Gantt, defaultColumns } from "../../src/";
 	import { Field, Switch } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 
 	const data = getData();
 
-	let edit = $state(true); // if false - cannot add and edit task
+	let add = $state(true); // if false - cannot add and edit task
 	let drag = $state(true); // if false - cannot drag tasks on scale
 	let order = $state(true); // if false - cannot reorder tasks in grid
 	let newLink = $state(true); // if false - cannot create new links
-
-	let ignore = false;
+	let deleteLink = $state(true); // if false - cannot delete links
+	let progress = $state(true); // if false - cannot edit progress in chart
 	let api = $state();
 
 	function init(gApi) {
 		api = gApi;
 
-		api.intercept("show-editor", () => edit || ignore);
 		api.intercept("drag-task", ev => {
 			if (typeof ev.top !== "undefined") return order;
 			return drag; //ev.width && ev.left
@@ -26,47 +25,37 @@
 	}
 
 	let columns = $derived(
-		edit ? defaultColumns : defaultColumns.filter(a => a.id != "add-task")
+		add ? defaultColumns : defaultColumns.filter(a => a.id != "add-task")
 	);
-
-	// for demo purposes: close editor when checkbox is unchecked
-	$effect(() => {
-		if (!edit) {
-			ignore = true;
-			api.exec("show-editor", { id: null });
-			ignore = false;
-		}
-	});
 </script>
 
 <div class="rows">
 	<div class="bar">
-		<Field label="Adding and editing" position={"left"}>
-			{#snippet children({ id })}
-				<Switch bind:value={edit} {id} />
-			{/snippet}
+		<Field label="Adding tasks" position={"left"}>
+			<Switch bind:value={add} />
 		</Field>
 		<Field label="Creating links" position={"left"}>
-			{#snippet children({ id })}
-				<Switch bind:value={newLink} {id} />
-			{/snippet}
+			<Switch bind:value={newLink} />
+		</Field>
+		<Field label="Deleting links" position={"left"}>
+			<Switch bind:value={deleteLink} />
 		</Field>
 		<Field label="Dragging tasks" position={"left"}>
-			{#snippet children({ id })}
-				<Switch bind:value={drag} {id} />
-			{/snippet}
+			<Switch bind:value={drag} />
 		</Field>
 		<Field label="Reordering tasks" position={"left"}>
-			{#snippet children({ id })}
-				<Switch bind:value={order} {id} />
-			{/snippet}
+			<Switch bind:value={order} />
+		</Field>
+		<Field label="Editing progress" position={"left"}>
+			<Switch bind:value={progress} />
 		</Field>
 	</div>
 	<div
 		class="gantt"
-		class:hide-progress={!edit}
 		class:hide-links={!newLink}
+		class:hide-delete-links={!deleteLink}
 		class:hide-drag={!drag}
+		class:hide-progress={!progress}
 	>
 		<Gantt
 			{init}
@@ -76,7 +65,6 @@
 			scales={data.scales}
 			{columns}
 		/>
-		<Editor {api} />
 	</div>
 </div>
 
@@ -95,7 +83,7 @@
 		align-items: end;
 		font-family: var(--wx-font-family);
 		font-size: var(--wx-font-size);
-		padding-top: 12px;
+		padding: 12px 0;
 		--wx-label-width: 130px;
 	}
 
@@ -115,6 +103,16 @@
 	}
 	.gantt.hide-links > :global(.wx-gantt .wx-bar .wx-link) {
 		display: none;
+	}
+	.gantt.hide-delete-links > :global(.wx-gantt .wx-delete-link) {
+		display: none;
+	}
+	.gantt.hide-delete-links > :global(.wx-gantt .wx-line:hover) {
+		cursor: default;
+		stroke: var(--wx-gantt-link-color);
+	}
+	.gantt.hide-delete-links > :global(.wx-gantt .wx-line.wx-line-selectable) {
+		cursor: default;
 	}
 	.gantt.hide-drag > :global(.wx-gantt .wx-bar) {
 		cursor: pointer !important;

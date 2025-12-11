@@ -44,10 +44,17 @@ export default {
 		Indent: "缩进",
 		Outdent: "凹痕",
 		"Split task": "拆分任务",
+		Segment: "分段",
 
 		// Toolbar
 		"New task": "新任务",
 		"Move up": "提升",
 		"Move down": "下移",
+		Undo: "撤銷",
+		Redo: "重做",
+
+		// Formats
+		Week: "星期",
+		Q: "季度",
 	},
 };

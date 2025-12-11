@@ -60,7 +60,7 @@ export const links = [
 		"/cell-borders/:skin",
 		"Chart cell borders",
 		ChartCellBorders,
-		"ChartCellBorders",
+		"ChartBorders",
 	],
 	["/scales/:skin", "Custom scales", GanttScales, "GanttScales"],
 	["/start-end/:skin", "Start/end dates", GanttStartEnd, "GanttStartEnd"],
@@ -79,10 +79,12 @@ export const links = [
 
 	["/holidays/:skin", "Holidays", GanttHolidays, "GanttHolidays"],
 
+
 	["/templates/:skin", "Custom text", GanttText, "GanttText"],
 	["/tooltips/:skin", "Tooltips", GanttTooltips, "GanttTooltips"],
 
 	["/task-types/:skin", "Task types", GanttTaskTypes, "GanttTaskTypes"],
+
 	[
 		"/summary-progress/:skin",
 		"Summary tasks with auto progress",
@@ -179,19 +181,11 @@ export const links = [
 		"/header-menu/:skin",
 		"Header menu: hiding columns",
 		HeaderMenu,
-		"HeaderMenu",
+		"GridHeaderMenu",
 	],
-	["/custom-edit-form/:skin", "Custom editor", GanttForm, "GanttForm"],
 	["/locale/:skin", "Locales", GanttLocale, "GanttLocale"],
 	["/fullscreen/:skin", "Fullscreen", GanttFullscreen, "GanttFullscreen"],
 	["/readonly/:skin", "Readonly mode", GanttReadOnly, "GanttReadOnly"],
-
-	[
-		"/prevent-actions/:skin",
-		"Preventing actions",
-		GanttPreventActions,
-		"GanttPreventActions",
-	],
 	[
 		"/gantt-multiple/:skin",
 		"Many Gantts per page",
@@ -199,7 +193,12 @@ export const links = [
 		"GanttMultiple",
 	],
 	["/performance/:skin", "Performance", GanttPerformance, "GanttPerformance"],
-
+	[
+		"/prevent-actions/:skin",
+		"Preventing UI actions",
+		GanttPreventActions,
+		"GanttPreventActions",
+	],
 	["/sorting/:skin", "Custom sorting", GanttSort, "GanttSort"],
 	["/sorting-api/:skin", "Sort by API", GanttCustomSort, "GanttCustomSort"],
 
@@ -241,6 +240,17 @@ export const links = [
 		GanttEditorTasks,
 		"GanttEditorTasks",
 	],
-	["/editor-readonly/:skin", "Editor: readonly", GanttEditorReadonly],
-	["/editor-validation/:skin", "Editor: validation", GanttEditorValidation],
+	[
+		"/editor-readonly/:skin",
+		"Editor: readonly",
+		GanttEditorReadonly,
+		"GanttEditorReadonly",
+	],
+	[
+		"/editor-validation/:skin",
+		"Editor: validation",
+		GanttEditorValidation,
+		"GanttEditorValidation",
+	],
+	["/custom-edit-form/:skin", "Custom edit form", GanttForm, "GanttForm"],
 ];

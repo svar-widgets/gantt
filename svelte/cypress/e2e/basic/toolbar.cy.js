@@ -4,7 +4,7 @@ context("Toolbar", () => {
 		cy.viewport(1300, 900);
 
 		cy.wxG("toolbar").should("be.visible");
-		cy.wxG("grid-item", 1).click();
+		cy.wxG("grid-item", 2).click();
 		cy.wxG("toolbar").children().should("have.length", 13);
 		cy.shot(`default-toolbar`);
 	});
@@ -218,6 +218,7 @@ context("Toolbar", () => {
 	it("toolbar buttons disabling works with local data", () => {
 		cy.visit(`/index.html#/toolbar/willow`);
 		cy.viewport(1300, 900);
+		cy.wait(1000);
 
 		cy.wxG("grid-item", 1).click();
 		cy.wxG("toolbar-button", "indent-task:add")

@@ -4,6 +4,7 @@
 		popupContainer,
 		Button,
 		Segmented,
+		Locale,
 	} from "@svar-ui/svelte-core";
 
 	import Router from "./Router.svelte";
@@ -130,9 +131,11 @@
 		</div>
 		<div class="wrapper-content" onclick={() => (show = false)} role="none">
 			<div use:popupContainer class="content wx-{skin}-theme" role="none">
-				<Globals>
-					<Router onnewpage={updateInfo} {skin} {productTag} />
-				</Globals>
+				<Locale>
+					<Globals>
+						<Router onnewpage={updateInfo} {skin} {productTag} />
+					</Globals>
+				</Locale>
 			</div>
 		</div>
 	</div>
@@ -312,7 +315,7 @@
 	.box-links {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 5px;
 	}
 
 	.hint {

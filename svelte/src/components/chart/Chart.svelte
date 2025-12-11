@@ -3,7 +3,7 @@
 
 	import CellGrid from "./CellGrid.svelte";
 	import Bars from "./Bars.svelte";
-	import Links from "./Links.svelte";
+	import TimeScales from "./TimeScale.svelte";
 
 	import { hotkeys } from "@svar-ui/grid-store";
 
@@ -20,7 +20,6 @@
 
 	const {
 		_selected: selected,
-		scrollLeft: rScrollLeft,
 		scrollTop: rScrollTop,
 		cellWidth,
 		cellHeight,
@@ -31,15 +30,10 @@
 		_scrollTask: rScrollTask,
 	} = api.getReactiveState();
 
-	let scrollLeft = $state(),
-		scrollTop = $state();
 	let chartHeight = $state();
 	let chart = $state();
 
 	let extraRows = 1;
-
-	rScrollLeft.subscribe(value => (scrollLeft = value));
-	rScrollTop.subscribe(value => (scrollTop = value));
 
 	const selectStyle = $derived.by(() => {
 		const t = [];
@@ -60,12 +54,7 @@
 	const chartGridHeight = $derived(Math.max(chartHeight, fullHeight));
 
 	$effect(() => {
-		chart.scrollTop = scrollTop;
-		chart.scrollLeft = scrollLeft;
-		if (scrollTop != chart.scrollTop) setScroll({ top: true });
-
-		// when zoom code in DataStore resets left scroll, it's unaware of the new client width of the chart and if it's necessary to scroll, so the chart has to make it right
-		if (scrollLeft != chart.scrollLeft) setScroll({ left: true });
+		chart.scrollTop = $rScrollTop;
 	});
 
 	function onScroll() {
@@ -103,11 +92,13 @@
 		if (mode.toString().indexOf("x") < 0) return;
 		const { clientWidth } = chart;
 		const task = api.getTask(id);
-		if (task.$x + task.$w < scrollLeft) {
-			scrollLeft = task.$x - $cellWidth;
-		} else if (task.$x >= clientWidth + scrollLeft) {
+		if (task.$x + task.$w < chart.scrollLeft) {
+			api.exec("scroll-chart", { left: task.$x - (cellWidth || 0) });
+			chart.scrollLeft = task.$x - (cellWidth || 0);
+		} else if (task.$x >= clientWidth + chart.scrollLeft) {
 			const width = clientWidth < task.$w ? $cellWidth : task.$w;
-			scrollLeft = task.$x - clientWidth + width;
+			api.exec("scroll-chart", { left: task.$x - clientWidth + width });
+			chart.scrollLeft = task.$x - clientWidth + width;
 		}
 	}
 	rScrollTask.subscribe(value => showTask(value));
@@ -162,11 +153,12 @@
 		exec: v => handleHotkey(v),
 	}}
 >
-	{#if $markers.length}
+	<TimeScales {highlightTime} />
+	{#if $markers?.length}
 		<div class="wx-markers" style="height:{chartGridHeight}px;">
 			{#each $markers as marker}
 				<div
-					class="wx-marker {marker.css || 'wx-default'}"
+					class="wx-marker {marker.css || ''}"
 					style="left:{marker.left}px"
 				>
 					<div class="wx-content">{marker.text}</div>
@@ -204,7 +196,6 @@
 			{/each}
 		{/if}
 
-		<Links />
 		<Bars {readonly} {taskTemplate} />
 	</div>
 </div>
@@ -229,8 +220,6 @@
 		text-align: center;
 		user-select: none;
 		transform: scaleX(-1);
-	}
-	.wx-default {
 		background: var(--wx-gantt-marker-color);
 	}
 

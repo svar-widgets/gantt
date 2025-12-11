@@ -2,24 +2,26 @@ import { Store, EventBus, DataArray, DataRouter, tempID } from "@svar-ui/lib-sta
 import type { TDataConfig, TWritableCreator, TID } from "@svar-ui/lib-state";
 
 import GanttDataTree from "./GanttDataTree";
-import {
-	calcScales,
-	resetScales,
-	getMinUnit,
-	normalizeZoom,
-	zoomScale,
-} from "./scales";
+import { calcScales, resetScales, getMinUnit, zoomScale } from "./scales";
 import {
 	updateTask,
 	dragSummary,
 	dragSummaryKids,
 	setSummaryDates,
 } from "./tasks";
-import { updateLink } from "./links";
+import { normalizeLinks, updateLink } from "./links";
 import { normalizeColumns } from "./columns";
-import { getAdder, getDiffer, isCorrectLengthUnit, getUnitStart } from "./time";
+import {
+	getAdder,
+	getDiffer,
+	isCorrectLengthUnit,
+	getUnitStart,
+	adjustToWorkingDay,
+	shiftByWorkingDays,
+} from "./time";
 import { isCommunity } from "./package";
 import { handleAction } from "./helpers/actionHandlers";
+
 
 import type {
 	IData,
@@ -36,12 +38,14 @@ import type {
 	TSort,
 	TScrollTask,
 } from "./types";
+
 import { isEqual } from "date-fns";
-import { normalizeDates, prepareTask } from "./normalizeDates";
+import { normalizeDates, parseTaskDates } from "./normalizeDates";
 
 export default class DataStore extends Store<IData> {
 	public in: EventBus<TMethodsConfig, keyof TMethodsConfig>;
 	private _router: DataRouter<IData, IDataConfig, TMethodsConfig>;
+	private _modules = new Map<string, any>();
 
 	constructor(w: TWritableCreator) {
 		super({ writable: w, async: false });
@@ -90,13 +94,20 @@ export default class DataStore extends Store<IData> {
 						"scaleHeight",
 						"scales",
 						"lengthUnit",
+						"_weekStart",
 					],
 					out: ["_scales"],
 					exec: (ctx: TDataConfig) => {
 						const state = this.getState();
 						let { lengthUnit } = state;
-						const { _start, _end, cellWidth, scaleHeight, scales } =
-							state;
+						const {
+							_start,
+							_end,
+							cellWidth,
+							scaleHeight,
+							scales,
+							_weekStart,
+						} = state;
 
 						const minUnit = getMinUnit(scales).unit;
 						if (!isCorrectLengthUnit(minUnit, lengthUnit))
@@ -108,6 +119,7 @@ export default class DataStore extends Store<IData> {
 							lengthUnit,
 							cellWidth,
 							scaleHeight,
+							_weekStart,
 							scales
 						);
 						this.setState({ _scales }, ctx);
@@ -115,7 +127,13 @@ export default class DataStore extends Store<IData> {
 				},
 				// prepare tasks positions
 				{
-					in: ["_scales", "tasks", "cellHeight", "baselines"],
+					in: [
+						"_scales",
+						"tasks",
+						"cellHeight",
+						"baselines",
+						"unscheduledTasks",
+					],
 					out: ["_tasks"],
 					exec: (ctx: TDataConfig) => {
 						const {
@@ -124,20 +142,20 @@ export default class DataStore extends Store<IData> {
 							tasks,
 							_scales,
 							baselines,
+							splitTasks,
+							unscheduledTasks,
 						} = this.getState();
 
-						const _tasks = tasks
-							.toArray()
-							.map((task, i) =>
-								updateTask(
-									task as IGanttTask,
-									i,
-									cellWidth,
-									cellHeight,
-									_scales,
-									baselines
-								)
-							);
+						const _tasks = tasks.toArray().map((task, i) =>
+							updateTask(task as IGanttTask, i, {
+								cellWidth,
+								cellHeight,
+								_scales,
+								baselines,
+								splitTasks,
+								unscheduledTasks,
+							})
+						);
 						this.setState({ _tasks }, ctx);
 					},
 				},
@@ -146,8 +164,14 @@ export default class DataStore extends Store<IData> {
 					in: ["_tasks", "links", "cellHeight"],
 					out: ["_links"],
 					exec: (ctx: TDataConfig) => {
-						const { tasks, links, cellHeight, baselines } =
-							this.getState();
+						const {
+							tasks,
+							links,
+							cellHeight,
+							baselines,
+							criticalPath,
+						} = this.getState();
+
 						const _links = links
 							.map<IGanttLink>(link => {
 								const startTask = tasks.byId(link.source);
@@ -160,6 +184,17 @@ export default class DataStore extends Store<IData> {
 									baselines
 								);
 							})
+							.toSorted((a: IGanttLink, b: IGanttLink) => {
+								if (criticalPath) {
+									// sort by length (shortest first) when critical status is the same
+									if (!!a.$critical === !!b.$critical) {
+										return b.$pl - a.$pl;
+									}
+									// critical links first
+									return a.$critical ? 1 : -1;
+								}
+								return b.$pl - a.$pl;
+							})
 							.filter(a => a !== null);
 						this.setState({ _links }, ctx);
 					},
@@ -169,11 +204,12 @@ export default class DataStore extends Store<IData> {
 					in: ["tasks", "activeTask"],
 					out: ["_activeTask"],
 					exec: (ctx: TDataConfig) => {
-						const { tasks, activeTask } = this.getState();
-						this.setState(
-							{ _activeTask: tasks.byId(activeTask) || null },
-							ctx
-						);
+						const state = this.getState();
+						let { activeTask } = state;
+						if (activeTask && typeof activeTask === "object")
+							activeTask = activeTask.id;
+						const task = state.tasks.byId(activeTask as TID);
+						this.setState({ _activeTask: task || null }, ctx);
 					},
 				},
 				// selection
@@ -198,19 +234,6 @@ export default class DataStore extends Store<IData> {
 							this.setState({ cellWidth: _cellWidth }, ctx);
 					},
 				},
-				{
-					in: ["markers", "_scales", "cellWidth"],
-					out: ["_markers"],
-					exec: (ctx: TDataConfig) => {
-						const { markers, _scales, cellWidth } = this.getState();
-						const { start, diff } = _scales;
-						const _markers = markers.map(marker => {
-							marker.left = diff(marker.start, start) * cellWidth;
-							return marker;
-						});
-						this.setState({ _markers }, ctx);
-					},
-				},
 			],
 			// data initializers
 			{
@@ -223,13 +246,28 @@ export default class DataStore extends Store<IData> {
 		const inBus = (this.in = new EventBus());
 
 		/* before data modifications */
-		inBus.on("show-editor", ({ id }: TMethodsConfig["show-editor"]) => {
-			this.setStateAsync({ activeTask: id });
+		inBus.on("show-editor", (ev: TMethodsConfig["show-editor"]) => {
+			const { splitTasks } = this.getState();
+			if (splitTasks) {
+				const { id, segmentIndex } = ev;
+				if (id && (segmentIndex || segmentIndex === 0)) {
+					this.setStateAsync({ activeTask: { id, segmentIndex } });
+					return;
+				}
+			}
+			this.setStateAsync({ activeTask: ev.id });
 		});
 		inBus.on(
 			"select-task",
-			({ id, toggle, range, show }: TMethodsConfig["select-task"]) => {
-				const { selected, _tasks, activeTask } = this.getState();
+			({
+				id,
+				toggle,
+				range,
+				show,
+				segmentIndex,
+			}: TMethodsConfig["select-task"]) => {
+				const { selected, _tasks, activeTask, splitTasks } =
+					this.getState();
 				let unselect = false;
 
 				let ids;
@@ -280,8 +318,15 @@ export default class DataStore extends Store<IData> {
 
 				this.setStateAsync(update);
 
-				if (!unselect && activeTask && activeTask != id) {
-					inBus.exec("show-editor", { id });
+				if (
+					!unselect &&
+					activeTask &&
+					(activeTask !== id || splitTasks)
+				) {
+					inBus.exec("show-editor", {
+						id,
+						...(splitTasks && { segmentIndex }),
+					});
 				}
 			}
 		);
@@ -292,12 +337,17 @@ export default class DataStore extends Store<IData> {
 		});
 		inBus.on("update-link", (ev: TMethodsConfig["update-link"]) => {
 			const { links } = this.getState();
-			const { id, link } = ev;
+			const id = ev.id;
+			let link = ev.link;
 
 			links.update(id, link as ILink);
+			link = links.byId(id);
+
+			if (!link.lag && link.lag !== 0) delete link.lag;
+
 			this.setStateAsync({ links });
 
-			ev.link = links.byId(id);
+			ev.link = link;
 		});
 		inBus.on("add-link", (ev: TMethodsConfig["add-link"]) => {
 			const { link } = ev;
@@ -487,20 +537,21 @@ export default class DataStore extends Store<IData> {
 		});
 
 		inBus.on("drag-task", (ev: TMethodsConfig["drag-task"]) => {
-			const { id, width, left, top, inProgress } = ev;
 			const state = this.getState();
 			const { tasks, _tasks, _selected, _scales, cellWidth } = state;
+			const task = tasks.byId(ev.id);
+			const { left, top, width, inProgress } = ev;
 
 			const update: Partial<IData> = { _tasks, _selected };
 
-			const task = tasks.byId(id);
 			if (typeof width !== "undefined") {
 				task.$w = width;
 				dragSummary(tasks, task, _scales, cellWidth);
 			}
 			if (typeof left !== "undefined") {
 				if (task.type === "summary") {
-					dragSummaryKids(task, left - task.$x);
+					const dx = left - task.$x;
+					dragSummaryKids(task, dx, _scales, cellWidth);
 				}
 				task.$x = left;
 				dragSummary(tasks, task, _scales, cellWidth);
@@ -521,72 +572,112 @@ export default class DataStore extends Store<IData> {
 			// but we need to recalculate things which depends on task positions
 			this.setState(update);
 		});
+
 		inBus.on("update-task", (ev: TMethodsConfig["update-task"]) => {
-			const { id, task, eventSource } = ev;
-			let diff = ev.diff;
-			const { tasks, _scales, durationUnit } = this.getState();
+			const { id, segmentIndex, diff, eventSource } = ev;
+			let { task } = ev;
+			const { tasks, _scales, durationUnit, splitTasks, calendar } =
+				this.getState();
 
 			const t = tasks.byId(id);
+			const stateOptions: Partial<IData> = {
+				_scales,
+				durationUnit,
+				calendar,
+				splitTasks,
+			};
 
 			if (
 				eventSource === "add-task" ||
 				eventSource === "copy-task" ||
 				eventSource === "move-task" ||
 				eventSource === "update-task" ||
-				eventSource === "delete-task"
+				eventSource === "delete-task" ||
+				eventSource === "provide-data"
 			) {
-				prepareTask(t, task, durationUnit);
+
+				normalizeDates(task, stateOptions);
 				tasks.update(id, task);
 				return;
 			}
-
 			const minUnit = _scales.lengthUnit;
 
-			const adder = getAdder(minUnit);
-			const differ = getDiffer(minUnit);
+			let adder = getAdder(minUnit);
+			const differ = getDiffer(minUnit, calendar);
 
 			if (diff) {
-				//dnd
 				if (task.start) task.start = adder(task.start, diff);
-				if (task.end) task.end = adder(task.end, diff);
+
+				if (!segmentIndex && segmentIndex !== 0) {
+					if (task.start && task.end) {
+						task.duration = t.duration;
+					} else {
+						// preserve end date to recalculate duration when only start changes
+						if (task.start) task.end = t.end;
+						else {
+							task.end = adder(task.end, diff);
+							// preserve start date and calculate duration to recalculate correct end when only end changes
+							task.start = t.start;
+							task.duration = differ(task.end, task.start);
+						}
+
+						if (!differ(task.end, task.start)) {
+							task.duration = 1;
+						}
+					}
+				}
 			}
+
+
+			task.type = task.type ?? t.type;
+
+			// adjust start date to nearest working day based on drag direction
+			if (calendar && task.start)
+				task.start = adjustToWorkingDay(task.start, diff, calendar);
 
 			if (task.start && task.end) {
 				if (
 					!isEqual(task.start, t.start) ||
 					!isEqual(task.end, t.end)
 				) {
-					if (
-						t.type === "summary" &&
-						(!task.type || task.type === "summary") &&
-						t.data?.length
-					) {
-						if (!diff) {
-							diff = differ(task.start, t.start);
-							// summary dates must be changed equally
-							if (differ(task.end, t.end) !== diff) return;
+					if (task.type === "summary" && t.data?.length) {
+						let shift = diff || differ(task.start, t.start);
+						if (calendar) {
+							//recalculate real diff
+							shift =
+								task.start > t.start
+									? differ(task.start, t.start)
+									: -differ(t.start, task.start);
+							adder = shiftByWorkingDays(calendar);
 						}
+
 						this.moveSummaryKids(
 							t,
-							date => adder(date, diff),
+							date => {
+								date = adder(date, shift);
+								return calendar
+									? adjustToWorkingDay(date, diff, calendar)
+									: date;
+							},
 							"update-task"
 						);
 					}
 				}
-			} //summary dates must be changed both
-			else if (
-				t.type == "summary" &&
-				((task.start && !task.end) ||
-					(task.end && !task.start) ||
-					task.duration)
-			)
-				return;
+			}
 
-			prepareTask(t, task, durationUnit);
+			// for partial task objects - fill related field for calculation
+			if (!task.start) task.start = t.start;
+			if (!task.end && !task.duration) task.duration = t.duration;
+
+			normalizeDates(task, stateOptions);
 			tasks.update(id, task);
 
-			if (task.type === "summary" && t.type !== "summary") {
-				this.resetSummaryDates(id, "update-task");
+			if (
+				(calendar && task.type === "summary") ||
+				(task.type === "summary" && t.type !== "summary")
+			) {
+				//silent update for itself
+				this.resetSummaryDates(id, "update-task", true);
 			}
 
 			const summary = tasks.getSummaryId(id);
@@ -603,14 +694,15 @@ export default class DataStore extends Store<IData> {
 			const {
 				tasks,
 				_scales,
-				baselines,
 				unscheduledTasks,
 				durationUnit,
+				splitTasks,
+				calendar,
 			} = this.getState();
 
-			const { target, mode, task, show } = ev;
+			const { target, mode, task, show, select = true } = ev;
 
-			task.unscheduled = unscheduledTasks;
+			if (!ev.eventSource && unscheduledTasks) task.unscheduled = true;
 			let ind = -1;
 			let parent;
 			let targetObj;
@@ -646,20 +738,28 @@ export default class DataStore extends Store<IData> {
 						}
 					}
 					task.start =
-						start || getAdder(durationUnit)(_scales.start, 1);
+						start ||
+						getAdder(durationUnit, calendar)(_scales.start, 1);
 				}
 				task.duration = 1;
-
-				if (baselines) {
-					task.base_start = task.start;
-					task.base_duration = task.duration;
-				}
 			}
 
-			normalizeDates(task, durationUnit);
+			if (calendar)
+				task.start = adjustToWorkingDay(task.start, 1, calendar);
+
+			if (this.getState().baselines) {
+				task.base_start = task.start;
+				task.base_duration = task.duration;
+			}
+
+			normalizeDates(task, { durationUnit, splitTasks, calendar });
 			const newTask = tasks.add(task, ind);
 
-			if (parent) {
+			const update: Partial<IData> = {
+				tasks,
+			};
+
+			if (parent && show) {
 				while (parent && parent.id) {
 					inBus.exec("open-task", {
 						id: parent.id,
@@ -667,6 +767,8 @@ export default class DataStore extends Store<IData> {
 					});
 					parent = tasks.byId(parent.parent);
 				}
+
+				update._scrollTask = { id: newTask.id, mode: show };
 			}
 
 			ev.id = newTask.id;
@@ -676,12 +778,12 @@ export default class DataStore extends Store<IData> {
 				this.resetSummaryDates(summary, "add-task");
 			}
 
-			this.setStateAsync({ tasks });
-
-			inBus.exec("select-task", { id: newTask.id, show: show || false });
+			this.setStateAsync(update);
 
 			ev.id = newTask.id;
 			ev.task = newTask;
+
+			if (select) inBus.exec("select-task", { id: newTask.id });
 		});
 
 		inBus.on("delete-task", (ev: TMethodsConfig["delete-task"]) => {
@@ -813,6 +915,7 @@ export default class DataStore extends Store<IData> {
 					eventSource: "copy-task",
 					target: copy.parent,
 					mode: "child",
+					skipUndo: true,
 				});
 			}
 			// relink copied branch links
@@ -823,6 +926,8 @@ export default class DataStore extends Store<IData> {
 						target: link.target,
 						type: link.type,
 					},
+					eventSource: "copy-task",
+					skipUndo: true,
 				});
 			});
 
@@ -860,7 +965,8 @@ export default class DataStore extends Store<IData> {
 		});
 
 		inBus.on("provide-data", (ev: TMethodsConfig["provide-data"]) => {
-			const { tasks, links } = this.getState();
+			const { tasks, links, durationUnit, calendar, splitTasks } =
+				this.getState();
 			const parent = tasks.byId(ev.id);
 
 			if (parent.lazy) {
@@ -868,11 +974,20 @@ export default class DataStore extends Store<IData> {
 				parent.open = true;
 			} else parent.data = [];
 
+			parseTaskDates(ev.data.tasks, {
+				durationUnit,
+				splitTasks,
+				calendar,
+			});
 			tasks.parse(ev.data.tasks, ev.id);
+			if (parent.type == "summary")
+				this.resetSummaryDates(parent.id, "provide-data");
 			// fixme: DataArray needs the parse() method
 			this.setStateAsync({
 				tasks,
-				links: new DataArray(links.map(l => l).concat(ev.data.links)),
+				links: new DataArray(
+					links.map(l => l).concat(normalizeLinks(ev.data.links))
+				),
 			});
 		});
 
@@ -899,8 +1014,13 @@ export default class DataStore extends Store<IData> {
 					this.setState({ cellWidth: width, _cellWidth: width });
 				}
 
-				const { _scales, _start, cellWidth: cw } = this.getState();
-				const start = getUnitStart(_scales.minUnit, _start);
+				const {
+					_scales,
+					_start,
+					cellWidth: cw,
+					_weekStart,
+				} = this.getState();
+				const start = getUnitStart(_scales.minUnit, _start, _weekStart);
 				const num = _scales.diff(date, start, "hour");
 				if (typeof offset === "undefined") offset = cw;
 				let newScrollLeft = Math.round(num * cw) - offset;
@@ -1028,6 +1148,14 @@ export default class DataStore extends Store<IData> {
 						handleAction(this, "delete-task", null, null);
 						break;
 					}
+					case "ctrl+z": {
+						this.in.exec("undo", {});
+						break;
+					}
+					case "ctrl+y": {
+						this.in.exec("redo", {});
+						break;
+					}
 					/*case "ctrl+e": {
 					const { selected, _tasks } = this.getState();
 					event.preventDefault();
@@ -1059,12 +1187,14 @@ export default class DataStore extends Store<IData> {
 			state.unscheduledTasks = false;
 			state.baselines = false;
 			state.markers = [];
+			state.undo = false;
+			state.schedule = {};
+			state.criticalPath = null;
+			state.splitTasks = false;
 		}
 
 		if (Array.isArray(state.tasks)) {
-			state.tasks.forEach(task =>
-				normalizeDates(task, state.durationUnit)
-			);
+			this.getHistory()?.resetHistory();
 		}
 
 		this._router.init({
@@ -1077,20 +1207,11 @@ export default class DataStore extends Store<IData> {
 			...state,
 		});
 
-		if (state.zoom) {
-			const res = normalizeZoom(
-				state.zoom,
-				state.scales,
-				state.cellWidth
-			);
-			this.setState({
-				zoom: res._zoom,
-				cellWidth: res.cellWidth,
-				_cellWidth: res.cellWidth,
-				scales: res.scales,
-			});
-		}
+		// [FIXME] reacts to any external changes to props
+		// must compare prev. and current state (+use the initOnce logic?)
+
 	}
+
 	setState(state: Partial<IData>, ctx?: TDataConfig) {
 		return this._router.setState(state, ctx);
 	}
@@ -1102,6 +1223,13 @@ export default class DataStore extends Store<IData> {
 	getTask(id: TID) {
 		const { tasks } = this.getState();
 		return tasks.byId(id);
+	}
+
+	getHistory() {
+		if (!this.getState().undo) return null;
+		return this._modules.get("historyManager") as
+			| HistoryManager
+			| undefined;
 	}
 
 	serialize() {
@@ -1139,13 +1267,12 @@ export default class DataStore extends Store<IData> {
 		return result;
 	}
 
-	private resetSummaryDates(id: TID, eventSource: string) {
-		const { tasks } = this.getState();
+	private resetSummaryDates(id: TID, eventSource: string, silent?: boolean) {
+		const { tasks, durationUnit, splitTasks, calendar } = this.getState();
 		const obj = tasks.byId(id);
 		const kids = obj.data;
 
 		// do not reset dates if there are no kids or all kids are unscheduled
-
 		if (kids?.length && this.isScheduled(kids)) {
 			const task = setSummaryDates({
 				...obj,
@@ -1158,7 +1285,21 @@ export default class DataStore extends Store<IData> {
 				!isEqual(obj.start, task.start) ||
 				!isEqual(obj.end, task.end)
 			) {
-				this.in.exec("update-task", { id, task, eventSource });
+				if (silent) {
+					normalizeDates(task, {
+						durationUnit,
+						splitTasks,
+						calendar,
+					});
+					tasks.update(id, task);
+				} else
+					this.in.exec("update-task", {
+						id,
+						task,
+						eventSource,
+						skipUndo: true,
+					});
+
 				const summary = tasks.getSummaryId(id);
 				if (summary) this.resetSummaryDates(summary, eventSource);
 			}
@@ -1177,14 +1318,13 @@ export default class DataStore extends Store<IData> {
 				...tasks.byId(kid.id),
 				start: move(kid.start),
 			};
-			if (task.type !== "milestone") {
-				task.end = move(kid.end);
-			}
+			delete task.end;
 			delete task.id;
 			this.in.exec("update-task", {
 				id: kid.id,
 				task,
 				eventSource,
+				skipUndo: true,
 			});
 
 			if (kid.data?.length) this.moveSummaryKids(kid, move, eventSource);
@@ -1192,13 +1332,13 @@ export default class DataStore extends Store<IData> {
 	}
 
 	private calcScaleDate(x: number) {
-		const { _scales, _start } = this.getState();
+		const { _scales, _start, _weekStart } = this.getState();
 		const width =
 			_scales.lengthUnit === "day"
 				? _scales.lengthUnitWidth / 24
 				: _scales.lengthUnitWidth;
 		return getAdder("hour")(
-			getUnitStart(_scales.minUnit, _start),
+			getUnitStart(_scales.minUnit, _start, _weekStart),
 			Math.floor(x / width)
 		);
 	}
@@ -1227,13 +1367,17 @@ export type IDataMethodsConfig = CombineTypes<
 			target?: TID;
 			mode?: "before" | "after" | "child";
 			show?: TScrollTask["mode"];
+			select?: boolean;
+			eventSource?: string;
 		};
 		["update-task"]: {
 			id: TID;
+			segmentIndex?: number;
 			task: Partial<ITask>;
 			diff?: number;
 			inProgress?: boolean;
 			eventSource?: string;
+			skipUndo?: boolean;
 		};
 		["delete-task"]: { id: TID; source?: TID };
 		["open-task"]: { id: TID; mode: boolean };
@@ -1245,12 +1389,12 @@ export type IDataMethodsConfig = CombineTypes<
 		};
 		["drag-task"]: {
 			id: TID;
+			segmentIndex?: number;
 			width?: number;
 			left?: number;
 			top?: number;
 			inProgress?: boolean;
 		};
-
 		["copy-task"]: {
 			id: TID;
 			target?: TID;
@@ -1258,11 +1402,12 @@ export type IDataMethodsConfig = CombineTypes<
 			source?: TID;
 			lazy?: boolean;
 			eventSource?: string;
+			skipUndo?: boolean;
 		};
 		["move-task"]: {
 			id: TID;
 			target?: TID;
-			mode?: "before" | "after" | "up" | "down" | "child";
+			mode: "before" | "after" | "up" | "down" | "child";
 			inProgress?: boolean;
 			source?: TID;
 		};
@@ -1270,17 +1415,20 @@ export type IDataMethodsConfig = CombineTypes<
 		["indent-task"]: { id: TID; mode: boolean };
 
 		["show-editor"]: { id: TID };
-		["add-link"]: { id?: TID; link: Partial<ILink> };
+		["add-link"]: {
+			id?: TID;
+			link: Partial<ILink>;
+			eventSource?: string;
+			skipUndo: boolean;
+		};
 		["update-link"]: { id: TID; link: Partial<ILink> };
 		["delete-link"]: { id: TID };
 
 		["scroll-chart"]: { left?: number; top?: number };
 		["render-data"]: IVisibleArea;
-		// requesting data loading for the branch
 		["request-data"]: {
 			id: TID;
 		};
-		// providing new data for branch
 		["provide-data"]: {
 			id: TID;
 			data: {
@@ -1301,9 +1449,17 @@ export type IDataMethodsConfig = CombineTypes<
 			event: any;
 			eventSource?: string;
 		};
+		["schedule-tasks"]: {
+			id?: TID;
+			task?: Partial<ITask>;
+		};
+		["undo"]: void;
+		["redo"]: void;
+		["split-task"]: { id: TID; segmentIndex?: number };
 	},
 	{
 		skipProvider?: boolean;
+		spipUndo?: boolean;
 		[key: string]: any;
 	}
 >;

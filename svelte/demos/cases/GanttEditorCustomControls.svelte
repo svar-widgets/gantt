@@ -2,9 +2,9 @@
 	import {
 		Gantt,
 		Editor,
-		defaultEditorItems,
 		registerEditorItem,
 		defaultTaskTypes,
+		getEditorItems,
 	} from "../../src";
 	import { RadioButtonGroup } from "@svar-ui/svelte-core";
 	import UsersCustomCombo from "../custom/UsersCustomCombo.svelte";
@@ -15,6 +15,8 @@
 
 	registerEditorItem("radio", RadioButtonGroup);
 	registerEditorItem("custom-combo", UsersCustomCombo);
+
+	const defaultEditorItems = getEditorItems();
 
 	const items = defaultEditorItems.map(item => ({ ...item }));
 	items.splice(

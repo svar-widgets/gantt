@@ -1,5 +1,4 @@
 import Gantt from "./components/Gantt.svelte";
-import Fullscreen from "./components/Fullscreen.svelte";
 import Toolbar from "./components/Toolbar.svelte";
 import ContextMenu from "./components/ContextMenu.svelte";
 import Editor from "./components/Editor.svelte";
@@ -17,6 +16,9 @@ export {
 	defaultMenuOptions,
 	defaultColumns,
 	defaultTaskTypes,
+	getEditorItems,
+	getToolbarButtons,
+	getMenuOptions,
 	registerScaleUnit,
 } from "@svar-ui/gantt-store";
 
@@ -24,7 +26,6 @@ export { registerEditorItem } from "@svar-ui/svelte-editor";
 
 export {
 	Gantt,
-	Fullscreen,
 	ContextMenu,
 	HeaderMenu,
 	Toolbar,

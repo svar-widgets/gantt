@@ -1,5 +1,18 @@
 import type { TID } from "@svar-ui/lib-state";
-import type { ITask, IGanttTask } from "../types";
+import type {
+	ITask,
+	IParsedTask,
+	IHistory,
+	IData,
+	IDataConfig,
+	IDataHash,
+} from "../types";
+
+export function getMenuOptions(config: IDataConfig) {
+	let options = [...defaultMenuOptions];
+
+	return options;
+}
 
 export interface IOptionConfig {
 	id?: TID;
@@ -8,9 +21,20 @@ export interface IOptionConfig {
 	icon?: string;
 	data?: IOptionConfig[];
 	type?: string;
-	check?: (task: ITask, _tasks?: IGanttTask[]) => boolean | TID;
+	isDisabled?:
+		| ((
+				task: IParsedTask,
+				state: IData,
+				target?: TID | IDataHash
+		  ) => boolean)
+		| ((history: IHistory) => boolean);
 	dataFactory?: (obj: any) => IOptionConfig;
 	subtext?: string;
+	isHidden?: (
+		task: IParsedTask,
+		state: IData,
+		target?: TID | IDataHash
+	) => boolean;
 }
 
 export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
@@ -20,17 +44,17 @@ export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
 		switch (item.id) {
 			case "add-task:before":
 			case "move-task:up":
-				item.check = (task, _tasks) => !isFirstTask(task, _tasks);
+				item.isDisabled = (task, state) => isFirstTask(task, state);
 				break;
 			case "move-task:down":
-				item.check = (task, _tasks) => !isLastTask(task, _tasks);
+				item.isDisabled = (task, state) => isLastTask(task, state);
 				break;
 			case "indent-task:add":
-				item.check = (task, _tasks) =>
-					prevTaskID(task, _tasks) !== task.parent;
+				item.isDisabled = (task, state) =>
+					prevTaskID(task, state) === task.parent;
 				break;
 			case "indent-task:remove":
-				item.check = task => !isRootTask(task);
+				item.isDisabled = (task: IParsedTask) => isRootTask(task);
 				break;
 		}
 		return item;
@@ -41,18 +65,28 @@ function isRootTask(task: ITask) {
 	return task.parent === 0;
 }
 
-function isFirstTask(task: ITask, _tasks: IGanttTask[]): boolean {
+function isFirstTask(task: ITask, state: IData): boolean {
+	const { _tasks } = state;
 	return _tasks[0]?.id === task.id;
 }
-function isLastTask(task: ITask, _tasks: IGanttTask[]): boolean {
+function isLastTask(task: ITask, state: IData): boolean {
+	const { _tasks } = state;
 	return _tasks[_tasks.length - 1]?.id === task.id;
 }
-function prevTaskID(task: ITask, _tasks: IGanttTask[]): TID {
+function prevTaskID(task: ITask, state: IData): TID {
+	const { _tasks } = state;
 	const taskIndex = _tasks.findIndex(t => t.id === task.id);
 	return _tasks[taskIndex - 1]?.id ?? task.parent;
 }
 
-const exclude = (v: any) => (task: ITask) => task.type !== v;
+function isSegment(target: TID | IDataHash): boolean {
+	return target && typeof target === "object";
+}
+function isSingle(s: IData): boolean {
+	return !s.selected || s.selected.length < 2;
+}
+
+const exclude = (v: any) => (task: ITask) => task.type === v;
 
 export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 	{
@@ -70,20 +104,19 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		id: "convert-task",
 		text: "Convert to",
 		icon: "wxi-swap-horizontal",
-		dataFactory: type => {
-			return {
-				id: `convert-task:${type.id}`,
-				text: `${type.label}`,
-				check: exclude(type.id),
-			};
-		},
+		dataFactory: type => ({
+			id: `convert-task:${type.id}`,
+			text: `${type.label}`,
+			isDisabled: exclude(type.id),
+		}),
 	},
 	{
 		id: "edit-task",
 		text: "Edit",
 		icon: "wxi-edit",
-		subtext: "Ctrl+E",
+		isHidden: (t, s, target) => isSegment(target),
 	},
+	{ type: "separator" },
 	{ id: "cut-task", text: "Cut", icon: "wxi-content-cut", subtext: "Ctrl+X" },
 	{
 		id: "copy-task",
@@ -115,5 +148,6 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		icon: "wxi-delete",
 		text: "Delete",
 		subtext: "Ctrl+D / BS",
+		isHidden: (t, s, target) => isSingle(s) && isSegment(target),
 	},
 ]);

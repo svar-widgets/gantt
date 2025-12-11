@@ -1,14 +1,22 @@
 import { ILink, ITask } from "../../src/types";
+import { getUnitFormats } from "../../../svelte/src/helpers/prepareConfig";
 import { defaultColumns } from "../../src/columns";
 
-type TDataType = "default" | "lazy" | "full" | "range" | "summaries" | "pretty";
+type TDataType =
+	| "default"
+	| "lazy"
+	| "full"
+	| "range"
+	| "summaries"
+	| "pretty"
+	| "autoScheduling";
 
 export const cellWidth = 100;
 export const cellHeight = 38;
 export const scaleHeight = 30;
 export const scales = [
-	{ unit: "month", step: 1, format: "MMMM yyy" },
-	{ unit: "day", step: 1, format: "d" },
+	{ unit: "month", step: 1, format: "%F %Y" },
+	{ unit: "day", step: 1, format: "%j" },
 ];
 export const taskTypes = [
 	{ id: "task", label: "Task" },
@@ -29,6 +37,9 @@ function getLinks(type?: TDataType) {
 	}
 	return [{ id: 1, source: 1, target: 2, type: "e2s" }];
 }
+
+const _ = (v: string) => v; // [fixme] tests fallback
+export const unitFormats = getUnitFormats(_);
 
 export const getData = (type?: TDataType): any => {
 	const tasks = getTasks(type) as ITask[];
@@ -464,6 +475,95 @@ const prettyTasks = [
 	},
 ];
 
+const autoSchedulingTasks: ITask[] = [
+	{
+		id: 1,
+		text: "Task 1",
+		type: "summary",
+		parent: 0,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+	{
+		id: 11,
+		text: "Task 11",
+		type: "task",
+		parent: 1,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+	{
+		id: 12,
+		text: "Task 12",
+		type: "task",
+		parent: 11,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+	{
+		id: 13,
+		text: "Task 13",
+		type: "task",
+		parent: 12,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+	{
+		id: 2,
+		text: "Task 2",
+		type: "task",
+		parent: 0,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+];
+
+const autoSchedulingLinks: ILink[] = [
+	{
+		id: 1, // invalid - summary to child task
+		source: 1,
+		target: 11,
+		type: "e2s",
+	},
+	{
+		id: 2, // invalid - cyclical
+		source: 11,
+		target: 12,
+		type: "e2s",
+	},
+
+	{
+		id: 3, // invalid - cyclical
+		source: 12,
+		target: 13,
+		type: "e2s",
+	},
+	{
+		id: 4, // invalid - cyclical
+		source: 13,
+		target: 11,
+		type: "s2s",
+	},
+	{
+		id: 5, // invalid - self-reference
+		source: 2,
+		target: 2,
+		type: "e2s",
+	},
+	{
+		id: 6,
+		source: 2,
+		target: 13,
+		type: "e2s",
+	},
+	{
+		id: 7,
+		source: 1,
+		target: 2,
+		type: "e2s",
+	},
+];
+
 const tasks = {
 	default: [
 		{
@@ -728,9 +828,10 @@ const tasks = {
 	range: rTasks,
 	summaries: summaryTasks,
 	pretty: prettyTasks,
+	autoScheduling: autoSchedulingTasks,
 };
 
-const summaryLinks = [
+const summaryLinks: ILink[] = [
 	{
 		source: 5,
 		target: 12,
@@ -775,7 +876,7 @@ const summaryLinks = [
 	},
 ];
 
-const prettyLinks = [
+const prettyLinks: ILink[] = [
 	{
 		id: 1,
 		source: 10,
@@ -820,7 +921,7 @@ const prettyLinks = [
 	},
 ];
 
-const links = {
+const links: Partial<Record<TDataType, ILink[]>> = {
 	full: [
 		{
 			id: 1,
@@ -867,9 +968,10 @@ const links = {
 	],
 	summaries: summaryLinks,
 	pretty: prettyLinks,
+	autoScheduling: autoSchedulingLinks,
 };
 
-export const summaryDates = {
+export const summaryDates: Record<string, any> = {
 	1: {
 		start: new Date("2024-06-13 00:00:00"),
 		end: new Date("2024-06-21 00:00:00"),
@@ -888,7 +990,7 @@ export const summaryDates = {
 	},
 };
 
-export const summaryPrettyDates = {
+export const summaryPrettyDates: Record<string, any> = {
 	1: {
 		start: new Date(2024, 3, 2),
 		end: new Date(2024, 3, 17),

@@ -16,6 +16,14 @@
 		{ id: "cn", label: "CN" },
 	];
 	let lang = $state("en");
+
+	const settings = {
+		...skinSettings,
+		tasks: data.tasks,
+		links: data.links,
+		scales: data.scales,
+		zoom: true,
+	};
 </script>
 
 <div class="rows">
@@ -26,13 +34,7 @@
 		<Toolbar {api} />
 		<div class="gtcell">
 			<ContextMenu {api}>
-				<Gantt
-					{...skinSettings}
-					tasks={data.tasks}
-					links={data.links}
-					scales={data.scales}
-					bind:this={api}
-				/>
+				<Gantt {...settings} bind:this={api} />
 			</ContextMenu>
 			<Editor {api} />
 		</div>
@@ -43,13 +45,7 @@
 			<Toolbar {api} />
 			<div class="gtcell">
 				<ContextMenu {api}>
-					<Gantt
-						{...skinSettings}
-						tasks={data.tasks}
-						links={data.links}
-						scales={data.scales}
-						bind:this={api}
-					/>
+					<Gantt {...settings} bind:this={api} />
 				</ContextMenu>
 				<Editor {api} />
 			</div>

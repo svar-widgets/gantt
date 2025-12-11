@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, Editor, defaultEditorItems } from "../../src";
+	import { Gantt, Editor, getEditorItems } from "../../src";
 
 	let { skinSettings } = $props();
 
@@ -25,6 +25,7 @@
 		"progress",
 		"details",
 	];
+	const defaultEditorItems = getEditorItems();
 	const items = keys.map(key => ({
 		...defaultEditorItems.find(op => op.key === key),
 	}));

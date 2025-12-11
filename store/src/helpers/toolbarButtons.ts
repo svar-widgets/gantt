@@ -1,4 +1,18 @@
 import { assignChecks } from "./menuOptions";
+import type {
+	IData,
+	IDataHash,
+	IParsedTask,
+	IHistory,
+	IDataConfig,
+} from "../types";
+import type { TID } from "@svar-ui/lib-state";
+
+export function getToolbarButtons(config: IDataConfig) {
+	let buttons = [...defaultToolbarButtons];
+
+	return buttons;
+}
 
 export interface IButtonConfig {
 	id?: string;
@@ -7,8 +21,18 @@ export interface IButtonConfig {
 	icon?: string;
 	type?: string;
 	menuText?: string;
-
-	check?: (params: any) => boolean;
+	isDisabled?:
+		| ((
+				task: IParsedTask,
+				state: IData,
+				target?: TID | IDataHash
+		  ) => boolean)
+		| ((history: IHistory) => boolean);
+	isHidden?: (
+		task: IParsedTask,
+		state: IData,
+		target?: TID | IDataHash
+	) => boolean;
 }
 
 export const defaultToolbarButtons: IButtonConfig[] =

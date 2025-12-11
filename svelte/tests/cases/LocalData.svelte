@@ -1,7 +1,7 @@
 <script>
 	import { Gantt, Editor } from "../../src/";
 	import { getData } from "../../demos/data";
-	import { Willow, Locale } from "@svar-ui/svelte-core";
+	import { Willow } from "@svar-ui/svelte-core";
 
 	const { tasks, links, scales } = getData();
 
@@ -9,8 +9,6 @@
 </script>
 
 <Willow>
-	<Locale>
-		<Gantt bind:this={api} {tasks} {links} {scales} />
-		<Editor {api} />
-	</Locale>
+	<Gantt bind:this={api} {tasks} {links} {scales} />
+	<Editor {api} />
 </Willow>

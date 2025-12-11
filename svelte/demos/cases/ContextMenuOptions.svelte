@@ -1,6 +1,6 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu, Editor, defaultMenuOptions } from "../../src/";
+	import { Gantt, ContextMenu, Editor, getMenuOptions } from "../../src/";
 
 	import { getContext } from "svelte";
 	const helpers = getContext("wx-helpers");
@@ -12,7 +12,7 @@
 	let options = $state();
 	const ids = ["cut-task", "copy-task", "paste-task", "delete-task"];
 	let arr = [{ id: "add-task:after", text: " Add below", icon: "wxi-plus" }];
-	arr = arr.concat(defaultMenuOptions.filter(op => ids.indexOf(op.id) >= 0));
+	arr = arr.concat(getMenuOptions().filter(op => ids.indexOf(op.id) >= 0));
 	arr.push({
 		id: "my-action",
 		text: "My action",

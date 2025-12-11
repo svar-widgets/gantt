@@ -23,18 +23,23 @@
 			var(--wx-font-family);
 		--wx-gantt-bar-border-radius: 3px;
 		--wx-gantt-milestone-border-radius: 3px;
+		--wx-gantt-critical-color: #de3a3a;
 
 		--wx-gantt-task-color: #37a9ef;
 		--wx-gantt-task-font-color: #ffffffe5;
 		--wx-gantt-task-fill-color: #098cdc;
 		--wx-gantt-task-border-color: #098cdc;
 		--wx-gantt-task-border: 1px solid transparent;
+		--wx-gantt-task-critical-color: var(--wx-gantt-critical-color);
+		--wx-gantt-task-critical-fill-color: #c83434;
 
 		--wx-gantt-summary-color: #00ba94;
 		--wx-gantt-summary-font-color: #ffffffe5;
 		--wx-gantt-summary-fill-color: #099f81;
 		--wx-gantt-summary-border-color: #099f81;
 		--wx-gantt-summary-border: 1px solid transparent;
+		--wx-gantt-summary-critical-color: #d9306f;
+		--wx-gantt-summary-critical-fill-color: #c32b64;
 
 		--wx-gantt-progress-marker-height: 26px;
 		--wx-gantt-progress-border-color: #4b5359;
@@ -49,6 +54,9 @@
 
 		--wx-gantt-select-color: #384047;
 		--wx-gantt-link-color: #9fa1ae;
+		--wx-gantt-link-color-hovered: #c8c7cf;
+		--wx-gantt-link-critical-color: var(--wx-gantt-critical-color);
+		--wx-gantt-link-critical-color-hovered: #b22e2e;
 		--wx-gantt-link-marker-background: #384047;
 		--wx-gantt-link-marker-color: #9fa1ae;
 
@@ -69,7 +77,6 @@
 		--wx-timescale-font: var(--wx-font-weight-md) var(--wx-font-size-sm)
 			var(--wx-font-family);
 		--wx-timescale-font-color: var(--wx-color-font);
-		--wx-timescale-text-transform: uppercase;
 		--wx-timescale-shadow: none;
 		--wx-timescale-border: var(--wx-border);
 

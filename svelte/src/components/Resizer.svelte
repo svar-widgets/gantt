@@ -4,11 +4,12 @@
 		size = 4,
 		dir = "x",
 		value = $bindable(0),
-		minValue = 0,
-		maxValue = 0,
 		onmove,
 		display = $bindable("all"),
 		compactMode,
+		containerWidth = 0,
+		leftThreshold = 50,
+		rightThreshold = 50,
 	} = $props();
 
 	function getBox(value) {
@@ -29,11 +30,23 @@
 	let start = 0,
 		pos,
 		active = $state(false);
+	let initialPosition = $state(null);
+
+	$effect(() => {
+		if (initialPosition === null && value > 0) {
+			initialPosition = value;
+		}
+	});
 
 	function getEventPos(ev) {
 		return dir == "x" ? ev.clientX : ev.clientY;
 	}
 	function down(ev) {
+		// Prevent dragging when in normal mode and only one view is visible
+		if (!compactMode && (display === "grid" || display === "chart")) {
+			return;
+		}
+
 		start = getEventPos(ev);
 		pos = value;
 		active = true;
@@ -47,14 +60,24 @@
 	let timeout;
 	function move(ev) {
 		const newPos = pos + getEventPos(ev) - start;
-		if (
-			(!minValue || minValue <= newPos) &&
-			(!maxValue || maxValue >= newPos)
-		) {
-			value = newPos;
-			if (timeout) clearTimeout(timeout);
-			timeout = setTimeout(() => onmove && onmove(value), 100);
+
+		value = newPos;
+		let nextDisplay;
+
+		if (newPos <= leftThreshold) {
+			nextDisplay = "chart";
+		} else if (containerWidth - newPos <= rightThreshold) {
+			nextDisplay = "grid";
+		} else {
+			nextDisplay = "all";
 		}
+
+		if (display !== nextDisplay) {
+			display = nextDisplay;
+		}
+
+		if (timeout) clearTimeout(timeout);
+		timeout = setTimeout(() => onmove && onmove(value), 100);
 	}
 
 	function up() {
@@ -65,20 +88,32 @@
 		window.removeEventListener("mouseup", up);
 	}
 
-	function handleExpandLeft() {
-		if (compactMode) {
-			display = display === "chart" ? "grid" : "chart";
-		} else {
-			display = display === "all" ? "chart" : "all";
+	function resetToInitial() {
+		display = "all";
+		if (initialPosition !== null) {
+			value = initialPosition;
+			if (onmove) onmove(initialPosition);
 		}
 	}
 
-	function handleExpandRight() {
+	function handleExpand(direction) {
 		if (compactMode) {
-			display = display === "grid" ? "chart" : "grid";
+			display = display === "chart" ? "grid" : "chart";
 		} else {
-			display = display === "all" ? "grid" : "all";
+			if (display === "grid" || display === "chart") {
+				resetToInitial();
+			} else {
+				display = direction === "left" ? "chart" : "grid";
+			}
 		}
+	}
+
+	function handleExpandLeft() {
+		handleExpand("left");
+	}
+
+	function handleExpandRight() {
+		handleExpand("right");
 	}
 	const b = $derived(getBox(value));
 	const cursor = $derived(

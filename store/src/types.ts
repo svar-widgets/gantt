@@ -7,6 +7,7 @@ import type {
 	IEventConfig,
 } from "@svar-ui/lib-state";
 import type GanttDataTree from "./GanttDataTree";
+import { Day } from "date-fns";
 import type DataStore from "./DataStore";
 import type { IApi as ITableApi, IColumn } from "@svar-ui/grid-store";
 
@@ -35,11 +36,14 @@ export interface ILink {
 	type: TLinkType;
 	source: TID;
 	target: TID;
+	lag?: number;
 }
 
 export interface IGanttLink extends ILink {
 	id: TID;
 	$p: string;
+	$pl: number;
+	$critical?: boolean;
 }
 
 export interface ITask {
@@ -60,6 +64,7 @@ export interface ITask {
 	type?: TTaskType;
 	parent?: TID;
 	unscheduled?: boolean;
+	segments?: Partial<ITask>[];
 
 	[key: string]: any;
 }
@@ -81,6 +86,7 @@ export interface IGanttTask extends IParsedTask {
 	$w_base?: number;
 
 	$reorder?: boolean;
+	$critical?: boolean;
 }
 
 export type TDispatch = <A extends keyof TMethodsConfig>(
@@ -124,12 +130,66 @@ export interface IMarker {
 	left?: number;
 }
 
+export interface IHistory {
+	undo: number;
+	redo: number;
+}
+
+export interface ICriticalPathConfig {
+	type: "strict" | "flexible";
+}
+
+export interface ICriticalTasks {
+	[key: TID]: boolean;
+}
+
+type UnitFormatter = (date: Date) => string;
+
+export interface IUnitFormats {
+	[unit: string]: UnitFormatter | string;
+}
+
+export interface IScheduleConfig {
+	type?: "forward";
+	auto?: boolean;
+}
+
+export interface ICalendarConfig {
+	name?: string;
+	weekHours?: {
+		sunday?: number;
+		monday?: number;
+		tuesday?: number;
+		wednesday?: number;
+		thursday?: number;
+		friday?: number;
+		saturday?: number;
+	};
+}
+
+export interface Calendar {
+	isWorkingDay(date: Date): boolean;
+	addRule(rule: (date: Date) => number): void;
+	clone(config?: ICalendarConfig): Calendar;
+	addWorkingDays(
+		start: Date,
+		days: number,
+		excludeEndDate?: boolean
+	): Date | null;
+	addWorkingHours(start: Date, hours: number): Date | null;
+	getNextWorkingDay(date: Date): Date | null;
+	getPreviousWorkingDay(date: Date): Date | null;
+	getWorkingDays(start: Date, end: Date, excludeEndDate?: boolean): number;
+	getWorkingHours(start: Date, end?: Date, excludeEndDate?: boolean): number;
+	setDayHours(date: Date, hours: number): void;
+	setRangeHours(start: Date, end: Date, hours: number): void;
+}
 export interface IConfig {
 	tasks?: ITask[];
 	links?: any[];
 	taskTypes?: ITaskType[];
 	selected?: TID[];
-	activeTask?: TID;
+	activeTask?: TID | { id: TID; segmentIndex: number };
 	scales?: IScaleConfig[];
 	columns?: IGanttColumn[];
 	start?: Date;
@@ -141,21 +201,27 @@ export interface IConfig {
 	scaleHeight?: number;
 	zoom?: boolean | IZoomConfig;
 	autoScale?: boolean;
-}
-
-export interface IProConfig extends IConfig {
+	schedule?: IScheduleConfig;
+	undo?: boolean;
 	unscheduledTasks?: boolean;
 	baselines?: boolean;
 	markers?: IMarker[];
+	criticalPath?: ICriticalPathConfig;
+	projectStart?: Date;
+	projectEnd?: Date;
+	calendar?: Calendar;
+	splitTasks?: boolean;
 }
 
-export interface IDataConfig extends IProConfig {
+export interface IDataConfig extends IConfig {
 	scrollLeft: number;
 	scrollTop: number;
 	area: IVisibleArea;
+	history?: IHistory;
 	_cellWidth?: number;
 	_sort?: TSort[];
 	_scrollTask?: TScrollTask;
+	_weekStart?: Day;
 }
 
 export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
@@ -170,14 +236,15 @@ export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
 	_start?: Date;
 	_end?: Date;
 	_scales?: GanttScaleData;
-	_markers?: IMarker[];
-
 	_scaleDate?: Date;
 	_zoomOffset?: number;
+	_weekStart?: Day;
+	_scrollTask?: TScrollTask;
+	_markers?: IMarker[];
 }
 
-export interface DataHash {
-	[key: string]: any;
+export interface IDataHash<T = any> {
+	[key: string]: T;
 }
 
 // scales
@@ -242,6 +309,7 @@ export type IGanttColumn = {
 	header?: IColumn["header"];
 	id?: string;
 	template?: IColumn["template"];
+	_template?: IColumn["template"];
 	sort?: boolean;
 	cell?: any;
 	editor?: IColumn["editor"];
@@ -255,6 +323,8 @@ export type TCommonShape = {
 	labelTemplate?: (value: any) => string;
 	config?: Record<string, any>;
 	[key: string]: any;
+	isHidden?: (task: Partial<ITask>) => boolean;
+	isDisabled?: (task: Partial<ITask>, state: IData) => boolean;
 };
 
 export type TTextFieldShape = TCommonShape & {
@@ -292,7 +362,7 @@ export type ITwoStateShape = TCommonShape & {
 	comp: "twostate";
 };
 
-export type TEditorShape =
+export type TEditorItem =
 	| TTextFieldShape
 	| TCounterShape
 	| TComboFieldShape

@@ -3,14 +3,14 @@
 	import { Toolbar } from "@svar-ui/svelte-toolbar";
 	import {
 		handleAction,
-		defaultToolbarButtons,
+		getToolbarButtons,
 		isHandledAction,
 	} from "@svar-ui/gantt-store";
 
 	import { locale } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
 
-	let { api = null, items = [...defaultToolbarButtons] } = $props();
+	let { api = null, items = [] } = $props();
 
 	// set locale
 	let l = getContext("wx-i18n");
@@ -20,10 +20,22 @@
 	}
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
+	let state = $derived(api?.getReactiveState());
+	let { _selected, undo, history, splitTasks } = $derived(state || {});
+
+	const historyActions = ["undo", "redo"];
+
 	const finalItems = $derived.by(() => {
-		return items.map(b => {
+		const fullButtons = getToolbarButtons({ undo: true, splitTasks: true });
+		const buttons = items.length
+			? items
+			: getToolbarButtons({
+					undo: $undo,
+					splitTasks: $splitTasks,
+				});
+		return buttons.map(b => {
 			b = { ...b, disabled: false };
-			b.handler = isHandledAction(defaultToolbarButtons, b.id)
+			b.handler = isHandledAction(fullButtons, b.id)
 				? item => handleAction(api, item.id, null, _)
 				: b.handler;
 			if (b.text) b.text = _(b.text);
@@ -32,27 +44,42 @@
 		});
 	});
 
-	let rSelected, rTasks;
 	const buttons = $derived.by(() => {
-		if (api) {
-			const rState = api.getReactiveState();
-			rSelected = rState._selected;
-			rTasks = rState._tasks;
-
-			if ($rSelected?.length) {
-				return finalItems.map(item => {
-					if (!item.check) return item;
-
-					const isDisabled = $rSelected.some(
-						task => !item.check(task, $rTasks)
-					);
-
-					return { ...item, disabled: isDisabled };
+		const finalButtons = [];
+		finalItems.forEach(item => {
+			const action = item.id;
+			if (action === "add-task") {
+				finalButtons.push(item);
+			} else if (!historyActions.includes(action)) {
+				if (!$_selected?.length || !api) return;
+				finalButtons.push({
+					...item,
+					disabled:
+						item.isDisabled &&
+						$_selected.some(task =>
+							item.isDisabled(task, api.getState())
+						),
+				});
+			} else if (historyActions.includes(action)) {
+				finalButtons.push({
+					...item,
+					disabled: item.isDisabled($history),
 				});
 			}
-		}
-
-		return [{ ...finalItems[0], disabled: false }];
+		});
+		// filter out consecutive separators
+		return finalButtons.filter((button, index) => {
+			if (api && button.isHidden)
+				return !$_selected.some(task =>
+					button.isHidden(task, api.getState())
+				);
+			if (button.comp === "separator") {
+				const nextButton = finalButtons[index + 1];
+				if (!nextButton || nextButton.comp === "separator")
+					return false;
+			}
+			return true;
+		});
 	});
 </script>
 

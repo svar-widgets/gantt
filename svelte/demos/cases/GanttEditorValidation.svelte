@@ -1,13 +1,13 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, Editor, defaultEditorItems } from "../../src";
+	import { Gantt, Editor, getEditorItems } from "../../src";
 
 	let { skinSettings } = $props();
 
 	const data = getData();
 	let api = $state();
 
-	const items = defaultEditorItems.map(ed => ({
+	const items = getEditorItems().map(ed => ({
 		...ed,
 		...(ed.comp === "text" && { required: true }),
 		...(ed.comp === "counter" && {

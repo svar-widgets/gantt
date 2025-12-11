@@ -9,8 +9,8 @@
 		isSameMonth,
 		addMonths,
 		addDays,
-		format,
 		differenceInDays,
+		format,
 	} from "date-fns";
 	let { skinSettings } = $props();
 
@@ -49,10 +49,10 @@
 	};
 
 	const allScales = [
-		{ unit: "month", step: 1, format: "MMMM yyy" },
+		{ unit: "month", step: 1, format: "%F %Y" },
 		{ unit: "sprint", step: 1, format: sprintFormat },
-		{ unit: "week", step: 1, format: "w" },
-		{ unit: "day", step: 1, format: "d" },
+		{ unit: "week", step: 1, format: "%w" },
+		{ unit: "day", step: 1, format: "%j" },
 	];
 
 	let scaleOption = $state(2);
@@ -116,8 +116,8 @@
 			links={data.links}
 			{scales}
 			zoom={true}
-			start={new Date(2024, 3, 1)}
-			end={new Date(2024, 5, 1)}
+			start={new Date(2026, 3, 1)}
+			end={new Date(2026, 5, 1)}
 			cellWidth={60}
 		/>
 	</div>

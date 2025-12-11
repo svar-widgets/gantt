@@ -2,7 +2,7 @@
 	import { getContext } from "svelte";
 	import { locateID, locateAttr } from "@svar-ui/lib-dom";
 	import { reorder } from "../../helpers/reorder";
-	import { normalizeDates } from "@svar-ui/gantt-store";
+	import { prepareEditTask } from "@svar-ui/gantt-store";
 
 	import { Grid } from "@svar-ui/svelte-grid";
 	import TextCell from "./TextCell.svelte";
@@ -30,11 +30,11 @@
 		_scales: scales,
 		columns,
 		_sort: sort,
+		calendar,
 		durationUnit,
+		splitTasks,
 	} = api.getReactiveState();
 
-	let touchY = null;
-	let scroll = true;
 	let dragTask = $state(null);
 
 	function execAction(id, action) {
@@ -81,23 +81,6 @@
 		}
 	}
 
-	function endScroll() {
-		scroll = false;
-	}
-
-	function onTouchstart(e) {
-		scroll = true;
-		touchY = e.touches[0].clientY + $scrollTop;
-	}
-
-	function onTouchmove(e) {
-		if (scroll) {
-			const delta = touchY - e.touches[0].clientY;
-			api.exec("scroll-chart", { top: delta });
-			e.preventDefault();
-			return false;
-		}
-	}
 	let lastDetail;
 	function reorderTasks(detail) {
 		const id = detail.id;
@@ -225,7 +208,15 @@
 				if (v && !isNaN(v) && !(v instanceof Date)) v *= 1;
 				update[column] = v;
 
-				normalizeDates(update, $durationUnit, true, column);
+				prepareEditTask(
+					update,
+					{
+						calendar: $calendar,
+						durationUnit: $durationUnit,
+						splitTasks: $splitTasks,
+					},
+					column
+				);
 
 				api.exec("update-task", {
 					id: id,
@@ -470,7 +461,6 @@
 	});
 </script>
 
-<svelte:window ontouchend={endScroll} />
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
@@ -485,13 +475,10 @@
 		class="wx-table"
 		use:reorder={{
 			start: startReorder,
-			touchStart: endScroll,
 			end: endReorder,
 			move: moveReorder,
 			getTask: api.getTask,
 		}}
-		ontouchstart={onTouchstart}
-		ontouchmove={onTouchmove}
 		onclick={onClick}
 		ondblclick={onDblClick}
 	>

@@ -44,10 +44,17 @@ export default {
 		Indent: "Indent",
 		Outdent: "Outdent",
 		"Split task": "Split task",
+		Segment: "Segment",
 
 		// Toolbar
 		"New task": "New task",
 		"Move up": "Move up",
 		"Move down": "Move down",
+		Undo: "Undo",
+		Redo: "Redo",
+
+		// Formats
+		Week: "Week",
+		Q: "Quarter",
 	},
 };
