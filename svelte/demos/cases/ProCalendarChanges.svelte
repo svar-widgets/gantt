@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, Editor } from "../../src";
-	import { Calendar } from "@svar-ui/gantt-store";
+	import { Calendar } from "@svar/gantt-store";
 	import { Button } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
