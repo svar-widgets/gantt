@@ -1,5 +1,5 @@
 <script>
-	import { Button } from "@wx/svelte-core";
+	import { Button } from "@svar-ui/svelte-core";
 	import { getData } from "../data";
 	import { Gantt, Editor, ContextMenu } from "../../src";
 

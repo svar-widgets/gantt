@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from "svelte";
-	import { clickOutside } from "@wx/lib-dom";
+	import { clickOutside } from "@svar-ui/lib-dom";
 	let { onSelectLink, selectedLink, readonly } = $props();
 
 	const api = getContext("gantt-store");

@@ -5,11 +5,11 @@ import type {
 	IEventBus,
 	IPublicWritable,
 	IEventConfig,
-} from "@wx/lib-state";
+} from "@svar-ui/lib-state";
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 import type DataStore from "./DataStore";
-import type { IApi as ITableApi, IColumn } from "@wx/grid-store";
+import type { IApi as ITableApi, IColumn } from "@svar-ui/grid-store";
 
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };

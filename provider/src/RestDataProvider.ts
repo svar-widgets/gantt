@@ -1,7 +1,7 @@
-import { Rest } from "@wx/lib-data-provider";
+import { Rest } from "@svar-ui/lib-data-provider";
 import { format } from "date-fns";
-import type { ActionMap } from "@wx/lib-data-provider";
-import type { TMethodsConfig, ITask, ILink, TID } from "@wx/gantt-store";
+import type { ActionMap } from "@svar-ui/lib-data-provider";
+import type { TMethodsConfig, ITask, ILink, TID } from "@svar-ui/gantt-store";
 
 type TProviderConfig = {
 	batchURL: string;

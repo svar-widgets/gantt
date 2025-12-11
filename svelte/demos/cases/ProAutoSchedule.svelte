@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, Editor, ContextMenu } from "../../src";
-	import { DatePicker, Field } from "@wx/svelte-core";
+	import { DatePicker, Field } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 	let api = $state();

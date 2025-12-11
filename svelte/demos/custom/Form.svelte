@@ -8,7 +8,7 @@
 		Select,
 		Slider,
 		DatePicker,
-	} from "@wx/svelte-core";
+	} from "@svar-ui/svelte-core";
 
 	let { task, taskTypes, onaction } = $props();
 

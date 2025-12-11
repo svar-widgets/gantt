@@ -1,8 +1,8 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, Editor, ContextMenu } from "../../src";
-	import { DatePicker, Field, Checkbox } from "@wx/svelte-core";
-	import { Calendar } from "@wx/gantt-store";
+	import { DatePicker, Field, Checkbox } from "@svar-ui/svelte-core";
+	import { Calendar } from "@svar-ui/gantt-store";
 
 	const data = getData("calendar", {
 		splitTasks: true,

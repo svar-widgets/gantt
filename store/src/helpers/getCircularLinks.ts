@@ -1,4 +1,4 @@
-import { TID } from "@wx/lib-state";
+import { TID } from "@svar-ui/lib-state";
 import { ILink } from "src/types";
 
 export function getCircularLinks(links: ILink[]): Set<TID> {

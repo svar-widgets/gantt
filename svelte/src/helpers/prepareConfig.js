@@ -1,4 +1,4 @@
-import { dateToString } from "@wx/lib-dom";
+import { dateToString } from "@svar-ui/lib-dom";
 
 export function getUnitFormats(_) {
 	return {

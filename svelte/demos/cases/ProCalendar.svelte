@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, Editor } from "../../src";
-	import { Calendar } from "@wx/gantt-store";
+	import { Calendar } from "@svar-ui/gantt-store";
 
 	let { skinSettings } = $props();
 

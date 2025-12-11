@@ -1,15 +1,15 @@
 <script>
 	import { getContext, setContext } from "svelte";
-	import { ContextMenu } from "@wx/svelte-menu";
+	import { ContextMenu } from "@svar-ui/svelte-menu";
 	import {
 		handleAction,
 		getMenuOptions,
 		isHandledAction,
-	} from "@wx/gantt-store";
+	} from "@svar-ui/gantt-store";
 
-	import { locale, locateID } from "@wx/lib-dom";
-	import { en } from "@wx/gantt-locales";
-	import { en as coreEn } from "@wx/core-locales";
+	import { locale, locateID } from "@svar-ui/lib-dom";
+	import { en } from "@svar-ui/gantt-locales";
+	import { en as coreEn } from "@svar-ui/core-locales";
 
 	let {
 		options = [],

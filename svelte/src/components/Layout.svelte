@@ -1,7 +1,7 @@
 <script>
 	// svelte core
 	import { tick, getContext } from "svelte";
-	import { hotkeys } from "@wx/grid-store";
+	import { hotkeys } from "@svar-ui/grid-store";
 
 	// views
 	import Grid from "./grid/Grid.svelte";

@@ -20,9 +20,9 @@ export {
 	getToolbarButtons,
 	getMenuOptions,
 	registerScaleUnit,
-} from "@wx/gantt-store";
+} from "@svar-ui/gantt-store";
 
-export { registerEditorItem } from "@wx/svelte-editor";
+export { registerEditorItem } from "@svar-ui/svelte-editor";
 
 export {
 	Gantt,

@@ -6,7 +6,7 @@ import type {
 	IHistory,
 	IDataConfig,
 } from "../types";
-import type { TID } from "@wx/lib-state";
+import type { TID } from "@svar-ui/lib-state";
 
 export function getToolbarButtons(config: IDataConfig) {
 	let buttons = [...defaultToolbarButtons];

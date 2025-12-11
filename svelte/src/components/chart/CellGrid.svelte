@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from "svelte";
-	import { grid } from "@wx/gantt-store";
+	import { grid } from "@svar-ui/gantt-store";
 
 	const { borders = "" } = $props();
 

@@ -1,5 +1,5 @@
 {
-	"name": "@wx/gantt-data-provider",
+	"name": "@svar-ui/gantt-data-provider",
 	"version": "2.4.1",
 	"description": "Backend integration helper for SVAR Gantt component",
 	"type": "module",
@@ -19,6 +19,6 @@
 		"license.txt"
 	],
 	"dependencies": {
-		"@wx/lib-data-provider": "1.7.1"
+		"@svar-ui/lib-data-provider": "1.7.1"
 	}
 }

@@ -1,7 +1,7 @@
 <script>
 	import { getData, bigScales } from "../data";
 	import { Gantt } from "../../src/";
-	import { Select } from "@wx/svelte-core";
+	import { Select } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 
