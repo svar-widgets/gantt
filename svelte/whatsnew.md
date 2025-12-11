@@ -1,3 +1,9 @@
+## 2.4.1
+
+### Fixes
+
+-   Incorrect types in open-source edition
+
 ## 2.4.0
 
 ### New features

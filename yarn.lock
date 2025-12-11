@@ -698,6 +698,13 @@
   resolved "https://registry.yarnpkg.com/@svar-ui/lib-dom/-/lib-dom-0.11.1.tgz#926250ec75c76008ead9ef1a84a4cb96614b46e4"
   integrity sha512-4wgerhDVttvrQ9t6OjHur34Of+VVr2VygA16HHGcWHytgdnOuGgfZb5PeBEhCJw/pO3RKfJvBHbaMIzL4IR//g==
 
+"@svar-ui/lib-schedule@0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-schedule/-/lib-schedule-0.4.3.tgz#a6c42fd1deddc4af9a6eac8d9d8188fba8d9c4a5"
+  integrity sha512-dxCbRnEPgi/G8s4AuwmvGwV+Y0FoU4R98Bsq5931ZJV1SKPVwpxK0ZfqWvlxhpKSYrfxf14ic5f4W/VoVhs10g==
+  dependencies:
+    date-fns "^4.1.0"
+
 "@svar-ui/lib-state@1.9.6", "@svar-ui/lib-state@^1.9.6":
   version "1.9.6"
   resolved "https://registry.yarnpkg.com/@svar-ui/lib-state/-/lib-state-1.9.6.tgz#b2359f2a212565eaa72d6a15fc4d27aadd42a070"
@@ -1756,6 +1763,11 @@ date-fns@3.6.0:
   version "3.6.0"
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-3.6.0.tgz#f20ca4fe94f8b754951b24240676e8618c0206bf"
   integrity sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==
+
+date-fns@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-4.1.0.tgz#64b3d83fff5aa80438f5b1a633c2e83b8a1c2d14"
+  integrity sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==
 
 dayjs@^1.10.4:
   version "1.11.19"
