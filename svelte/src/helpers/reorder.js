@@ -1,5 +1,5 @@
 import { getID } from "./locate";
-import { locate } from "@svar-ui/lib-dom";
+import { locate } from "@wx/lib-dom";
 
 function getOffset(node, relative, ev) {
 	const box = node.getBoundingClientRect();

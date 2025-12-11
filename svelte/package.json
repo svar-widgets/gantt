@@ -1,5 +1,5 @@
 {
-	"name": "@svar-ui/svelte-gantt",
+	"name": "@wx/svelte-gantt",
 	"version": "2.4.1",
 	"description": "Interactive and customizable Svelte Gantt chart component",
 	"productTag": "gantt",
@@ -33,17 +33,17 @@
 	},
 	"homepage": "https://svar.dev/svelte/gantt/",
 	"dependencies": {
-		"@svar-ui/gantt-data-provider": "2.4.1",
-		"@svar-ui/gantt-locales": "2.4.1",
-		"@svar-ui/gantt-store": "2.4.1",
-		"@svar-ui/lib-dom": "0.11.1",
-		"@svar-ui/lib-state": "1.9.6",
-		"@svar-ui/lib-svelte": "0.5.2",
-		"@svar-ui/svelte-core": "2.4.0",
-		"@svar-ui/svelte-menu": "2.4.0",
-		"@svar-ui/svelte-grid": "2.4.0",
-		"@svar-ui/svelte-toolbar": "2.4.0",
-		"@svar-ui/svelte-editor": "2.4.0"
+		"@wx/gantt-data-provider": "2.4.1",
+		"@wx/gantt-locales": "2.4.1",
+		"@wx/gantt-store": "2.4.1",
+		"@wx/lib-dom": "0.11.1",
+		"@wx/lib-state": "1.9.6",
+		"@wx/lib-svelte": "0.5.2",
+		"@wx/svelte-core": "2.4.0",
+		"@wx/svelte-menu": "2.4.0",
+		"@wx/svelte-grid": "2.4.0",
+		"@wx/svelte-toolbar": "2.4.0",
+		"@wx/svelte-editor": "2.4.0"
 	},
 	"files": [
 		"src",

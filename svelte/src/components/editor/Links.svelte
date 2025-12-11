@@ -1,6 +1,6 @@
 <script>
 	import { getContext, setContext } from "svelte";
-	import { Field, Combo, Text } from "@svar-ui/svelte-core";
+	import { Field, Combo, Text } from "@wx/svelte-core";
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	let { api, autoSave, onlinkschange: onchange } = $props();

@@ -2,7 +2,7 @@
 	import { getData } from "../data";
 	import { Gantt } from "../../src/";
 
-	import { Button } from "@svar-ui/svelte-core";
+	import { Button } from "@wx/svelte-core";
 
 	let { skinSettings } = $props();
 

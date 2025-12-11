@@ -1,7 +1,7 @@
 <script>
 	import { Gantt } from "../../src/";
 	import { getData } from "../../demos/data";
-	import { Willow } from "@svar-ui/svelte-core";
+	import { Willow } from "@wx/svelte-core";
 
 	let { skinSettings } = $props();
 

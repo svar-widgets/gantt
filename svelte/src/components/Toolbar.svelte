@@ -1,14 +1,14 @@
 <script>
 	import { getContext, setContext } from "svelte";
-	import { Toolbar } from "@svar-ui/svelte-toolbar";
+	import { Toolbar } from "@wx/svelte-toolbar";
 	import {
 		handleAction,
 		getToolbarButtons,
 		isHandledAction,
-	} from "@svar-ui/gantt-store";
+	} from "@wx/gantt-store";
 
-	import { locale } from "@svar-ui/lib-dom";
-	import { en } from "@svar-ui/gantt-locales";
+	import { locale } from "@wx/lib-dom";
+	import { en } from "@wx/gantt-locales";
 
 	let { api = null, items = [] } = $props();
 

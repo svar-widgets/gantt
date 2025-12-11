@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, ContextMenu, Editor, getEditorItems } from "../../src";
-	import { RadioButtonGroup } from "@svar-ui/svelte-core";
+	import { RadioButtonGroup } from "@wx/svelte-core";
 
 	let { skinSettings } = $props();
 

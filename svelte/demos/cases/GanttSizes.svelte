@@ -1,7 +1,7 @@
 <script>
 	import { getData, complexScales } from "../data";
 	import { Gantt } from "../../src/";
-	import { Slider } from "@svar-ui/svelte-core";
+	import { Slider } from "@wx/svelte-core";
 
 	let { skinSettings } = $props();
 

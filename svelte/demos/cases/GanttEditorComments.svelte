@@ -6,7 +6,7 @@
 		getEditorItems,
 		registerEditorItem,
 	} from "../../src";
-	import { Comments } from "@svar-ui/svelte-comments";
+	import { Comments } from "@wx/svelte-comments";
 
 	let { skinSettings } = $props();
 

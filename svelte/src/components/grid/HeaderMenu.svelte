@@ -1,5 +1,5 @@
 <script>
-	import { HeaderMenu } from "@svar-ui/svelte-grid";
+	import { HeaderMenu } from "@wx/svelte-grid";
 
 	let { children, columns = null, api } = $props();
 

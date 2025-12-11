@@ -4,12 +4,12 @@
 	import { writable } from "svelte/store";
 
 	// locales
-	import { locale as l } from "@svar-ui/lib-dom";
-	import { en } from "@svar-ui/gantt-locales";
-	import { en as coreEn } from "@svar-ui/core-locales";
+	import { locale as l } from "@wx/lib-dom";
+	import { en } from "@wx/gantt-locales";
+	import { en as coreEn } from "@wx/core-locales";
 
 	// stores
-	import { EventBusRouter } from "@svar-ui/lib-state";
+	import { EventBusRouter } from "@wx/lib-state";
 	import {
 		DataStore,
 		defaultColumns,
@@ -17,7 +17,7 @@
 		parseTaskDates,
 		normalizeZoom,
 		normalizeLinks,
-	} from "@svar-ui/gantt-store";
+	} from "@wx/gantt-store";
 	import { getContext } from "svelte";
 
 	//views

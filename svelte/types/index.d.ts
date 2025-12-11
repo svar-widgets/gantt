@@ -1,11 +1,11 @@
 import type { Component, ComponentProps } from "svelte";
-import { ContextMenu as BaseContextMenu } from "@svar-ui/svelte-menu";
-import { Toolbar as BaseToolbar } from "@svar-ui/svelte-toolbar";
-import { Editor as BaseEditor } from "@svar-ui/svelte-editor";
+import { ContextMenu as BaseContextMenu } from "@wx/svelte-menu";
+import { Toolbar as BaseToolbar } from "@wx/svelte-toolbar";
+import { Editor as BaseEditor } from "@wx/svelte-editor";
 import {
 	HeaderMenu as BaseHeaderMenu,
 	IColumnConfig as ITableColumn,
-} from "@svar-ui/svelte-grid";
+} from "@wx/svelte-grid";
 
 import type {
 	TMethodsConfig,
@@ -13,10 +13,10 @@ import type {
 	IConfig,
 	ITask,
 	IGanttColumn,
-} from "@svar-ui/gantt-store";
+} from "@wx/gantt-store";
 
-export * from "@svar-ui/gantt-store";
-export { registerEditorItem } from "@svar-ui/svelte-editor";
+export * from "@wx/gantt-store";
+export { registerEditorItem } from "@wx/svelte-editor";
 
 export interface IColumnConfig extends Omit<IGanttColumn, "header"> {
 	cell?: ITableColumn["cell"];

@@ -1,5 +1,5 @@
 <script>
-	import { Gantt, ContextMenu, Tooltip, Editor } from "@svar-ui/svelte-gantt";
+	import { Gantt, ContextMenu, Tooltip, Editor } from "@wx/svelte-gantt";
 	import { getData } from "../data/index";
 	import TooltipContent from "./TooltipContent.svelte";
 

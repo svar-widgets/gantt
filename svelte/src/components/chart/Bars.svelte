@@ -1,11 +1,11 @@
 <script>
 	import { getContext } from "svelte";
 
-	import { locate, locateID } from "@svar-ui/lib-dom";
+	import { locate, locateID } from "@wx/lib-dom";
 	import { getID } from "../../helpers/locate";
 	import Links from "./Links.svelte";
-	import { Button } from "@svar-ui/svelte-core";
-	import { isSegmentMoveAllowed, extendDragOptions } from "@svar-ui/gantt-store";
+	import { Button } from "@wx/svelte-core";
+	import { isSegmentMoveAllowed, extendDragOptions } from "@wx/gantt-store";
 
 	let { readonly, taskTemplate } = $props();
 

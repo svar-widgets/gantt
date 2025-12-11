@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, Editor } from "../../src/";
-	import { Toolbar } from "@svar-ui/svelte-toolbar";
+	import { Toolbar } from "@wx/svelte-toolbar";
 
 	let { skinSettings } = $props();
 

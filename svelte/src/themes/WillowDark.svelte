@@ -1,5 +1,5 @@
 <script>
-	import { WillowDark } from "@svar-ui/svelte-core";
+	import { WillowDark } from "@wx/svelte-core";
 	let { fonts = true, children } = $props();
 </script>
 

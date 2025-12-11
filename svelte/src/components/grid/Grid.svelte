@@ -1,10 +1,10 @@
 <script>
 	import { getContext } from "svelte";
-	import { locateID, locateAttr } from "@svar-ui/lib-dom";
+	import { locateID, locateAttr } from "@wx/lib-dom";
 	import { reorder } from "../../helpers/reorder";
-	import { prepareEditTask } from "@svar-ui/gantt-store";
+	import { prepareEditTask } from "@wx/gantt-store";
 
-	import { Grid } from "@svar-ui/svelte-grid";
+	import { Grid } from "@wx/svelte-grid";
 	import TextCell from "./TextCell.svelte";
 	import ActionCell from "./ActionCell.svelte";
 

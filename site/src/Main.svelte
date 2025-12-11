@@ -1,7 +1,7 @@
 <script>
 	import ThemeSelect from "./ThemeSelect.svelte";
 	import Component from "./components/Component.svelte";
-	import { Toolbar } from "@svar-ui/svelte-gantt";
+	import { Toolbar } from "@wx/svelte-gantt";
 
 	let { skin = $bindable("willow") } = $props();
 	let api = $state();

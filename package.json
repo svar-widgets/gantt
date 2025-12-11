@@ -1,6 +1,6 @@
 {
 	"private": true,
-	"name": "@svar-ui/gantt",
+	"name": "@wx/gantt",
 	"workspaces": [
 		"svelte",
 		"store",
@@ -33,7 +33,7 @@
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "4.0.0",
 		"@vitest/coverage-v8": "1.6.0",
-		"@svar-ui/vite-tools": "1.0.5",
+		"@wx/vite-tools": "1.0.5",
 		"autoprefixer": "10.4.20",
 		"cypress": "13.6.4",
 		"eslint": "9.14.0",

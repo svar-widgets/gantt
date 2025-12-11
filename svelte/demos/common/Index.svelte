@@ -5,7 +5,7 @@
 		Button,
 		Segmented,
 		Locale,
-	} from "@svar-ui/svelte-core";
+	} from "@wx/svelte-core";
 
 	import Router from "./Router.svelte";
 	import Link from "./Link.svelte";

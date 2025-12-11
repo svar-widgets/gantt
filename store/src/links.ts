@@ -1,4 +1,4 @@
-import { tempID } from "@svar-ui/lib-state";
+import { tempID } from "@wx/lib-state";
 import type { IGanttTask, IGanttLink, ILink } from "./types";
 
 const delta = 20;

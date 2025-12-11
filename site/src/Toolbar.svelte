@@ -1,5 +1,5 @@
 <script>
-	import { Toolbar } from "@svar-ui/svelte-gantt";
+	import { Toolbar } from "@wx/svelte-gantt";
 	let { api } = $props();
 </script>
 

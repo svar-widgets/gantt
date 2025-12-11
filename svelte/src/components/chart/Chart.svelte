@@ -5,7 +5,7 @@
 	import Bars from "./Bars.svelte";
 	import TimeScales from "./TimeScale.svelte";
 
-	import { hotkeys } from "@svar-ui/grid-store";
+	import { hotkeys } from "@wx/grid-store";
 
 	let {
 		readonly,
