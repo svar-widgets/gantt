@@ -1187,6 +1187,7 @@ export default class DataStore extends Store<IData> {
 			state.unscheduledTasks = false;
 			state.baselines = false;
 			state.markers = [];
+			state._markers = [];
 			state.undo = false;
 			state.schedule = {};
 			state.criticalPath = null;

@@ -16,7 +16,7 @@ function isUnscheduled(task: Partial<ITask>, state: IData) {
 	return state.unscheduledTasks && task.unscheduled;
 }
 
-export function getEditorItems(config: IDataConfig) {
+export function getEditorItems(config?: IDataConfig) {
 	const items = [...defaultEditorItems];
 
 	return items;

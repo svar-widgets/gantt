@@ -35,9 +35,6 @@ import ContextMenuOptions from "./cases/ContextMenuOptions.svelte";
 import GanttHolidays from "./cases/GanttHolidays.svelte";
 import GanttSort from "./cases/GanttSort.svelte";
 import GanttCustomSort from "./cases/GanttCustomSort.svelte";
-import GanttSummariesProgress from "./cases/GanttSummariesProgress.svelte";
-import GanttSummariesNoDrag from "./cases/GanttSummariesNoDrag.svelte";
-import GanttSummariesConvert from "./cases/GanttSummariesConvert.svelte";
 import GanttEditor from "./cases/GanttEditor.svelte";
 import GanttEditorConfig from "./cases/GanttEditorConfig.svelte";
 import GanttEditorCustomControls from "./cases/GanttEditorCustomControls.svelte";
@@ -84,25 +81,6 @@ export const links = [
 	["/tooltips/:skin", "Tooltips", GanttTooltips, "GanttTooltips"],
 
 	["/task-types/:skin", "Task types", GanttTaskTypes, "GanttTaskTypes"],
-
-	[
-		"/summary-progress/:skin",
-		"Summary tasks with auto progress",
-		GanttSummariesProgress,
-		"GanttSummariesProgress",
-	],
-	[
-		"/summary-no-drag/:skin",
-		"No drag for summary tasks",
-		GanttSummariesNoDrag,
-		"GanttSummariesNoDrag",
-	],
-	[
-		"/summary-convert/:skin",
-		"Auto convert to summary tasks",
-		GanttSummariesConvert,
-		"GanttSummariesConvert",
-	],
 
 	["/zoom/:skin", "Zoom", GanttZoom, "GanttZoom"],
 	["/custom-zoom/:skin", "Custom Zoom", GanttCustomZoom, "GanttCustomZoom"],

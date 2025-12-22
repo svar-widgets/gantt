@@ -20,6 +20,7 @@ const minify = {
 export default function ({ mode }) {
 	process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "WX") };
 	const trial = !!process.env.WX_TRIAL_PACKAGE;
+	const open = process.env.WX_PACKAGE_TYPE == "open";
 	const isProduction = mode !== "development" && mode !== "test";
 
 	const config = {
@@ -46,8 +47,16 @@ export default function ({ mode }) {
 		config.plugins.push(conditionalCompile({}));
 	}
 
-	if (!trial) {
-		config.plugins.push(dts({ outDir: resolve(__dirname, "dist/types") }));
+	if (open) {
+		config.plugins.push(
+			dts({
+				outDir: resolve(__dirname, "dist/types"),
+				exclude:
+					process.env.WX_PACKAGE_TYPE === "open"
+						? ["src/pro/**"]
+						: [],
+			})
+		);
 	} else {
 		config.plugins.push(dts({ outDir: resolve(__dirname, "dist/types") }));
 	}

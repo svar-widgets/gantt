@@ -1,3 +1,12 @@
+## 2.4.3
+
+Community license changed from GPL to MIT
+
+### Fixes
+
+-   Incorrect initial values for calendar and markers
+-   PRO types are excluded from MIT version
+
 ## 2.4.2
 
 ### Fixes

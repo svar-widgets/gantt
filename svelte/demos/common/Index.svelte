@@ -222,13 +222,13 @@
 	}
 
 	.sidebar.active {
-		width: 300px;
+		width: 320px;
 	}
 
 	.sidebar-content {
 		display: flex;
 		flex-direction: column;
-		width: 300px;
+		width: 320px;
 		gap: 16px;
 		height: 100%;
 		border-right: 1px solid #ebebeb;

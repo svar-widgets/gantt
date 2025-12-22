@@ -26,7 +26,7 @@
 		_scales: scales,
 		zoom,
 		context,
-		_markers: markers,
+		_markers,
 		_scrollTask: rScrollTask,
 	} = api.getReactiveState();
 
@@ -154,9 +154,9 @@
 	}}
 >
 	<TimeScales {highlightTime} />
-	{#if $markers?.length}
+	{#if $_markers.length}
 		<div class="wx-markers" style="height:{chartGridHeight}px;">
-			{#each $markers as marker}
+			{#each $_markers as marker}
 				<div
 					class="wx-marker {marker.css || ''}"
 					style="left:{marker.left}px"

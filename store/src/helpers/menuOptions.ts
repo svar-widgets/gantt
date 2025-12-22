@@ -8,7 +8,7 @@ import type {
 	IDataHash,
 } from "../types";
 
-export function getMenuOptions(config: IDataConfig) {
+export function getMenuOptions(config?: IDataConfig) {
 	let options = [...defaultMenuOptions];
 
 	return options;

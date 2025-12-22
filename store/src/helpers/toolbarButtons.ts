@@ -8,7 +8,7 @@ import type {
 } from "../types";
 import type { TID } from "@svar-ui/lib-state";
 
-export function getToolbarButtons(config: IDataConfig) {
+export function getToolbarButtons(config?: IDataConfig) {
 	let buttons = [...defaultToolbarButtons];
 
 	return buttons;

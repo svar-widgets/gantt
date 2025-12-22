@@ -11,9 +11,7 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 	}
 	parse(tasks: Partial<ITask>[], parent: TID): void {
 		if (!tasks || !tasks.length) return;
-		const preparedTasks = tasks.map(task =>
-			this.normalizeTask(task, tasks)
-		);
+		const preparedTasks = tasks.map(task => this.normalizeTask(task));
 		super.parse(preparedTasks as IParsedTask[], parent);
 		if (this._sort) this.sortBranch(this._sort, parent);
 	}

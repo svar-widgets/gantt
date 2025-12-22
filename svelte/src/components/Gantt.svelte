@@ -63,7 +63,7 @@
 		schedule = { type: "forward" },
 		projectStart = null,
 		projectEnd = null,
-		calendar,
+		calendar = null,
 		undo = false,
 		splitTasks = false,
 		...restProps

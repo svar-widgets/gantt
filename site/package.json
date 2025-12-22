@@ -1,6 +1,6 @@
 {
 	"name": "@svar-ui/site-svelte-gantt",
-	"version": "2.4.2",
+	"version": "2.4.3",
 	"type": "module",
 	"scripts": {
 		"build": "vite build",
@@ -10,6 +10,6 @@
 	"license": "MIT",
 	"dependencies": {
 		"@svar-ui/svelte-core": "2.4.0",
-		"@svar-ui/svelte-gantt": "2.4.2"
+		"@svar-ui/svelte-gantt": "2.4.3"
 	}
 }

@@ -71,7 +71,7 @@ export interface ITask {
 
 export interface IParsedTask extends ITask {
 	id: TID;
-	parent?: TID;
+	parent: TID;
 	data?: IParsedTask[];
 	$level: number;
 }
@@ -222,6 +222,7 @@ export interface IDataConfig extends IConfig {
 	_sort?: TSort[];
 	_scrollTask?: TScrollTask;
 	_weekStart?: Day;
+	_markers?: IMarker[];
 }
 
 export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
@@ -240,7 +241,6 @@ export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
 	_zoomOffset?: number;
 	_weekStart?: Day;
 	_scrollTask?: TScrollTask;
-	_markers?: IMarker[];
 }
 
 export interface IDataHash<T = any> {
