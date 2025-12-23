@@ -1,5 +1,4 @@
 MIT License
-==========================
 
 Copyright (c) 2025 XB Software Sp. z o.o
 

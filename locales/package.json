@@ -1,6 +1,6 @@
 {
 	"name": "@svar-ui/gantt-locales",
-	"version": "2.4.3",
+	"version": "2.4.4",
 	"description": "Locales for SVAR Gantt component",
 	"type": "module",
 	"main": "index.js",

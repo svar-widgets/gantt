@@ -1,3 +1,9 @@
+## 2.4.4
+
+### Fixes
+
+-   Splitting a task is limited to last segment
+
 ## 2.4.3
 
 Community license changed from GPL to MIT
