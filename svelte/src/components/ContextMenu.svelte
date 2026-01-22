@@ -32,20 +32,20 @@
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
-	let { taskTypes, selected, _selected, splitTasks } = $derived(state || {});
-	const fullOptions = getMenuOptions({ splitTasks: true });
+	let { taskTypes, selected, _selected, splitTasks, summary } = $derived(
+		state || {}
+	);
+
+	let config = $derived({
+		splitTasks: $splitTasks,
+		taskTypes: $taskTypes,
+		summary: $summary,
+	});
+
+	const fullOptions = $derived(getMenuOptions(config));
 
 	function getOptions() {
-		const finalOptions = options.length
-			? options
-			: getMenuOptions({ splitTasks: $splitTasks });
-		const convertOption = finalOptions.find(o => o.id === "convert-task");
-		if (convertOption) {
-			convertOption.data = [];
-			$taskTypes.forEach(t => {
-				convertOption.data.push(convertOption.dataFactory(t));
-			});
-		}
+		const finalOptions = options.length ? options : getMenuOptions(config);
 
 		return applyLocale(finalOptions);
 	}

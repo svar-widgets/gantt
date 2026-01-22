@@ -66,6 +66,8 @@
 		calendar = null,
 		undo = false,
 		splitTasks = false,
+		summary = null,
+		_export = false,
 		...restProps
 	} = $props();
 
@@ -107,9 +109,10 @@
 
 	$effect.pre(() => {
 		tasks, durationUnit, calendar;
-		untrack(() =>
-			parseTaskDates(tasks, { durationUnit, splitTasks, calendar })
-		);
+		untrack(() => {
+			if (!_export)
+				parseTaskDates(tasks, { durationUnit, splitTasks, calendar });
+		});
 	});
 
 	// define event route
@@ -198,6 +201,7 @@
 			undo,
 			_weekStart: lCalendar.weekStart,
 			splitTasks,
+			summary,
 		});
 
 		if (init_once && init) {

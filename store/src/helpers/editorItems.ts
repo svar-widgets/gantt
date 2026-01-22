@@ -1,4 +1,5 @@
 import type { TEditorItem, ITask, IData, IDataConfig } from "../types";
+import { defaultTaskTypes } from "../taskTypes";
 
 function isSummary(task: Partial<ITask>) {
 	return task.type === "summary";
@@ -17,7 +18,9 @@ function isUnscheduled(task: Partial<ITask>, state: IData) {
 }
 
 export function getEditorItems(config?: IDataConfig) {
-	const items = [...defaultEditorItems];
+	const items = defaultEditorItems.map(i => ({ ...i }));
+	const typeItem = items.find(item => item.key == "type");
+	typeItem.options = config?.taskTypes || defaultTaskTypes;
 
 	return items;
 }

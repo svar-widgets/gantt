@@ -21,6 +21,7 @@ import {
 } from "./time";
 import { isCommunity } from "./package";
 import { handleAction } from "./helpers/actionHandlers";
+import { postToNewWindow } from "./dom/formPost";
 
 
 import type {
@@ -37,6 +38,8 @@ import type {
 	IParsedTask,
 	TSort,
 	TScrollTask,
+	IMarker,
+	IExportConfig,
 } from "./types";
 
 import { isEqual } from "date-fns";
@@ -56,7 +59,14 @@ export default class DataStore extends Store<IData> {
 			[
 				// recalculate scales in auto-scale mode
 				{
-					in: ["tasks", "start", "end", "scales", "autoScale"],
+					in: [
+						"tasks",
+						"start",
+						"end",
+						"scales",
+						"autoScale",
+						"markers",
+					],
 					out: ["_start", "_end"],
 					exec: (ctx: TDataConfig) => {
 						const {
@@ -67,6 +77,7 @@ export default class DataStore extends Store<IData> {
 							tasks,
 							scales,
 							autoScale,
+							markers,
 						} = this.getState();
 						if (!start || !end || autoScale) {
 							const minUnit = getMinUnit(scales).unit;
@@ -76,7 +87,8 @@ export default class DataStore extends Store<IData> {
 								end,
 								autoScale,
 								minUnit,
-								tasks
+								tasks,
+								markers
 							);
 							if (bounds._end != _end || bounds._start != _start)
 								this.setState(bounds, ctx);
@@ -538,31 +550,30 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on("drag-task", (ev: TMethodsConfig["drag-task"]) => {
 			const state = this.getState();
-			const { tasks, _tasks, _selected, _scales, cellWidth } = state;
+			const { tasks, _tasks, _selected, _scales, cellWidth, cellHeight } =
+				state;
 			const task = tasks.byId(ev.id);
-			const { left, top, width, inProgress } = ev;
+			const { left, top, width, start, inProgress } = ev;
 
 			const update: Partial<IData> = { _tasks, _selected };
 
 			if (typeof width !== "undefined") {
 				task.$w = width;
-				dragSummary(tasks, task, _scales, cellWidth);
+				dragSummary(tasks, task, { _scales, cellWidth });
 			}
 			if (typeof left !== "undefined") {
 				if (task.type === "summary") {
 					const dx = left - task.$x;
-					dragSummaryKids(task, dx, _scales, cellWidth);
+					dragSummaryKids(task, dx, { _scales, cellWidth });
 				}
 				task.$x = left;
-				dragSummary(tasks, task, _scales, cellWidth);
+				dragSummary(
+					tasks,
+					task,
+					{ _scales, cellWidth, cellHeight },
+					!start
+				);
 			}
-			if (typeof top !== "undefined") {
-				task.$y = top + 4;
-				task.$reorder = inProgress;
-			}
-
-			if (typeof width !== "undefined") task.$w = width;
-			if (typeof left !== "undefined") task.$x = left;
 			if (typeof top !== "undefined") {
 				task.$y = top + 4;
 				task.$reorder = inProgress;
@@ -603,7 +614,7 @@ export default class DataStore extends Store<IData> {
 			const minUnit = _scales.lengthUnit;
 
 			let adder = getAdder(minUnit);
-			const differ = getDiffer(minUnit, calendar);
+			const differ = getDiffer(durationUnit, calendar);
 
 			if (diff) {
 				if (task.start) task.start = adder(task.start, diff);
@@ -1067,7 +1078,7 @@ export default class DataStore extends Store<IData> {
 					step++;
 				}
 
-				const startStep = step ? (end ? -step : -1) : 0;
+				const startStep = step && end ? -step : 0;
 				const newStart = start || adder(_start, startStep);
 				let newScroll = 0;
 				if (_scaleDate) {
@@ -1192,6 +1203,7 @@ export default class DataStore extends Store<IData> {
 			state.schedule = {};
 			state.criticalPath = null;
 			state.splitTasks = false;
+			state.summary = {};
 		}
 
 		if (Array.isArray(state.tasks)) {
@@ -1234,8 +1246,7 @@ export default class DataStore extends Store<IData> {
 	}
 
 	serialize() {
-		const { tasks } = this.getState();
-		return tasks.serialize();
+		return this.getState().tasks.serialize();
 	}
 
 	private changeScale(zoom: IZoomConfig, step: number) {
@@ -1394,6 +1405,7 @@ export type IDataMethodsConfig = CombineTypes<
 			width?: number;
 			left?: number;
 			top?: number;
+			start?: boolean;
 			inProgress?: boolean;
 		};
 		["copy-task"]: {
@@ -1457,6 +1469,8 @@ export type IDataMethodsConfig = CombineTypes<
 		["undo"]: void;
 		["redo"]: void;
 		["split-task"]: { id: TID; segmentIndex?: number };
+		["export-data"]: IExportConfig;
+		["import-data"]: { data: string; format?: "mspx" };
 	},
 	{
 		skipProvider?: boolean;

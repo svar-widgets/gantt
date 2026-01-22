@@ -1,6 +1,6 @@
 {
   "name": "@svar-ui/gantt-store",
-  "version": "2.4.4",
+  "version": "2.5.0",
   "description": "Internal state management used by SVAR Gantt component",
   "type": "module",
   "main": "dist/index.js",

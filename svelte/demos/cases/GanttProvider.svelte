@@ -3,7 +3,7 @@
 	import { Gantt, ContextMenu, Editor } from "../../src";
 
 	const restProvider = new RestDataProvider(
-		"https://gantt-backend.svar.dev"
+		"https://master--svar-gantt-go--dev.webix.io"
 	);
 	let api = $state();
 	let tasks = $state(),

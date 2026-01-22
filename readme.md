@@ -6,7 +6,7 @@
 
 <div align="center">
 
-:globe_with_meridians: [Website](https://svar.dev/svelte/gantt/) • :bulb: [Getting Started](https://docs.svar.dev/svelte/gantt/getting_started/) • :eyes: [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
+[Website](https://svar.dev/svelte/gantt/) • [Getting Started](https://docs.svar.dev/svelte/gantt/getting_started/) • [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
 
 </div>
 
@@ -59,6 +59,8 @@ SVAR Svelte Gantt is available in open-source and PRO Editions. The PRO Edition 
 -   Vertical markers
 -   Unscheduled tasks
 -   Undo/redo
+-   Export to PDF, PNG, Excel
+-   MS Project import/export
 
 Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for full feature comparison and licensing details.
 

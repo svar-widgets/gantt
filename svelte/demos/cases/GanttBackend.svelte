@@ -1,7 +1,7 @@
 <script>
 	import { Gantt, ContextMenu, Editor } from "../../src";
 
-	const server = "https://gantt-backend.svar.dev";
+	const server = "https://master--svar-gantt-go--dev.webix.io";
 
 	let api = $state();
 	let tasks = $state([]);

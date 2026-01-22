@@ -206,6 +206,7 @@
 		flex: 1 1 auto;
 		overflow-x: auto;
 		overflow-y: hidden;
+		outline: none;
 	}
 
 	.wx-markers {

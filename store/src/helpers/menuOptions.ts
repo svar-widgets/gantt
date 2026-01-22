@@ -7,9 +7,19 @@ import type {
 	IDataConfig,
 	IDataHash,
 } from "../types";
+import { defaultTaskTypes } from "../taskTypes";
 
 export function getMenuOptions(config?: IDataConfig) {
 	let options = [...defaultMenuOptions];
+
+	const taskTypes = config?.taskTypes || defaultTaskTypes;
+	const convertOption = options.find(o => o.id == "convert-task");
+
+	convertOption.data = [];
+	taskTypes.forEach(t => {
+		if (!config?.summary?.autoConvert || t.id !== "summary")
+			convertOption.data.push(convertOption.dataFactory(t));
+	});
 
 	return options;
 }

@@ -94,11 +94,18 @@
 	let activeTask = $derived(state?._activeTask ?? null);
 	let taskId = $derived(state?.activeTask ?? null);
 	let unscheduledTasks = $derived(state?.unscheduledTasks);
+	let summary = $derived(state?.summary);
 	let links = $derived(state?.links);
 	let segmentIndex = $derived(state?.splitTasks && $taskId?.segmentIndex);
+	let taskTypes = $derived(state?.taskTypes);
 	let isSegment = $derived(segmentIndex || segmentIndex === 0);
+
 	let baseItems = $derived(
-		getEditorItems({ unscheduledTasks: $unscheduledTasks })
+		getEditorItems({
+			unscheduledTasks: $unscheduledTasks,
+			summary: $summary,
+			taskTypes: $taskTypes,
+		})
 	);
 	let undo = $derived(state?.undo);
 
@@ -107,8 +114,6 @@
 
 	let editorValues = $state();
 	let editorErrors = $state(null);
-
-	let taskTypes = $derived(state?.taskTypes);
 
 	let task = $derived.by(() => {
 		if (!$activeTask) return null;
@@ -170,7 +175,7 @@
 				item.onlinkschange = handleLinksChange;
 			}
 			if (item.comp === "select" && item.key === "type") {
-				const options = item.options ?? (taskTypes ? $taskTypes : []);
+				const options = item.options ?? [];
 				item.options = options.map(t => ({
 					...t,
 					label: _(t.label),

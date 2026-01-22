@@ -24,6 +24,8 @@ export {
 
 export { registerEditorItem } from "@svar-ui/svelte-editor";
 
+const version = __APP_VERSION__;
+
 export {
 	Gantt,
 	ContextMenu,
@@ -34,4 +36,5 @@ export {
 	Material,
 	Willow,
 	WillowDark,
+	version,
 };

@@ -666,22 +666,22 @@
   resolved "https://registry.yarnpkg.com/@svar-ui/editor-locales/-/editor-locales-2.4.0.tgz#b5ac0fed921ea19d3941a48805dc0a7384a3bd45"
   integrity sha512-ngo2vdAxdpYeEhCfIJstyKP6mY7uE3hDI7xpzkN8d92DJcrdgCquYTAkI7UV94FGlfGMfGM2DFnXYSuQwLYB9w==
 
-"@svar-ui/grid-data-provider@2.4.0":
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/@svar-ui/grid-data-provider/-/grid-data-provider-2.4.0.tgz#522f5a23219735513041e999abd45135b4501d55"
-  integrity sha512-Rm0Zbwj3/ZZLTdpmJXX/lGKafL2sqZuikOh/8KXNty7RXjx6WqryjaAkX6t0cl8lnhPjV/awC4R4+uYRW4UbEQ==
+"@svar-ui/grid-data-provider@2.5.0":
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-data-provider/-/grid-data-provider-2.5.0.tgz#4da952be0186aa4fdbe873e9eefd6bb9553c9ffa"
+  integrity sha512-jI7cPJ9f+ozUoT9IYwHG8coeGvICp6iGI3F4IOLcJ7Hb0/NGaRwz1l0EIt7GjNeJodEIlbpdUZhfbIPSfErx6Q==
   dependencies:
     "@svar-ui/lib-data-provider" "1.7.1"
 
-"@svar-ui/grid-locales@2.4.0":
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/@svar-ui/grid-locales/-/grid-locales-2.4.0.tgz#dec7bde487d0121f2b69c769e52dc69cfdd68700"
-  integrity sha512-UnhsQYzDAplMES08QXupa7/1BdBXyCujnTuQaIKZcDf/PGRiSFo3I3iNCk6UdJ5Tnj4si9CqB8/wcIp2YyAHSg==
+"@svar-ui/grid-locales@2.5.0":
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-locales/-/grid-locales-2.5.0.tgz#ba1b09f85ff075f9e2649cd16943a88f5c87124e"
+  integrity sha512-xzNE0IRFCeu0KyMNI1CT40sHU5YrvlyWiYk0sMNvUGnC7n+5wfdWeRdAILeZkwXjM4keCl8qhUfTPiMpVYyyGw==
 
-"@svar-ui/grid-store@2.4.0":
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/@svar-ui/grid-store/-/grid-store-2.4.0.tgz#3ca59c879d41c10249994298acdd3745cd61c020"
-  integrity sha512-GJyVC+5G+aA8EfcoKMwrHVP2/OK7bUUbp9ofyZTGUAyuXO9tkxRnfquvk+nTA1ybOfbFCY8rSsJTEHYcgXQCTw==
+"@svar-ui/grid-store@2.5.0":
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-store/-/grid-store-2.5.0.tgz#da31e555f13057f0ab922fae74fe4c92b9422fb4"
+  integrity sha512-Y5x+M5HANyohP7xExIPFzyMCtf5ABVbEwfac/Q7eY5UPUq2eUszfHgqn1YmyV5F7s+YpIXpD0Ed4kMW7MoaEIg==
   dependencies:
     "@svar-ui/lib-dom" "0.11.1"
     "@svar-ui/lib-state" "1.9.6"
@@ -746,14 +746,14 @@
     "@svar-ui/svelte-tasklist" "2.4.0"
     "@svar-ui/svelte-toolbar" "2.4.0"
 
-"@svar-ui/svelte-grid@2.4.0":
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/@svar-ui/svelte-grid/-/svelte-grid-2.4.0.tgz#74747fe02cf629c0ace7e0f7e53b4117c677dacc"
-  integrity sha512-Lljd6NhqonjXBg66nRNjbjjaXWAyJ8xr3s1UxX6dHsyye72Y2YK9dcpoBWleusy4MBBnvNRwrpnsgR/jevl1Ww==
+"@svar-ui/svelte-grid@2.5.0":
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/svelte-grid/-/svelte-grid-2.5.0.tgz#a2f26ec5be3b0f240d5a972b7c3ebc7551bbba00"
+  integrity sha512-bX4lF1GnkWG8x8ltgpmxU6LNPrSRPZs9zrnZLlrK+RAq+CDoKFLWL24OqV7mLilMa6wM7Q2BjdGSWJN4YloT+w==
   dependencies:
-    "@svar-ui/grid-data-provider" "2.4.0"
-    "@svar-ui/grid-locales" "2.4.0"
-    "@svar-ui/grid-store" "2.4.0"
+    "@svar-ui/grid-data-provider" "2.5.0"
+    "@svar-ui/grid-locales" "2.5.0"
+    "@svar-ui/grid-store" "2.5.0"
     "@svar-ui/lib-dom" "0.11.1"
     "@svar-ui/lib-state" "1.9.6"
     "@svar-ui/lib-svelte" "0.5.2"

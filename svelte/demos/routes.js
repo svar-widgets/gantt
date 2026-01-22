@@ -189,7 +189,7 @@ export const links = [
 	],
 	[
 		"/backend-provider-batch/:skin",
-		"Saving to backend (batch)",
+		"Saving to backend: batch request",
 		GanttBatchProvider,
 		"GanttBatchProvider",
 	],

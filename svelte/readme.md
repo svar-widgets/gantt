@@ -63,6 +63,8 @@ SVAR Svelte Gantt is available in open-source and PRO Editions. The PRO Edition 
 -   Vertical markers
 -   Unscheduled tasks
 -   Undo/redo
+-   Export to PDF, PNG, Excel
+-   MS Project import/export
 
 Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for full feature comparison and licensing details.
 

@@ -1,3 +1,20 @@
+## 2.5.0
+
+### New features
+
+-   Server-side export to PNG, PDF, XLSX, MS Project
+-   Client-side export and import from MS Project
+-   Auto calculation of progress for summary tasks
+-   Auto conversion of parent tasks to summary tasks
+
+### Fixes
+
+-   Scale is expanded left with a small dataset during screen resizing
+-   Markers ignore scale boundaries
+-   Delete link placeholder is misplaced sometimes
+-   Task bars cannot be resized with "minute" lengthUnit
+-   Dimensions of summary tasks with subtasks are not correctly calculated during drag-n-drop
+
 ## 2.4.4
 
 ### Fixes

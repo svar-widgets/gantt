@@ -5,6 +5,7 @@ import type {
 	IUnitFormats,
 	IZoomConfig,
 	TLengthUnit,
+	IMarker,
 } from "./types";
 import { getUnitStart, getAdder, getDiffer, getSmallerUnitCount } from "./time";
 import type GanttDataTree from "./GanttDataTree";
@@ -22,25 +23,39 @@ const defaultMinCellWidth = 50;
 const defaultMaxCellWidth = 300;
 
 export function calcScales(
-	prevStart: Date,
-	prevEnd: Date,
-	autoScale: boolean,
+	prevStart?: Date,
+	prevEnd?: Date,
+	autoScale?: boolean,
 	minUnit?: string,
-	tasks?: GanttDataTree
+	tasks?: GanttDataTree,
+	markers?: IMarker[]
 ): { _start: Date; _end: Date } {
+	const flexStart = !prevStart || autoScale;
+	const flexEnd = !prevEnd || autoScale;
 	let _start = prevStart,
 		_end = prevEnd;
 	let _sFix = false,
 		_eFix = false;
-	if (tasks) {
-		tasks.forEach(t => {
-			if ((!prevStart || autoScale) && (!_start || t.start <= _start)) {
+
+	if (flexStart || flexEnd) {
+		tasks?.forEach(t => {
+			if (flexStart && (!_start || t.start <= _start)) {
 				_start = t.start;
 				_sFix = true;
 			}
 			const taskEnd = t.type === "milestone" ? t.start : t.end;
-			if ((!prevEnd || autoScale) && (!_end || taskEnd >= _end)) {
+			if (flexEnd && (!_end || taskEnd >= _end)) {
 				_end = taskEnd;
+				_eFix = true;
+			}
+		});
+		markers?.forEach(marker => {
+			if (flexStart && (!_start || marker.start <= _start)) {
+				_start = marker.start;
+				_sFix = true;
+			}
+			if (flexEnd && (!_end || marker.start >= _end)) {
+				_end = marker.start;
 				_eFix = true;
 			}
 		});

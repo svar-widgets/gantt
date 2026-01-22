@@ -122,6 +122,11 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		if (kids) toArray(kids, out);
 		return out;
 	}
+	clear() {
+		this.forEach(t => {
+			this.remove(t.id);
+		});
+	}
 }
 
 function toArray(line: Partial<ITask>[], out: Partial<ITask>[]): void {

@@ -45,7 +45,7 @@ export default [
 	},
 	{
 		languageOptions: {
-			globals: { ...globals.browser, ...globals.es2022 },
+			globals: { ...globals.browser, ...globals.es2022, __APP_VERSION__: "readonly" },
 			ecmaVersion: 2022,
 			sourceType: "module",
 			parserOptions: {

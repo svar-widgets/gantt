@@ -178,9 +178,10 @@ export function getDiffer(
 		}
 	}
 	return (next, prev, lengthUnit, unitSize) => {
+		const count = smallerCount[unit]?.[lengthUnit];
 		if (
-			!smallerCount[unit][lengthUnit] ||
-			typeof smallerCount[unit][lengthUnit] === "number" ||
+			!count ||
+			typeof count === "number" ||
 			isSameUnit(unit, next, prev, _weekStart)
 		) {
 			return innerDiff(

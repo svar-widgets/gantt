@@ -44,6 +44,17 @@ export default async ({ mode }) => {
 			},
 		};
 		server.port = 5100;
+	} else if (mode === "export") {
+		build = {
+			lib: {
+				entry: resolve(__dirname, "src/export.js"),
+				formats: ["es"],
+				fileName: "gantt",
+			},
+			rollupOptions: {
+				input: { export: resolve(__dirname, "src/export.js") },
+			},
+		};
 	} else {
 		build = {
 			rollupOptions: {
@@ -72,6 +83,9 @@ export default async ({ mode }) => {
 	if (files.length) await waitOn({ files });
 
 	return {
+		define: {
+			__APP_VERSION__: JSON.stringify(pkg.version),
+		},
 		base,
 		build,
 		publicDir,

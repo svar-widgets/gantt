@@ -1,6 +1,6 @@
 {
 	"name": "@svar-ui/svelte-gantt",
-	"version": "2.4.4",
+	"version": "2.5.0",
 	"description": "Interactive and customizable Svelte Gantt chart component",
 	"productTag": "gantt",
 	"productTrial": true,
@@ -9,6 +9,7 @@
 		"build": "vite build",
 		"build:dist": "vite build --mode dist",
 		"build:tests": "vite build --mode test",
+		"build:export": "vite build --mode export",
 		"lint": "yarn eslint ./demos ./src",
 		"start": "vite --open",
 		"start:tests": "vite --open=/tests/ --host 0.0.0.0  --port 5100 --mode test",
@@ -33,17 +34,17 @@
 	},
 	"homepage": "https://svar.dev/svelte/gantt/",
 	"dependencies": {
-		"@svar-ui/gantt-data-provider": "2.4.4",
-		"@svar-ui/gantt-locales": "2.4.4",
-		"@svar-ui/gantt-store": "2.4.4",
+		"@svar-ui/gantt-data-provider": "2.5.0",
+		"@svar-ui/gantt-locales": "2.5.0",
+		"@svar-ui/gantt-store": "2.5.0",
 		"@svar-ui/lib-dom": "0.11.1",
 		"@svar-ui/lib-state": "1.9.6",
 		"@svar-ui/lib-svelte": "0.5.2",
 		"@svar-ui/svelte-core": "2.4.0",
+		"@svar-ui/svelte-editor": "2.4.0",
+		"@svar-ui/svelte-grid": "2.5.0",
 		"@svar-ui/svelte-menu": "2.4.0",
-		"@svar-ui/svelte-grid": "2.4.0",
-		"@svar-ui/svelte-toolbar": "2.4.0",
-		"@svar-ui/svelte-editor": "2.4.0"
+		"@svar-ui/svelte-toolbar": "2.4.0"
 	},
 	"files": [
 		"src",

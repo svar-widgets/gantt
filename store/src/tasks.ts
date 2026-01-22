@@ -1,6 +1,5 @@
 import {
 	IGanttTask,
-	GanttScaleData,
 	IParsedTask,
 	GanttDataTree,
 	ITask,
@@ -19,15 +18,13 @@ const baselineAdjustment = baselineHeight + baselineTopPadding;
 export function dragSummaryKids(
 	task: IParsedTask,
 	dx: number,
-	_scales: GanttScaleData,
-	cellWidth: number
+	state: Partial<IData>
 ) {
 	if (task.open || task.type != "summary") {
 		task.data?.forEach(kid => {
-			if (typeof kid.$x === "undefined")
-				setTaskSizes(kid, _scales, cellWidth);
+			if (typeof kid.$x === "undefined") setTaskSizes(kid, state);
 			kid.$x += dx;
-			dragSummaryKids(kid, dx, _scales, cellWidth);
+			dragSummaryKids(kid, dx, state);
 		});
 	}
 }
@@ -35,8 +32,8 @@ export function dragSummaryKids(
 export function dragSummary(
 	tasks: GanttDataTree,
 	task: IParsedTask,
-	_scales: GanttScaleData,
-	cellWidth: number
+	state: Partial<IData>,
+	updateHidden?: boolean
 ) {
 	const summary = tasks.getSummaryId(task.id);
 	if (summary) {
@@ -45,26 +42,24 @@ export function dragSummary(
 			xMin: Infinity,
 			xMax: 0,
 		};
-		getSummaryBarSize(pobj, coords, _scales, cellWidth);
+		if (updateHidden) calculateHiddenDimentions(pobj, state);
+		getSummaryBarSize(pobj, coords, state);
 		pobj.$x = coords.xMin;
 		pobj.$w = coords.xMax - coords.xMin;
-
-		dragSummary(tasks, pobj, _scales, cellWidth);
+		dragSummary(tasks, pobj, state);
 	}
 }
 
 function getSummaryBarSize(
 	task: IParsedTask,
 	coords: { xMin: number; xMax: number },
-	_scales: GanttScaleData,
-	cellWidth: number
+	state: Partial<IData>
 ) {
 	task.data?.forEach(kid => {
 		if (!kid.unscheduled) {
-			if (typeof kid.$x === "undefined")
-				setTaskSizes(kid, _scales, cellWidth);
+			if (typeof kid.$x === "undefined") setTaskSizes(kid, state);
 			const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
-			if (coords.xMin > kid.$x) {
+			if (coords.xMin > kid.$x + mD) {
 				coords.xMin = kid.$x + mD;
 			}
 			const right = kid.$x + kid.$w - mD;
@@ -73,12 +68,12 @@ function getSummaryBarSize(
 			}
 		}
 
-		if (kid.type !== "summary")
-			getSummaryBarSize(kid, coords, _scales, cellWidth);
+		if (kid.type !== "summary") getSummaryBarSize(kid, coords, state);
 	});
 }
 
-function setTaskSizes(task: IParsedTask, s: GanttScaleData, cellWidth: number) {
+function setTaskSizes(task: IParsedTask, state: Partial<IData>) {
+	const { _scales: s, cellWidth } = state;
 	task.$x = Math.round(s.diff(task.start, s.start, s.lengthUnit) * cellWidth);
 	task.$w = Math.round(
 		s.diff(task.end, task.start, s.lengthUnit, true) * cellWidth
@@ -142,8 +137,8 @@ export function updateTask(
 }
 
 function calculateTaskDimensions(
-	t: IGanttTask,
-	i: number,
+	t: IParsedTask,
+	i: number | null,
 	state: Partial<IData>,
 	isBaseline: boolean
 ) {
@@ -175,10 +170,12 @@ function calculateTaskDimensions(
 	}
 
 	t[x] = Math.round(diff(startDate, scaleStart, lengthUnit) * cellWidth);
-	t[y] = isBaseline
-		? t.$y + t.$h + baselineTopPadding
-		: cellHeight * i + defaultPadding;
 	t[w] = Math.round(diff(endDate, startDate, lengthUnit, true) * cellWidth);
+	if (i !== null) {
+		t[y] = isBaseline
+			? t.$y + t.$h + baselineTopPadding
+			: cellHeight * i + defaultPadding;
+	}
 	t[h] = isBaseline
 		? baselineHeight
 		: baselines
@@ -198,6 +195,20 @@ function calculateTaskDimensions(
 	if (state.unscheduledTasks && t.unscheduled && !isBaseline)
 		t["$skip"] = true;
 	else t[skip] = isEqual(startDate, endDate);
+}
+
+function calculateHiddenDimentions(
+	t: IParsedTask,
+	state: Partial<IData>,
+	isHidden?: boolean
+) {
+	if (t.data && !t.$skip) {
+		isHidden = isHidden || !t.open;
+		t.data.forEach((child: IGanttTask) => {
+			if (isHidden) calculateTaskDimensions(child, null, state, false);
+			calculateHiddenDimentions(child, state, isHidden);
+		});
+	}
 }
 
 export function isSegmentMoveAllowed(task: IGanttTask, moveOptions: IDataHash) {

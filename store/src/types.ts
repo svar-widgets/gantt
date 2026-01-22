@@ -14,6 +14,54 @@ import type { IApi as ITableApi, IColumn } from "@svar-ui/grid-store";
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };
 
+export interface IExportConfig {
+	url?: string;
+	format?: "pdf" | "png" | "xlsx" | "mspx";
+	fileName?: string;
+	styles?: string;
+	ganttConfig?: Record<string, any>;
+	pdf?: {
+		fitSize?: boolean;
+		size?:
+			| "auto"
+			| string
+			| {
+					width: number;
+					height: number;
+			  };
+		landscape?: boolean;
+		styles?: string;
+		margins?: {
+			top?: number;
+			bottom?: number;
+			left?: number;
+			right?: number;
+		};
+		header?: string;
+		footer?: string;
+		scale?: number;
+	};
+	png?: {
+		fitSize?: boolean;
+		size?:
+			| "auto"
+			| string
+			| {
+					width: number;
+					height: number;
+			  };
+		landscape?: boolean;
+		styles?: string;
+	};
+	excel?: {
+		sheetNames?: string[];
+		visual?: boolean;
+		dateFormat?: string;
+		columns?: IGanttColumn[];
+		indent?: "native" | "spaces";
+	};
+}
+
 export interface IActionConfig<T = any> {
 	data?: T;
 	noSave?: boolean;
@@ -154,6 +202,11 @@ export interface IScheduleConfig {
 	auto?: boolean;
 }
 
+export interface ISummaryConfig {
+	autoProgress?: boolean;
+	autoConvert?: boolean;
+}
+
 export interface ICalendarConfig {
 	name?: string;
 	weekHours?: {
@@ -211,6 +264,7 @@ export interface IConfig {
 	projectEnd?: Date;
 	calendar?: Calendar;
 	splitTasks?: boolean;
+	summary?: ISummaryConfig;
 }
 
 export interface IDataConfig extends IConfig {

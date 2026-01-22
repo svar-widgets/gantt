@@ -26,6 +26,7 @@
 		tasks: tree,
 		schedule,
 		splitTasks,
+		summary,
 	} = api.getReactiveState();
 
 	// let tasks = $derived($rTasks.slice($area.start, $area.end));
@@ -43,7 +44,12 @@
 	let taskMove = $state(null);
 	let progressFrom = null;
 
-	let selectedLink = $state(null);
+	let selectedLinkId = $state(null);
+	let selectedLink = $derived(
+		selectedLinkId && {
+			...$rLinks.find(link => link.id === selectedLinkId),
+		}
+	);
 
 	let touched = $state();
 	let touchTimer;
@@ -194,6 +200,7 @@
 					width: width,
 					left: left,
 					inProgress: true,
+					start,
 					...(segment && { segmentIndex: index }),
 				});
 
@@ -333,8 +340,8 @@
 					});
 				}
 			} else if (css.contains("wx-delete-button-icon")) {
-				api.exec("delete-link", { id: selectedLink.id });
-				selectedLink = null;
+				api.exec("delete-link", { id: selectedLinkId });
+				selectedLinkId = null;
 			} else {
 				let segmentIndex;
 				const segmentNode = locate(e, "data-segment");
@@ -392,7 +399,7 @@
 	}
 
 	function onSelectLink(id) {
-		selectedLink = id && { ...$rLinks.find(link => link.id === id) };
+		selectedLinkId = id;
 	}
 
 	const taskTypeIds = $derived($taskTypes.map(t => t.id));
@@ -518,7 +525,7 @@
 							></div>
 						</div>
 					{/if}
-					{#if !readonly && !($splitTasks && task.segments)}
+					{#if !readonly && !($splitTasks && task.segments) && !(task.type == "summary" && $summary?.autoProgress)}
 						<div
 							class="wx-progress-marker"
 							style="left:calc({task.progress}% - 10px);"
