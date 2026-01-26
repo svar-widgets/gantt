@@ -170,10 +170,11 @@
 				const { mode, l, w, x, id, start, segment, index } = taskMove;
 				const task = api.getTask(id);
 				const dx = clientX - x;
+				const minWidth = Math.round(lengthUnitWidth) || 1;
 				if (
 					(!start && Math.abs(dx) < 20) ||
-					(mode === "start" && w - dx < lengthUnitWidth) ||
-					(mode === "end" && w + dx < lengthUnitWidth) ||
+					(mode === "start" && w - dx < minWidth) ||
+					(mode === "end" && w + dx < minWidth) ||
 					(mode === "move" &&
 						((dx < 0 && l + dx < 0) ||
 							(dx > 0 && l + w + dx > totalWidth))) ||

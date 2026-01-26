@@ -1,6 +1,6 @@
 {
 	"name": "@svar-ui/gantt-data-provider",
-	"version": "2.5.0",
+	"version": "2.5.1",
 	"description": "Backend integration helper for SVAR Gantt component",
 	"type": "module",
 	"main": "dist/index.js",

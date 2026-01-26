@@ -83,9 +83,6 @@ export default async ({ mode }) => {
 	if (files.length) await waitOn({ files });
 
 	return {
-		define: {
-			__APP_VERSION__: JSON.stringify(pkg.version),
-		},
 		base,
 		build,
 		publicDir,

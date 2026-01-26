@@ -1,6 +1,5 @@
 import { resolve } from "path";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import pkg from "./package.json" with { type: "json" };
 
 export default () => {
 	let build,
@@ -16,9 +15,6 @@ export default () => {
 	};
 
 	return {
-		define: {
-			__APP_VERSION__: JSON.stringify(pkg.version),
-		},
 		base,
 		build,
 		publicDir,

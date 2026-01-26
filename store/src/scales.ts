@@ -131,9 +131,7 @@ export function resetScales(
 	let lengthUnitWidth = width;
 	if (minUnit !== lengthUnit) {
 		lengthUnitWidth =
-			Math.round(
-				lengthUnitWidth / getSmallerUnitCount(minUnit, lengthUnit)
-			) || 1;
+			lengthUnitWidth / getSmallerUnitCount(minUnit, lengthUnit);
 	}
 
 	return {

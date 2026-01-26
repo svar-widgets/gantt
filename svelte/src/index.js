@@ -1,3 +1,5 @@
+import pkg from "../package.json" with { type: "json" };
+
 import Gantt from "./components/Gantt.svelte";
 import Toolbar from "./components/Toolbar.svelte";
 import ContextMenu from "./components/ContextMenu.svelte";
@@ -24,7 +26,7 @@ export {
 
 export { registerEditorItem } from "@svar-ui/svelte-editor";
 
-const version = __APP_VERSION__;
+const version = pkg.version;
 
 export {
 	Gantt,
