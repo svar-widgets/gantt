@@ -1,6 +1,7 @@
 <script>
 	import { getData } from "../data";
-	import { Gantt, ContextMenu, Editor, Toolbar } from "../../src/";
+	import { Gantt, ContextMenu, Editor, Toolbar, Tooltip } from "../../src/";
+	import MyTooltipContent from "../custom/MySegmentTooltip.svelte";
 
 	let { skinSettings } = $props();
 	let api = $state();
@@ -10,14 +11,16 @@
 <Toolbar {api} />
 <div class="gtcell">
 	<ContextMenu {api}>
-		<Gantt
-			bind:this={api}
-			{...skinSettings}
-			tasks={data.tasks}
-			links={data.links}
-			scales={data.scales}
-			splitTasks={true}
-		/>
+		<Tooltip {api} content={MyTooltipContent}>
+			<Gantt
+				bind:this={api}
+				{...skinSettings}
+				tasks={data.tasks}
+				links={data.links}
+				scales={data.scales}
+				splitTasks={true}
+			/>
+		</Tooltip>
 	</ContextMenu>
 	<Editor {api} />
 </div>

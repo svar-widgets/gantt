@@ -8,6 +8,8 @@
 // https://on.cypress.io/custom-commands
 // ***********************************************
 
+import { setID } from "@svar-ui/lib-dom";
+
 Cypress.Commands.add("shot", (...args) => {
 	// eslint-disable-next-line cypress/no-unnecessary-waiting
 	cy.wait(100);
@@ -55,7 +57,7 @@ Cypress.Commands.add(
 				return subject.get(".wx-toolbar");
 			case "toolbar-button":
 				return subject.get(
-					`.wx-toolbar .wx-tb-element[data-id="${id}"]`
+					`.wx-toolbar .wx-tb-element[data-id="${setID(id)}"]`
 				);
 			case "grid":
 				return subject.get(".wx-grid");
@@ -64,7 +66,7 @@ Cypress.Commands.add(
 			case "grid-task-list":
 				return subject.get(".wx-grid .wx-data");
 			case "grid-item":
-				return subject.get(`.wx-grid .wx-row[data-id="${id}"]`);
+				return subject.get(`.wx-grid .wx-row[data-id="${setID(id)}"]`);
 
 			case "editor":
 				return subject.get(".wx-gantt-editor");
@@ -73,21 +75,25 @@ Cypress.Commands.add(
 			case "chart-link-list":
 				return subject.get(".wx-chart .wx-links");
 			case "chart-item":
-				return subject.get(`.wx-bar[data-id="${id}"]`);
+				return subject.get(`.wx-bar[data-id="${setID(id)}"]`);
 			case "chart-selected-line":
-				return subject.get(`.wx-area > .wx-selected[data-id="${id}"]`);
+				return subject.get(
+					`.wx-area > .wx-selected[data-id="${setID(id)}"]`
+				);
 			case "link":
 				return subject
-					.get(`.wx-bar[data-id="${id}"]`)
+					.get(`.wx-bar[data-id="${setID(id)}"]`)
 					.find(`.wx-link.wx-${side}`);
 			case "polyline":
 				return subject
 					.get(`.wx-links`)
-					.find(`.wx-line[data-link-id="${id}"]`);
+					.find(`.wx-line[data-link-id="${setID(id)}"]`);
 			case "menu":
 				return subject.get(".wx-menu");
 			case "menu-option":
-				return subject.get(`.wx-menu .wx-option[data-id="${id}"]`);
+				return subject.get(
+					`.wx-menu .wx-option[data-id="${setID(id)}"]`
+				);
 
 			default:
 				throw `not supported arguments for wxG: ${type}, ${id}`;

@@ -1,24 +1,36 @@
 <script>
+	import { locateID } from "@svar-ui/lib-dom";
 	const { api, content: Content, children } = $props();
+	import { getID } from "@svar-ui/lib-dom";
 
 	let area,
 		areaCoords = $state({});
-	let tooltipData = $state(null);
+	let contentProps = $state({});
 	let tooltipNode = $state(null);
 	let pos = $state({});
 
 	function findAttribute(node) {
+		const trg = node;
 		while (node) {
 			if (node.getAttribute) {
-				const id = node.getAttribute("data-tooltip-id");
-				const at = node.getAttribute("data-tooltip-at");
+				const id = getID(node, "data-tooltip-id");
+				const at = getID(node, "data-tooltip-at");
 				const tooltip = node.getAttribute("data-tooltip");
-				if (id || tooltip) return { id, tooltip, target: node, at };
+				if (id || tooltip) {
+					const segment = locateID(trg, "data-segment");
+					return { id, tooltip, target: node, at, segment };
+				}
 			}
 			node = node.parentNode;
 		}
 
-		return { id: null, tooltip: null, target: null, at: null };
+		return {
+			id: null,
+			tooltip: null,
+			target: null,
+			at: null,
+			segment: null,
+		};
 	}
 
 	$effect(() => {
@@ -43,22 +55,23 @@
 	};
 
 	function move(e) {
-		let { id, tooltip, target, at } = findAttribute(e.target);
+		let { id, tooltip, target, at, segment } = findAttribute(e.target);
 		pos = null;
-		tooltipData = null;
+		contentProps = {};
 
 		if (!tooltip) {
 			if (!id) {
 				clearTimeout(timer);
 				return;
 			} else {
-				tooltip = getTaskText(id);
+				tooltip = getTaskText(id, segment);
 			}
 		}
 
 		debounce(() => {
 			if (id) {
-				tooltipData = getTaskObj(prepareId(id));
+				contentProps = { data: getTaskObj(id) };
+				if (segment != null) contentProps.segmentIndex = segment;
 			}
 
 			const targetCoords = target.getBoundingClientRect();
@@ -78,16 +91,14 @@
 	}
 
 	function getTaskObj(id) {
-		return api?.getTask(prepareId(id)) || null;
+		return api?.getTask(id) || null;
 	}
 
-	function getTaskText(id) {
-		return getTaskObj(id)?.text || "";
-	}
-
-	function prepareId(id) {
-		const numId = parseInt(id);
-		return isNaN(numId) ? id : numId;
+	function getTaskText(id, segment) {
+		const task = getTaskObj(id);
+		if (segment !== null && task?.segments)
+			return task.segments[segment]?.text || "";
+		return task?.text || "";
 	}
 </script>
 
@@ -101,7 +112,7 @@
 			style="top:{pos.top}px;left:{pos.left}px"
 		>
 			{#if Content}
-				<Content data={tooltipData} />
+				<Content {...contentProps} />
 			{:else if pos.text}
 				<div class="wx-gantt-tooltip-text">{pos.text}</div>
 			{/if}

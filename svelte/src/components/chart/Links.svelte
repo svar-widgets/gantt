@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from "svelte";
-	import { clickOutside } from "@svar-ui/lib-dom";
+	import { clickOutside, setID } from "@svar-ui/lib-dom";
 	let { onSelectLink, selectedLink, readonly } = $props();
 
 	const api = getContext("gantt-store");
@@ -25,7 +25,7 @@
 			points={link.$p}
 			onclick={() => !readonly && onSelectLink(link.id)}
 			class:wx-line-selectable={!readonly}
-			data-link-id={link.id}
+			data-link-id={setID(link.id)}
 		/>
 	{/each}
 	{#if !readonly && selectedLink}

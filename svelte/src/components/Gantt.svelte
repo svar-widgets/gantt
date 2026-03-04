@@ -216,9 +216,9 @@
 	$effect(() => {
 		if (calendar && tasks) {
 			highlightTime = (day, unit) => {
-				if (unit == "day" && !calendar.getDayHours(day))
+				if (unit === "day" && !calendar.getDayHours(day))
 					return "wx-weekend";
-				if (unit == "hour" && !calendar.getDayHours(day))
+				if (unit === "hour" && !calendar.getDayHours(day))
 					return "wx-weekend";
 				return "";
 			};

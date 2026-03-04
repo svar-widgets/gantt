@@ -111,11 +111,11 @@ function runSingleAction(
 	let extraData: any = {};
 	let select: boolean = false;
 
-	if (op == "copy-task" || op == "cut-task") {
+	if (op === "copy-task" || op === "cut-task") {
 		if (!api._temp) api._temp = [];
-		api._temp.push({ id, cut: op == "cut-task" });
+		api._temp.push({ id, cut: op === "cut-task" });
 		return;
-	} else if (op == "paste-task") {
+	} else if (op === "paste-task") {
 		if (api._temp && api._temp.length) {
 			const history = api.getHistory();
 			// start batch for mass operations

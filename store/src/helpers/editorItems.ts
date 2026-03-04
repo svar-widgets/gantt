@@ -19,7 +19,7 @@ function isUnscheduled(task: Partial<ITask>, state: IData) {
 
 export function getEditorItems(config?: IDataConfig) {
 	const items = defaultEditorItems.map(i => ({ ...i }));
-	const typeItem = items.find(item => item.key == "type");
+	const typeItem = items.find(item => item.key === "type");
 	typeItem.options = config?.taskTypes || defaultTaskTypes;
 
 	return items;

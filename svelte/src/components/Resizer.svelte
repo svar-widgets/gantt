@@ -14,8 +14,8 @@
 
 	function getBox(value) {
 		let offset = 0;
-		if (position == "center") offset = size / 2;
-		else if (position == "before") offset = size;
+		if (position === "center") offset = size / 2;
+		else if (position === "before") offset = size;
 
 		const box = {
 			size: [size + "px", "auto"],
@@ -23,7 +23,7 @@
 			p2: ["auto", "0px"],
 		};
 
-		if (dir != "x") for (let name in box) box[name] = box[name].reverse();
+		if (dir !== "x") for (let name in box) box[name] = box[name].reverse();
 		return box;
 	}
 
@@ -39,7 +39,7 @@
 	});
 
 	function getEventPos(ev) {
-		return dir == "x" ? ev.clientX : ev.clientY;
+		return dir === "x" ? ev.clientX : ev.clientY;
 	}
 	function down(ev) {
 		// Prevent dragging when in normal mode and only one view is visible
@@ -117,7 +117,7 @@
 	}
 	const b = $derived(getBox(value));
 	const cursor = $derived(
-		display !== "all" ? "auto" : dir == "x" ? "ew-resize" : "ns-resize"
+		display !== "all" ? "auto" : dir === "x" ? "ew-resize" : "ns-resize"
 	);
 </script>
 

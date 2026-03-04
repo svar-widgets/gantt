@@ -40,7 +40,7 @@ context("Toolbar", () => {
 		cy.visit(`/index.html#/toolbar/willow`);
 		cy.viewport(1300, 900);
 
-		const taskId = "21";
+		const taskId = 21;
 		let relativeId;
 
 		cy.wxG("grid-item", taskId).click();
@@ -54,7 +54,7 @@ context("Toolbar", () => {
 					cy.wxG("grid-item", taskId)
 						.prev()
 						.invoke("attr", "data-id")
-						.should("match", /^temp/);
+						.should("include", "temp");
 					cy.shot("add-task");
 				},
 			},
@@ -140,7 +140,7 @@ context("Toolbar", () => {
 				action: id => {
 					cy.wxG("toolbar-button", id).click();
 					cy.wxG("grid-item", 2).click();
-					cy.get(`[data-id="paste-task"]`).click();
+					cy.wxG("toolbar-button", "paste-task").click();
 				},
 				check: () => {
 					cy.get(".wx-row")
@@ -166,7 +166,7 @@ context("Toolbar", () => {
 					cy.wxG("grid-item", taskId).click();
 					cy.wxG("toolbar-button", id).click();
 					cy.wxG("grid-item", 2).click();
-					cy.get(`[data-id="paste-task"]`).click();
+					cy.wxG("toolbar-button", "paste-task").click();
 				},
 				check: () => {
 					cy.get(".wx-row")
@@ -180,9 +180,9 @@ context("Toolbar", () => {
 						.then($rootRows => {
 							const pastedRow = $rootRows.eq(2);
 							const copyedRow = $rootRows.eq(3);
-							expect(pastedRow)
-								.to.have.attr("data-id")
-								.and.match(/^temp/);
+							cy.wrap(pastedRow)
+								.should("have.attr", "data-id")
+								.should("include", "temp");
 							cy.wrap(pastedRow).should(
 								"contain",
 								"Getting approval"

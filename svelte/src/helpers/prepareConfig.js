@@ -39,7 +39,7 @@ export function prepareColumns(columns, calendarLocale) {
 	return columns.map(col => {
 		if (col.template) return col;
 
-		if (col.id === "start" || col.id == "end") {
+		if (col.id === "start" || col.id === "end") {
 			return {
 				...col,
 				//store locale template for unscheduled tasks

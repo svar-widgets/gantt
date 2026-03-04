@@ -20,7 +20,7 @@ export function dragSummaryKids(
 	dx: number,
 	state: Partial<IData>
 ) {
-	if (task.open || task.type != "summary") {
+	if (task.open || task.type !== "summary") {
 		task.data?.forEach(kid => {
 			if (typeof kid.$x === "undefined") setTaskSizes(kid, state);
 			kid.$x += dx;
@@ -83,14 +83,14 @@ function setTaskSizes(task: IParsedTask, state: Partial<IData>) {
 export function setSummaryDates(task: ITask, tasks?: Partial<ITask>[]): ITask {
 	let data;
 	if (tasks) {
-		data = tasks.filter(t => t.parent == task.id);
+		data = tasks.filter(t => t.parent === task.id);
 	}
 
 	const copy = { data, ...task } as IParsedTask;
 	if (copy.data?.length) {
 		copy.data.forEach((kid: ITask) => {
 			if (kid.unscheduled && !kid.data) return;
-			if (tasks || (kid.type != "summary" && kid.data)) {
+			if (tasks || (kid.type !== "summary" && kid.data)) {
 				if (kid.unscheduled)
 					// reset own dates to take from kids
 					kid = { ...kid, start: undefined, end: undefined };

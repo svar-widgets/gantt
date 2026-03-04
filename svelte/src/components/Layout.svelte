@@ -52,12 +52,12 @@
 	let lastDisplay = null;
 
 	function handleResize(mode) {
-		if (mode != compactMode) {
+		if (mode !== compactMode) {
 			compactMode = mode;
 			if (compactMode) {
 				lastDisplay = display;
-				if (display == "all") display = "grid";
-			} else if (!lastDisplay || lastDisplay == "all") display = "all";
+				if (display === "all") display = "grid";
+			} else if (!lastDisplay || lastDisplay === "all") display = "all";
 		}
 	}
 
@@ -67,7 +67,7 @@
 		if ($rColumns.every(c => c.width && !c.flexgrow)) {
 			w = $rColumns.reduce((acc, c) => acc + parseInt(c.width), 0);
 		} else {
-			if (compactMode && display === "chart") {
+			if (display === "chart") {
 				w =
 					parseInt($rColumns.find(c => c.id === "action")?.width) ||
 					50;

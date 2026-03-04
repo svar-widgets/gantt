@@ -1,5 +1,6 @@
 <script>
 	import { Gantt, ContextMenu, Tooltip, Editor } from "@svar-ui/svelte-gantt";
+	import { Calendar } from "@svar-ui/gantt-store";
 	import { getData } from "../data/index";
 	import TooltipContent from "./TooltipContent.svelte";
 
@@ -7,35 +8,21 @@
 	let { api = $bindable() } = $props();
 
 	const markers = [
-		/*{
-			start: new Date(2024, 3, 2),
+		{
+			start: new Date(2026, 3, 1),
 			text: "Start",
 		},
 		{
-			start: new Date(2024, 3, 14),
-			text: "Today",
+			start: new Date(2026, 3, 9),
+			text: "Getting approval",
 			css: "myMiddleClass",
 		},
 		{
-			start: new Date(2024, 4, 25),
+			start: new Date(2026, 4, 25),
 			text: "End",
 			css: "myEndClass",
-		},*/
+		},
 	];
-
-	function isDayOff(date) {
-		const d = date.getDay();
-		return d == 0 || d == 6;
-	}
-	function isHourOff(date) {
-		const h = date.getHours();
-		return h < 8 || h == 12 || h > 17;
-	}
-	function highlightTime(d, u) {
-		if (u == "day" && isDayOff(d)) return "wx-weekend";
-		if (u == "hour" && (isDayOff(d) || isHourOff(d))) return "wx-weekend";
-		return "";
-	}
 </script>
 
 <div class="box">
@@ -43,9 +30,14 @@
 		<Tooltip {api} content={TooltipContent}>
 			<Gantt
 				bind:this={api}
+				calendar={new Calendar()}
+				schedule={{ auto: true }}
+				criticalPath={{ type: "flexible" }}
+				summary={{ autoProgress: true }}
 				{markers}
-				{highlightTime}
+				splitTasks
 				zoom
+				cellWidth={80}
 				scales={data.scales}
 				tasks={data.tasks}
 				links={data.links}

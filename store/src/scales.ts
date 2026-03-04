@@ -155,7 +155,7 @@ export function normalizeZoom(
 ): { zoom: IZoomConfig; scales: IScaleConfig[]; cellWidth: number } {
 	const _zoom: any = typeof zoom === "boolean" ? {} : zoom;
 	const mainScaleLevel = units.indexOf(getMinUnit(scales).unit);
-	if (typeof _zoom.level == "undefined") {
+	if (typeof _zoom.level === "undefined") {
 		_zoom.level = mainScaleLevel;
 	}
 
@@ -268,7 +268,7 @@ export function zoomScale(
 		lengthUnit
 	) as TLengthUnit;
 
-	if (step === -1) {
+	if (step < 0) {
 		const count = getSmallerUnitCount(nextMinUnit, lengthUnit);
 		newCellWidth = cellWidth * count;
 	} else {

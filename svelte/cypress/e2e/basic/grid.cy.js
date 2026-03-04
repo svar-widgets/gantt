@@ -27,7 +27,7 @@ context("Grid", () => {
 			.children()
 			.last()
 			.invoke("attr", "data-id")
-			.should("match", /^temp/);
+			.should("include", "temp");
 		cy.shot("add-task-via-header-button");
 
 		cy.wxG("grid-item", 10).find(".wx-action-icon").click();

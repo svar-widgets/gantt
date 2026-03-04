@@ -84,7 +84,7 @@ context(
 				cy.shot("delete link from critical path");
 			});
 
-			it.only("deletes crossing links correctly", () => {
+			it("deletes crossing links correctly", () => {
 				cy.visit("/index.html#/crossing-links");
 				cy.viewport(1300, 900);
 				cy.wxG("polyline", 13).as("short-link");

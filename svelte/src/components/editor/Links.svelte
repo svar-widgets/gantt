@@ -21,11 +21,11 @@
 	function getLinksData() {
 		if ($activeTask) {
 			const inLinks = $links
-				.filter(a => a.target == $activeTask)
+				.filter(a => a.target === $activeTask)
 				.map(link => ({ link, task: api.getTask(link.source) }));
 
 			const outLinks = $links
-				.filter(a => a.source == $activeTask)
+				.filter(a => a.source === $activeTask)
 				.map(link => ({ link, task: api.getTask(link.target) }));
 
 			return [
@@ -103,7 +103,7 @@
 										{obj.task.text || ""}
 									</div>
 								</td>
-								{#if $schedule?.auto && obj.link.type == "e2s"}
+								{#if $schedule?.auto && obj.link.type === "e2s"}
 									<td class="wx-cell wx-link-lag">
 										<Text
 											type="number"

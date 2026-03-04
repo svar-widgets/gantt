@@ -1,6 +1,6 @@
 <script>
 	import { getContext } from "svelte";
-	import { locateID, locateAttr } from "@svar-ui/lib-dom";
+	import { locateID } from "@svar-ui/lib-dom";
 	import { reorder } from "../../helpers/reorder";
 	import { prepareEditTask } from "@svar-ui/gantt-store";
 
@@ -38,14 +38,14 @@
 	let dragTask = $state(null);
 
 	function execAction(id, action) {
-		if (action == "add-task") {
+		if (action === "add-task") {
 			api.exec(action, {
 				target: id,
 				task: { text: _("New Task") },
 				mode: "child",
 				show: true,
 			});
-		} else if (action == "open-task") {
+		} else if (action === "open-task") {
 			const task = tasks.find(a => a.id === id);
 			if (task.data || task.lazy)
 				api.exec(action, { id, mode: !task.open });
@@ -57,7 +57,7 @@
 		const action = e.target.dataset.action;
 		if (action) e.preventDefault();
 		if (id) {
-			if (action == "add-task" || action == "open-task") {
+			if (action === "add-task" || action === "open-task") {
 				execAction(id, action);
 			} else {
 				api.exec("select-task", {
@@ -67,7 +67,7 @@
 					show: true,
 				});
 			}
-		} else if (action == "add-task") {
+		} else if (action === "add-task") {
 			execAction(null, action);
 		}
 	}
@@ -75,8 +75,8 @@
 	function onDblClick(e) {
 		if (!readonly) {
 			const id = locateID(e);
-			const column = locateAttr(e, "data-col-id");
-			const columnObj = column && cols.find(c => c.id == column);
+			const column = locateID(e, "data-col-id");
+			const columnObj = column && cols.find(c => c.id === column);
 			if (!columnObj?.editor && id) api.exec("show-editor", { id });
 		}
 	}
@@ -91,7 +91,7 @@
 		let mode = before ? "before" : "after";
 
 		if (inProgress) {
-			if (mode == "after") {
+			if (mode === "after") {
 				const task = api.getTask(target);
 				if (task.data?.length && task.open) {
 					mode = "before";
@@ -382,7 +382,7 @@
 				// Force widths reset when "display" "grid" changed to "all"
 				if (
 					actualWidth > baseColumnWidth &&
-					baseColumnWidth > containerWidth
+					baseColumnWidth >= containerWidth
 				)
 					forceReset = true;
 			}

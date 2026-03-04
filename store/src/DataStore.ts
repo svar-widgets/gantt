@@ -90,7 +90,10 @@ export default class DataStore extends Store<IData> {
 								tasks,
 								markers
 							);
-							if (bounds._end != _end || bounds._start != _start)
+							if (
+								bounds._end !== _end ||
+								bounds._start !== _start
+							)
 								this.setState(bounds, ctx);
 						} else {
 							this.setState({ _start: start, _end: end }, ctx);
@@ -242,7 +245,7 @@ export default class DataStore extends Store<IData> {
 					out: ["cellWidth"],
 					exec: (ctx: TDataConfig) => {
 						const { _cellWidth, cellWidth } = this.getState();
-						if (_cellWidth != cellWidth)
+						if (_cellWidth !== cellWidth)
 							this.setState({ cellWidth: _cellWidth }, ctx);
 					},
 				},
@@ -290,10 +293,10 @@ export default class DataStore extends Store<IData> {
 					if (range) {
 						const sourceId = result[result.length - 1];
 						const sourceInd = _tasks.findIndex(
-							tobj => tobj.id == sourceId
+							tobj => tobj.id === sourceId
 						);
 						const targetInd = _tasks.findIndex(
-							tobj => tobj.id == id
+							tobj => tobj.id === id
 						);
 
 						const start = Math.min(sourceInd, targetInd);
@@ -308,7 +311,9 @@ export default class DataStore extends Store<IData> {
 							if (!result.includes(selId)) result.push(selId);
 						});
 					} else if (toggle) {
-						const selIndex = result.findIndex(selId => selId == id);
+						const selIndex = result.findIndex(
+							selId => selId === id
+						);
 						if (selIndex === -1) {
 							result.push(id);
 						} else {
@@ -384,7 +389,7 @@ export default class DataStore extends Store<IData> {
 			const { id, inProgress } = ev;
 			const task = tasks.byId(id);
 
-			if (typeof inProgress == "undefined") ev.source = task.parent;
+			if (typeof inProgress === "undefined") ev.source = task.parent;
 			else ev.source = source = source ?? task.parent;
 
 			if (inProgress === false) {
@@ -496,7 +501,7 @@ export default class DataStore extends Store<IData> {
 					tasks.move(id, mode, target);
 
 					const newSummary = tasks.getSummaryId(id);
-					if (oldSummary != newSummary) {
+					if (oldSummary !== newSummary) {
 						if (oldSummary)
 							this.resetSummaryDates(oldSummary, "move-task");
 						if (newSummary)
@@ -519,7 +524,7 @@ export default class DataStore extends Store<IData> {
 
 				tasks.move(id, mode, target);
 
-				if (mode == "child") {
+				if (mode === "child") {
 					let tobj = targetTask;
 					while (tobj.id !== 0 && !tobj.open) {
 						inBus.exec("open-task", {
@@ -531,7 +536,7 @@ export default class DataStore extends Store<IData> {
 				}
 
 				const newSummary = tasks.getSummaryId(id);
-				if (oldSummary != newSummary) {
+				if (oldSummary !== newSummary) {
 					if (oldSummary)
 						this.resetSummaryDates(oldSummary, "move-task");
 					if (newSummary)
@@ -720,7 +725,7 @@ export default class DataStore extends Store<IData> {
 
 			if (target) {
 				targetObj = tasks.byId(target);
-				if (mode == "child") {
+				if (mode === "child") {
 					parent = targetObj;
 					task.parent = parent.id;
 				} else {
@@ -729,7 +734,7 @@ export default class DataStore extends Store<IData> {
 						task.parent = parent.id;
 					}
 					ind = tasks.getIndexById(target);
-					if (mode == "after") ind += 1;
+					if (mode === "after") ind += 1;
 				}
 			} else if (task.parent) parent = tasks.byId(task.parent);
 
@@ -870,7 +875,7 @@ export default class DataStore extends Store<IData> {
 			const newSummary = tasks.getSummaryId(target);
 
 			let ind = tasks.getIndexById(target);
-			if (mode == "before") ind -= 1;
+			if (mode === "before") ind -= 1;
 
 			const origin = tasks.byId(id);
 			const idPairs = tasks.copy(
@@ -883,7 +888,7 @@ export default class DataStore extends Store<IData> {
 			ev.id = idPairs[0][1];
 			if (origin.lazy) ev.lazy = true;
 
-			if (oldSummary != newSummary && newSummary)
+			if (oldSummary !== newSummary && newSummary)
 				this.resetSummaryDates(newSummary, "copy-task");
 
 			let linkCopies: ILink[] = [];
@@ -991,7 +996,7 @@ export default class DataStore extends Store<IData> {
 				calendar,
 			});
 			tasks.parse(ev.data.tasks, ev.id);
-			if (parent.type == "summary")
+			if (parent.type === "summary")
 				this.resetSummaryDates(parent.id, "provide-data");
 			// fixme: DataArray needs the parse() method
 			this.setStateAsync({
@@ -1004,23 +1009,32 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on(
 			"zoom-scale",
-			({ dir, offset }: TMethodsConfig["zoom-scale"]) => {
+			({ dir, ratio, offset }: TMethodsConfig["zoom-scale"]) => {
 				const { zoom, cellWidth, _cellWidth, scrollLeft } =
 					this.getState();
-				const pointerX = offset + scrollLeft;
+				const pointerX = (offset || 0) + scrollLeft;
 				const date = this.calcScaleDate(pointerX);
-				let w = cellWidth;
-				if (dir < 0) w = _cellWidth || cellWidth;
-				const width = w + dir * 50; // 50px is a zoom step
-				const currentLevel = zoom.levels[zoom.level];
-				const isExpanded =
-					dir < 0 && cellWidth > currentLevel.maxCellWidth;
+				const w = (dir < 0 && _cellWidth) || cellWidth;
+				let width = Math.round(w * (1 + dir * (ratio || 0.15)));
+				const { maxCellWidth, minCellWidth } = zoom.levels[zoom.level];
+				const isExpanded = dir < 0 && cellWidth > maxCellWidth;
 				if (
-					width < currentLevel.minCellWidth ||
-					width > currentLevel.maxCellWidth ||
+					width < minCellWidth ||
+					width > maxCellWidth ||
 					isExpanded
 				) {
-					if (!this.changeScale(zoom, dir)) return;
+					if (!this.changeScale(zoom, dir)) {
+						width = Math.max(
+							Math.min(width, maxCellWidth),
+							minCellWidth
+						);
+						if (width !== cellWidth)
+							this.setState({
+								cellWidth: width,
+								_cellWidth: width,
+							});
+						else return;
+					}
 				} else {
 					this.setState({ cellWidth: width, _cellWidth: width });
 				}
@@ -1356,13 +1370,13 @@ export default class DataStore extends Store<IData> {
 	}
 	getNextRow(id: TID): IParsedTask {
 		const data = this.getState()._tasks;
-		const index = data.findIndex((t: IParsedTask) => t.id == id);
+		const index = data.findIndex((t: IParsedTask) => t.id === id);
 		return data[index + 1];
 	}
 
 	getPrevRow(id: TID): IParsedTask {
 		const data = this.getState()._tasks;
-		const index = data.findIndex((t: IParsedTask) => t.id == id);
+		const index = data.findIndex((t: IParsedTask) => t.id === id);
 		return data[index - 1];
 	}
 }
@@ -1450,7 +1464,11 @@ export type IDataMethodsConfig = CombineTypes<
 			};
 		};
 
-		["zoom-scale"]: { dir: number; date: Date; offset?: number };
+		["zoom-scale"]: {
+			dir: number;
+			ratio?: number;
+			offset?: number;
+		};
 		["expand-scale"]: {
 			minWidth: number;
 			date?: Date;

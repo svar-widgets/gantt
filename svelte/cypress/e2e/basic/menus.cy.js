@@ -75,11 +75,8 @@ context(
 			cy.wxG("menu").should("be.visible");
 			cy.wxG("chart-item", 12).should("have.class", "wx-milestone");
 			cy.wxG("menu-option", "add-task").trigger("mouseenter");
-			cy.wxG("menu")
-				.find(".wx-menu")
-				.should("exist")
-				.find('[data-id="add-task:child"]')
-				.should("not.exist");
+			cy.wxG("menu").should("exist");
+			cy.wxG("menu-option", "add-task:child").should("not.exist");
 			cy.shot(`absence-add-child-grid-menu-option-for-milestone`);
 
 			// FIXME - unnecessary, necessary because of issues in menu
@@ -89,11 +86,8 @@ context(
 			cy.wxG("chart-item", 12).rightclick("left");
 			cy.wxG("menu").should("be.visible");
 			cy.wxG("menu-option", "add-task").trigger("mouseenter");
-			cy.wxG("menu")
-				.find(".wx-menu")
-				.should("exist")
-				.find('[data-id="add-task:child"]')
-				.should("not.exist");
+			cy.wxG("menu").should("exist");
+			cy.wxG("menu-option", "add-task:child").should("not.exist");
 			cy.shot(`absence-add-child-chart-menu-option-for-milestone`);
 		});
 
@@ -109,7 +103,7 @@ context(
 			cy.visit(`/index.html#/context-menu/willow`);
 			cy.viewport(1300, 1000);
 
-			const taskId = "21";
+			const taskId = 21;
 			let relativeId;
 			const menuActions = [
 				{
@@ -127,7 +121,7 @@ context(
 								cy.wxG("grid-item", taskId)
 									.next()
 									.invoke("attr", "data-id")
-									.should("match", /^temp/);
+									.should("include", "temp");
 								cy.wxG("grid-item", taskId)
 									.find(".wx-toggle-icon.wxi-menu-down")
 									.should("exist");
@@ -146,7 +140,7 @@ context(
 								cy.wxG("grid-item", taskId)
 									.prev()
 									.invoke("attr", "data-id")
-									.should("match", /^temp/);
+									.should("include", "temp");
 								cy.shot("add-task-before");
 							},
 						},
@@ -159,13 +153,12 @@ context(
 								cy.wxG("menu-option", id).click();
 							},
 							check: () => {
-								cy
-									.wxG("grid-item", taskId)
+								cy.wxG("grid-item", taskId)
 									.next()
 									.next()
 									.invoke("attr", "data-id")
-									.should("match", /^temp/),
-									cy.shot("add-task-after");
+									.should("include", "temp");
+								cy.shot("add-task-after");
 							},
 						},
 					],
@@ -341,9 +334,9 @@ context(
 						cy.findRootRows().then($rootRows => {
 							const pastedRow = $rootRows.eq(2);
 							const copyedRow = $rootRows.eq(3);
-							expect(pastedRow)
-								.to.have.attr("data-id")
-								.and.match(/^temp/);
+							cy.wrap(pastedRow)
+								.should("have.attr", "data-id")
+								.should("include", "temp");
 							cy.wrap(pastedRow).should(
 								"contain",
 								"Getting approval"

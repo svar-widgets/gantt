@@ -6,6 +6,7 @@
 	import TimeScales from "./TimeScale.svelte";
 
 	import { hotkeys } from "@svar-ui/grid-store";
+	import { setID } from "@svar-ui/lib-dom";
 
 	let {
 		readonly,
@@ -21,6 +22,7 @@
 	const {
 		_selected: selected,
 		scrollTop: rScrollTop,
+		scrollLeft: rScrollLeft,
 		cellWidth,
 		cellHeight,
 		_scales: scales,
@@ -55,6 +57,7 @@
 
 	$effect(() => {
 		chart.scrollTop = $rScrollTop;
+		chart.scrollLeft = $rScrollLeft;
 	});
 
 	function onScroll() {
@@ -94,24 +97,48 @@
 		const task = api.getTask(id);
 		if (task.$x + task.$w < chart.scrollLeft) {
 			api.exec("scroll-chart", { left: task.$x - (cellWidth || 0) });
-			chart.scrollLeft = task.$x - (cellWidth || 0);
 		} else if (task.$x >= clientWidth + chart.scrollLeft) {
 			const width = clientWidth < task.$w ? $cellWidth : task.$w;
 			api.exec("scroll-chart", { left: task.$x - clientWidth + width });
-			chart.scrollLeft = task.$x - clientWidth + width;
 		}
 	}
 	rScrollTask.subscribe(value => showTask(value));
 
+	let lastWheelTime = performance.now();
+	const MAX_ZOOM_RATE = 0.003; // per ms
+	function getZoomFactor(evDelta) {
+		const isTouchpad = Math.abs(evDelta) < 50; // or mouse with smooth scrolling
+		const SENSITIVITY = isTouchpad ? 0.004 : 0.01; // smaller - slower
+		const now = performance.now();
+		const dt = Math.min(now - lastWheelTime, 50);
+		lastWheelTime = now;
+		const normalized = clamp(
+			-evDelta * SENSITIVITY,
+			-MAX_ZOOM_RATE * dt,
+			MAX_ZOOM_RATE * dt
+		);
+		return Math.exp(normalized);
+	}
+	function clamp(value, min, max) {
+		return Math.max(Math.min(value, max), min);
+	}
+	let pending = false;
 	function onWheel(e) {
 		if ($zoom && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
-			const dir = -Math.sign(e.deltaY);
+			const ratio = getZoomFactor(e.deltaY);
 			const offset = e.clientX - chart.getBoundingClientRect().left;
-			api.exec("zoom-scale", {
-				dir,
-				offset,
-			});
+			if (!pending) {
+				pending = true;
+				requestAnimationFrame(() => {
+					api.exec("zoom-scale", {
+						dir: ratio > 1 ? 1 : -1,
+						ratio: Math.abs(1 - ratio),
+						offset,
+					});
+					pending = false;
+				});
+			}
 		}
 	}
 
@@ -189,7 +216,7 @@
 				{#if obj.$y}
 					<div
 						class="wx-selected"
-						data-id={obj.id}
+						data-id={setID(obj.id)}
 						style={selectStyle[index]}
 					></div>
 				{/if}

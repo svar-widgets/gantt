@@ -1,8 +1,7 @@
 <script>
 	import { getContext } from "svelte";
 
-	import { locate, locateID } from "@svar-ui/lib-dom";
-	import { getID } from "../../helpers/locate";
+	import { locate, locateID, getID, setID } from "@svar-ui/lib-dom";
 	import Links from "./Links.svelte";
 	import { Button } from "@svar-ui/svelte-core";
 	import { isSegmentMoveAllowed, extendDragOptions } from "@svar-ui/gantt-store";
@@ -208,8 +207,8 @@
 				//dnd may be blocked, check positions
 				if (
 					!taskMove.start &&
-					((mode === "move" && task.$x == l) ||
-						(mode !== "move" && task.$w == w))
+					((mode === "move" && task.$x === l) ||
+						(mode !== "move" && task.$w === w))
 				) {
 					ignoreNextClick = true;
 					return up();
@@ -247,7 +246,7 @@
 		if (progressFrom) {
 			const { dx, id, marker, value } = progressFrom;
 			progressFrom = null;
-			if (typeof value != "undefined" && dx)
+			if (typeof value !== "undefined" && dx)
 				api.exec("update-task", {
 					id,
 					task: { progress: value },
@@ -344,14 +343,12 @@
 				api.exec("delete-link", { id: selectedLinkId });
 				selectedLinkId = null;
 			} else {
-				let segmentIndex;
-				const segmentNode = locate(e, "data-segment");
-				if (segmentNode) segmentIndex = segmentNode.dataset.segment * 1;
+				const segmentIndex = locateID(e.target, "data-segment");
 				api.exec("select-task", {
 					id,
 					toggle: e.ctrlKey || e.metaKey,
 					range: e.shiftKey,
-					segmentIndex,
+					...(segmentIndex !== null && { segmentIndex }),
 				});
 			}
 		}
@@ -386,8 +383,8 @@
 
 		return $rLinks.find(l => {
 			return (
-				l.target == target &&
-				l.source == source &&
+				l.target === target &&
+				l.source === source &&
 				l.type === getLinkType(fromStart, toStart)
 			);
 		});
@@ -429,7 +426,9 @@
 	scrollTask.subscribe(value => {
 		if (hasFocus && value) {
 			const { id } = value;
-			const node = container.querySelector(`.wx-bar[data-id='${id}']`);
+			const node = container.querySelector(
+				`.wx-bar[data-id='${setID(id)}']`
+			);
 			if (node) node.focus();
 		}
 	});
@@ -482,14 +481,14 @@
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<div
 				class="wx-bar wx-{taskTypeCss(task.type)}"
-				class:wx-touch={touched && taskMove && task.id == taskMove.id}
+				class:wx-touch={touched && taskMove && task.id === taskMove.id}
 				class:wx-selected={linkFrom && linkFrom.id === task.id}
 				class:wx-critical={isTaskCritical(task.id)}
 				class:wx-reorder-task={task.$reorder}
 				class:wx-split={$splitTasks && task.segments}
 				style={taskStyle(task)}
-				data-tooltip-id={task.id}
-				data-id={task.id}
+				data-id={setID(task.id)}
+				data-tooltip-id={setID(task.id)}
 				tabindex={focused === task.id ? "0" : "-1"}
 			>
 				{#if !readonly}
@@ -526,7 +525,7 @@
 							></div>
 						</div>
 					{/if}
-					{#if !readonly && !($splitTasks && task.segments) && !(task.type == "summary" && $summary?.autoProgress)}
+					{#if !readonly && !($splitTasks && task.segments) && !(task.type === "summary" && $summary?.autoProgress)}
 						<div
 							class="wx-progress-marker"
 							style="left:calc({task.progress}% - 10px);"

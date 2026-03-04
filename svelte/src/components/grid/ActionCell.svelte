@@ -4,7 +4,7 @@
 	const action = $derived(column.id);
 </script>
 
-{#if cell || column.id == "add-task"}
+{#if cell || column.id === "add-task"}
 	<div style="text-align:{column.align}">
 		<i class="wx-action-icon wxi-plus" data-action={action}></i>
 	</div>

@@ -8,7 +8,7 @@
 
 	function init(api) {
 		api.intercept("sort-tasks", config => {
-			return config.key == "text";
+			return config.key === "text";
 		});
 	}
 </script>

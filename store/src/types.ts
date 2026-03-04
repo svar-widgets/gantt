@@ -187,9 +187,7 @@ export interface ICriticalPathConfig {
 	type: "strict" | "flexible";
 }
 
-export interface ICriticalTasks {
-	[key: TID]: boolean;
-}
+export type ICriticalTasks = Partial<Record<TID, boolean>>;
 
 type UnitFormatter = (date: Date) => string;
 

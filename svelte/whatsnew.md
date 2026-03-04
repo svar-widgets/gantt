@@ -1,3 +1,13 @@
+## 2.5.2
+
+### Fixes
+
+-   Incorrect grid width after expanding and collapsing it with all column fixed
+-   Narrow scale does not expand when grid is collapsed by clicking
+-   Tooltips are not shown for segments
+-   Zoom speed is too high with laptop trackpad
+-   Task reordering, opening and closing fails in case of integer string id
+
 ## 2.5.1
 
 ### Fixes

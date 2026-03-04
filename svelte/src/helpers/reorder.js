@@ -1,5 +1,4 @@
-import { getID } from "./locate";
-import { locate } from "@svar-ui/lib-dom";
+import { locate, getID } from "@svar-ui/lib-dom";
 
 function getOffset(node, relative, ev) {
 	const box = node.getBoundingClientRect();
@@ -14,7 +13,7 @@ function getOffset(node, relative, ev) {
 }
 
 function checkSource(node) {
-	return node && node.getAttribute("data-context-id");
+	return node && getID(node, "data-context-id");
 }
 
 const SHIFT = 5;
@@ -116,7 +115,7 @@ export function reorder(node, config) {
 			const task = config.getTask(sid);
 			const y = task.$y;
 			//dnd may be blocked
-			if (!base.start && base.y == y) return up();
+			if (!base.start && base.y === y) return up();
 
 			base.start = true;
 			base.y = task.$y - 4;
@@ -140,7 +139,7 @@ export function reorder(node, config) {
 					event.clientY - base.dt < line &&
 					target.previousElementSibling !== source;
 
-				if (detail?.after == tid || detail?.before == tid) {
+				if (detail?.after === tid || detail?.before === tid) {
 					// avoid duplicate calls
 					detail = null;
 				} else if (after) {

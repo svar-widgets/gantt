@@ -13,7 +13,7 @@ export function getMenuOptions(config?: IDataConfig) {
 	let options = [...defaultMenuOptions];
 
 	const taskTypes = config?.taskTypes || defaultTaskTypes;
-	const convertOption = options.find(o => o.id == "convert-task");
+	const convertOption = options.find(o => o.id === "convert-task");
 
 	convertOption.data = [];
 	taskTypes.forEach(t => {
