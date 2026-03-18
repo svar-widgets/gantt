@@ -1,12 +1,13 @@
 import { describe, expect, test } from "vitest";
 import { IParsedTask } from "../src/types";
-import { DataStore, parseTaskDates } from "../src/index";
+import { DataStore, normalizeLinks, parseTaskDates } from "../src/index";
 import { writable } from "svelte/store";
 import { getData } from "./stubs/data";
 
-function getDataStore(data) {
+function getDataStore(data: any) {
 	const store = new DataStore(writable);
 	parseTaskDates(data.tasks, {});
+	if (data.links) data.links = normalizeLinks(data.links);
 	store.init({
 		...data,
 		splitTasks: true,

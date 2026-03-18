@@ -3,38 +3,36 @@ import {
 	IParsedTask,
 	GanttDataTree,
 	ITask,
-	IData,
 	IDataHash,
+	IData,
 } from "./types";
 import { isEqual } from "date-fns";
 import { isCommunity } from "./package";
 
+export const heightAdjustment = 7;
+const defaultPadding = 3;
 const baselineHeight = 8;
 const baselineTopPadding = 4;
-const defaultPadding = 3;
-const heightAdjustment = 7;
 const baselineAdjustment = baselineHeight + baselineTopPadding;
+
 
 export function dragSummaryKids(
 	task: IParsedTask,
 	dx: number,
-	state: Partial<IData>
+	rollups: boolean
 ) {
-	if (task.open || task.type !== "summary") {
+	if (task.open || task.type !== "summary" || rollups) {
 		task.data?.forEach(kid => {
-			if (typeof kid.$x === "undefined") setTaskSizes(kid, state);
 			kid.$x += dx;
-			dragSummaryKids(kid, dx, state);
+			if (kid.$x_rollup) {
+				kid.$x_rollup += dx;
+			}
+			dragSummaryKids(kid, dx, rollups);
 		});
 	}
 }
 
-export function dragSummary(
-	tasks: GanttDataTree,
-	task: IParsedTask,
-	state: Partial<IData>,
-	updateHidden?: boolean
-) {
+export function dragSummary(tasks: GanttDataTree, task: IParsedTask) {
 	const summary = tasks.getSummaryId(task.id);
 	if (summary) {
 		const pobj = tasks.byId(summary);
@@ -42,22 +40,19 @@ export function dragSummary(
 			xMin: Infinity,
 			xMax: 0,
 		};
-		if (updateHidden) calculateHiddenDimentions(pobj, state);
-		getSummaryBarSize(pobj, coords, state);
+		getSummaryBarSize(pobj, coords);
 		pobj.$x = coords.xMin;
 		pobj.$w = coords.xMax - coords.xMin;
-		dragSummary(tasks, pobj, state);
+		dragSummary(tasks, pobj);
 	}
 }
 
 function getSummaryBarSize(
 	task: IParsedTask,
-	coords: { xMin: number; xMax: number },
-	state: Partial<IData>
+	coords: { xMin: number; xMax: number }
 ) {
 	task.data?.forEach(kid => {
 		if (!kid.unscheduled) {
-			if (typeof kid.$x === "undefined") setTaskSizes(kid, state);
 			const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
 			if (coords.xMin > kid.$x + mD) {
 				coords.xMin = kid.$x + mD;
@@ -68,16 +63,8 @@ function getSummaryBarSize(
 			}
 		}
 
-		if (kid.type !== "summary") getSummaryBarSize(kid, coords, state);
+		if (kid.type !== "summary") getSummaryBarSize(kid, coords);
 	});
-}
-
-function setTaskSizes(task: IParsedTask, state: Partial<IData>) {
-	const { _scales: s, cellWidth } = state;
-	task.$x = Math.round(s.diff(task.start, s.start, s.lengthUnit) * cellWidth);
-	task.$w = Math.round(
-		s.diff(task.end, task.start, s.lengthUnit, true) * cellWidth
-	);
 }
 
 export function setSummaryDates(task: ITask, tasks?: Partial<ITask>[]): ITask {
@@ -116,7 +103,7 @@ export function setSummaryDates(task: ITask, tasks?: Partial<ITask>[]): ITask {
 
 export function updateTask(
 	t: IGanttTask,
-	i: number,
+	i: number | null,
 	state: Partial<IData>
 ): IGanttTask {
 	calculateTaskDimensions(t, i, state, false);
@@ -133,6 +120,10 @@ export function updateTask(
 		calculateTaskDimensions(t, i, state, true);
 	}
 
+	if (t.data && !t.open) {
+		calculateHiddenDimensions(t, state);
+	}
+
 	return t;
 }
 
@@ -142,7 +133,7 @@ function calculateTaskDimensions(
 	state: Partial<IData>,
 	isBaseline: boolean
 ) {
-	const { cellWidth, cellHeight, _scales, baselines } = state;
+	const { cellWidth, cellHeight, _scales, baselines, _rollups } = state;
 	const { start: scaleStart, end: scaleEnd, lengthUnit, diff } = _scales;
 	const start = (isBaseline ? "base_" : "") + "start";
 	const end = (isBaseline ? "base_" : "") + "end";
@@ -171,6 +162,7 @@ function calculateTaskDimensions(
 
 	t[x] = Math.round(diff(startDate, scaleStart, lengthUnit) * cellWidth);
 	t[w] = Math.round(diff(endDate, startDate, lengthUnit, true) * cellWidth);
+
 	if (i !== null) {
 		t[y] = isBaseline
 			? t.$y + t.$h + baselineTopPadding
@@ -192,24 +184,28 @@ function calculateTaskDimensions(
 		}
 	}
 
+
 	if (state.unscheduledTasks && t.unscheduled && !isBaseline)
 		t["$skip"] = true;
 	else t[skip] = isEqual(startDate, endDate);
 }
-
-function calculateHiddenDimentions(
+// calculate dimensions on non-summary children as they affect top summary
+function calculateHiddenDimensions(
 	t: IParsedTask,
 	state: Partial<IData>,
-	isHidden?: boolean
+	notSummaryKid?: boolean
 ) {
-	if (t.data && !t.$skip) {
-		isHidden = isHidden || !t.open;
+	notSummaryKid = notSummaryKid ?? t.type !== "summary";
+	if (t.data && !t.$skip && (notSummaryKid || state._rollups)) {
 		t.data.forEach((child: IGanttTask) => {
-			if (isHidden) calculateTaskDimensions(child, null, state, false);
-			calculateHiddenDimentions(child, state, isHidden);
+			if (notSummaryKid || child.rollup) {
+				calculateTaskDimensions(child, null, state, false);
+			}
+			calculateHiddenDimensions(child, state, notSummaryKid);
 		});
 	}
 }
+
 
 export function isSegmentMoveAllowed(task: IGanttTask, moveOptions: IDataHash) {
 	if (isCommunity()) return false;

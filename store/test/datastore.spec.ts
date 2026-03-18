@@ -14,7 +14,7 @@ import { DataArray } from "@svar-ui/lib-state";
 
 import { resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";
-import { updateLink } from "../src/links";
+import { updateLink, normalizeLinks } from "../src/links";
 import { normalizeColumns, defaultColumns } from "../src/columns";
 import { parseTaskDates } from "../src/normalizeDates";
 
@@ -32,6 +32,7 @@ let store: DataStore;
 function resetState(data?: any) {
 	if (!data) data = getData();
 	parseTaskDates(data.tasks, { durationUnit: "day" });
+	if (data.links) data.links = normalizeLinks(data.links);
 	store = new DataStore(writable);
 
 	store.init({ ...data });
@@ -71,13 +72,15 @@ describe("datastore", () => {
 				cellWidth,
 				scaleHeight,
 				1,
-				scales
+				scales,
+				1
 			) as GanttScaleData;
 			const _tasks = tasks.toArray().map((task, i) =>
 				updateTask(task as IGanttTask, i, {
 					cellWidth,
 					cellHeight,
 					_scales,
+					baselines: false,
 				})
 			);
 			const _links = links.map(l =>
@@ -85,8 +88,7 @@ describe("datastore", () => {
 					l as IGanttLink,
 					_tasks.find(t => t.id === l.source) as IGanttTask,
 					_tasks.find(t => t.id === l.target) as IGanttTask,
-					cellHeight,
-					false
+					cellHeight
 				)
 			);
 
@@ -99,6 +101,7 @@ describe("datastore", () => {
 				area: { from: 0, start: 0, end: 0 },
 				scales,
 				tasks,
+				_rollups: {},
 				links,
 				columns: normalizeColumns(defaultColumns),
 				taskTypes,
@@ -111,13 +114,16 @@ describe("datastore", () => {
 				_scales,
 				_tasks,
 				_links,
-				_scrollTask: null,
+				focusTask: null,
 				_sort: null,
 				autoScale: true,
 				markers: [],
 				_markers: [],
 				durationUnit: "day",
 				_unitFormats: unitFormats,
+				_isFiltered: false,
+				_headerLength: 1,
+				filterValues: {},
 			};
 
 			vi.advanceTimersByTime(1);
@@ -145,7 +151,7 @@ describe("datastore", () => {
 			state["columns"]?.forEach((column, i) => {
 				expect(column.width).to.eq(defaultState["columns"]?.[i].width);
 				expect(column.align).to.eq(defaultState["columns"]?.[i].align);
-				expect(column.header).to.eq(
+				expect(column.header).to.deep.eq(
 					defaultState["columns"]?.[i].header
 				);
 				expect(column.resize).to.eq(
@@ -1932,6 +1938,163 @@ describe("datastore", () => {
 		});
 	});
 
+	describe("rollups", () => {
+		test("rollups are not created when rollups is disabled", () => {
+			resetState(getData("full"));
+			const { _rollups } = store.getState();
+
+			vi.advanceTimersByTime(1);
+
+			expect(_rollups).to.deep.eq({});
+		});
+
+		test("rollups are created for tasks with rollup flag when parent is closed", () => {
+			const data = getData("full");
+			data.tasks[0].type = "summary"; // task 1
+			data.tasks[0].open = false;
+			data.tasks[1].rollup = true; // task 10
+			data.tasks[2].rollup = true; // task 11
+
+			resetState({ ...data, rollups: { type: "closest" } });
+			const { _rollups } = store.getState();
+
+			vi.advanceTimersByTime(1);
+
+			expect(_rollups[1]).to.not.be.undefined;
+			expect(_rollups[1].length).to.be.greaterThan(0);
+			expect(Array.from(_rollups[1]).some(r => r.id === 10)).to.be.true;
+			expect(Array.from(_rollups[1]).some(r => r.id === 11)).to.be.true;
+		});
+
+		test("rollups mode 'closest' only shows rollups from closest summary parent", () => {
+			const data = getData("full");
+			data.tasks[0].type = "summary"; // task 1
+			data.tasks[0].open = true;
+
+			data.tasks[2].type = "summary"; // task 11
+			data.tasks[2].open = false;
+
+			data.tasks[3].rollup = true; // task 110
+
+			resetState({ ...data, rollups: { type: "closest" } });
+			const { _rollups } = store.getState();
+
+			vi.advanceTimersByTime(1);
+
+			expect(_rollups["11"]).to.not.be.undefined;
+			expect(Array.from(_rollups["11"]).some(r => r.id === 110)).to.be
+				.true;
+
+			if (_rollups[1]) {
+				expect(Array.from(_rollups["1"]).some(r => r.id === 110)).to.be
+					.false;
+			}
+		});
+
+		test("rollups mode 'all' shows rollups in all summary parents", () => {
+			const data = getData("full");
+			// Create nested summary structure
+			data.tasks[0].type = "summary";
+			data.tasks[0].open = true;
+
+			data.tasks[2].type = "summary"; // task 11
+			data.tasks[2].open = false;
+
+			data.tasks[3].rollup = true; // task 110
+
+			resetState({ ...data, rollups: { type: "all" } });
+			const { _rollups } = store.getState();
+
+			vi.advanceTimersByTime(1);
+
+			expect(_rollups[11]).to.not.be.undefined;
+			expect(Array.from(_rollups[11]).some(r => r.id === 110)).to.be.true;
+			expect(_rollups[1]).to.not.be.undefined;
+			expect(Array.from(_rollups[1]).some(r => r.id === 110)).to.be.true;
+		});
+
+		test("tasks without rollup flag are not added to rollups", () => {
+			const data = getData("full");
+			data.tasks[1].rollup = false; // task 10
+			data.tasks[0].type = "summary";
+			data.tasks[0].open = false; // task 1 (summary)
+
+			resetState({ ...data, rollups: { type: "closest" } });
+			const { _rollups } = store.getState();
+
+			vi.advanceTimersByTime(1);
+
+			if (_rollups[1]) {
+				expect(Array.from(_rollups[1]).some(r => r.id === 10)).to.be
+					.false;
+			}
+		});
+
+		test("dragRollups updates rollup positions when summary is dragged", () => {
+			const data = getData("full");
+			data.tasks[0].type = "summary"; // task 1
+			data.tasks[0].open = false;
+
+			data.tasks[1].rollup = true; // task 10
+
+			resetState({ ...data, rollups: { type: "closest" } });
+
+			vi.advanceTimersByTime(1);
+			const { _rollups, _tasks } = store.getState();
+			const summaryTask = _tasks.find((t: any) => t.id === 1);
+			const rollupTask = Array.from(_rollups[1]).find(
+				(r: any) => r.id === 10
+			);
+
+			if (summaryTask && rollupTask) {
+				const initialXRollup = rollupTask.$x_rollup;
+
+				store.in.exec("drag-task", {
+					id: 1,
+					left: summaryTask.$x + 100,
+				});
+
+				vi.advanceTimersByTime(1);
+
+				const updatedState = store.getState();
+				const updatedRollupTask = Array.from(
+					updatedState._rollups[1]
+				).find((r: any) => r.id === 10);
+
+				expect(updatedRollupTask?.$x_rollup).to.eq(
+					initialXRollup + 100
+				);
+			}
+		});
+
+		test("rollups are updated when task is updated", () => {
+			const data = getData("full");
+			data.tasks[0].type = "summary"; // task 1
+			data.tasks[0].open = false;
+
+			data.tasks[1].rollup = true; // task 10
+
+			resetState({ ...data, rollups: { type: "closest" } });
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("update-task", {
+				id: 10,
+				task: {
+					type: "milestone",
+				},
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const updatedState = store.getState();
+			expect(updatedState._rollups[1]).to.not.be.undefined;
+			const rollupTask = Array.from(updatedState._rollups[1]).find(
+				(r: any) => r.id === 10
+			);
+			expect(rollupTask).to.not.be.undefined;
+			expect(rollupTask!.type).to.eq("milestone");
+		});
+	});
 	describe("autoscheduling", () => {
 		test("can delete invalid links in autoscheduling mode on init", () => {
 			const initData = getData("autoScheduling");
@@ -1944,7 +2107,7 @@ describe("datastore", () => {
 
 			const { links } = store.getState();
 
-			expect(links.map(l => l).length).to.eq(2);
+			expect(links.map(l => l).length).to.eq(4);
 			expect(links.byId(6).id).to.exist;
 			expect(links.byId(7).id).to.exist;
 		});
@@ -1964,7 +2127,7 @@ describe("datastore", () => {
 			vi.advanceTimersByTime(1);
 			const { links } = store.getState();
 
-			expect(links.map(l => l).length).to.eq(2);
+			expect(links.map(l => l).length).to.eq(4);
 			expect(links.byId(6).id).to.exist;
 			expect(links.byId(7).id).to.exist;
 		});
@@ -1984,7 +2147,7 @@ describe("datastore", () => {
 			vi.advanceTimersByTime(1);
 			const indentedState = store.getState();
 
-			expect(indentedState.links.map(l => l).length).to.eq(1);
+			expect(indentedState.links.map(l => l).length).to.eq(3);
 			expect(indentedState.links.byId(6).id).to.exist;
 		});
 		test("add-link prevents invalid links in autoscheduling mode", () => {
@@ -2005,9 +2168,517 @@ describe("datastore", () => {
 			vi.advanceTimersByTime(1);
 
 			const { links } = store.getState();
-			expect(links.map(l => l).length).to.eq(2);
+			expect(links.map(l => l).length).to.eq(4);
 			expect(links.byId(6).id).to.exist;
 			expect(links.byId(7).id).to.exist;
+		});
+		test("can schedule tasks on init", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(4).start).to.deep.eq(tasks.byId(3).end);
+			expect(tasks.byId(4).end).to.deep.eq(new Date(2024, 3, 7));
+			expect(tasks.byId(5).start).to.deep.eq(tasks.byId(4).end);
+			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 9));
+		});
+		test("can reschedule dependent tasks on update-task", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("update-task", {
+				id: 3,
+				task: {
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 6),
+				},
+			});
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(4).start).to.deep.eq(tasks.byId(3).end);
+			expect(tasks.byId(4).start).to.deep.eq(new Date(2024, 3, 6));
+			expect(tasks.byId(4).end).to.deep.eq(new Date(2024, 3, 8));
+			expect(tasks.byId(5).start).to.deep.eq(tasks.byId(4).end);
+			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 10));
+		});
+		test("can reschedule tasks on add-task and add-link", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("add-task", {
+				task: {
+					id: 6,
+					text: "Task 6",
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 5),
+				},
+				mode: "child",
+			});
+
+			store.in.exec("add-link", {
+				link: {
+					id: 10,
+					source: 5,
+					target: 6,
+					type: "e2s",
+				},
+			});
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(6).start).to.deep.eq(tasks.byId(5).end);
+			expect(tasks.byId(6).start).to.deep.eq(new Date(2024, 3, 9));
+			expect(tasks.byId(6).end).to.deep.eq(new Date(2024, 3, 12));
+		});
+		test("can reschedule tasks on update-link", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("update-link", {
+				id: 9,
+				link: { type: "e2e" },
+			});
+			store.in.exec("update-task", {
+				id: 4,
+				task: {
+					start: new Date(2024, 3, 7),
+					end: new Date(2024, 3, 9),
+				},
+			});
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 7));
+			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 9));
+
+			store.in.exec("update-link", {
+				id: 9,
+				link: { type: "e2s" },
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 9));
+			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 11));
+		});
+		test("can reschedule tasks on delete-link", () => {
+			const initData = getData("autoScheduling");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("delete-link", { id: 9 });
+			store.in.exec("update-task", {
+				id: 4,
+				task: {
+					start: new Date(2024, 3, 6),
+					end: new Date(2024, 3, 8),
+				},
+			});
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 7));
+			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 9));
+		});
+	});
+	describe("critical path and slack tasks", () => {
+		test("can calculate critical path on init", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { tasks, links } = store.getState();
+
+			const critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11, 12]);
+
+			const critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([1, 2]);
+		});
+		test("can calculate critical path on update-task", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			store.in.exec("update-task", {
+				id: 20,
+				task: {
+					start: new Date(2024, 3, 2),
+					duration: 3,
+				},
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks, links } = store.getState();
+
+			let critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([2, 20, 21, 22]);
+
+			let critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([3, 4]);
+
+			store.in.exec("update-task", {
+				id: 10,
+				task: {
+					start: new Date(2024, 3, 2),
+					duration: 3,
+				},
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11, 12]);
+
+			critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([1, 2]);
+		});
+		test("can calculate critical path on delete-task", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			store.in.exec("delete-task", { id: 12 });
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks, links } = store.getState();
+
+			let critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([2, 20, 21, 22]);
+
+			let critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([3, 4]);
+
+			store.in.exec("delete-task", { id: 21 });
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11]);
+
+			critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([1]);
+		});
+		test("can calculate critical path on add-task", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			store.in.exec("add-task", {
+				task: {
+					id: 13,
+					text: "Task 13",
+					start: new Date(2024, 3, 9),
+					end: new Date(2024, 3, 13),
+				},
+				target: 1,
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+
+			const critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11, 12]);
+		});
+		test("can calculate critical path on update-link", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			store.in.exec("update-link", {
+				id: 1,
+				link: { type: "s2s" },
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks, links } = store.getState();
+
+			let critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([2, 20, 21, 22]);
+
+			let critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([3, 4]);
+
+			store.in.exec("update-link", {
+				id: 1,
+				link: { type: "e2s" },
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11, 12]);
+
+			critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([1, 2]);
+		});
+		test("can calculate critical path on delete-link", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			store.in.exec("delete-link", { id: 2 });
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks, links } = store.getState();
+
+			let critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([2, 20, 21, 22]);
+
+			let critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([3, 4]);
+
+			store.in.exec("delete-link", { id: 4 });
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			critTasks = tasks
+				.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(critTasks).to.deep.eq([1, 10, 11]);
+
+			critLinks = links
+				.map(l => l)
+				.filter(l => (l as IGanttLink).critical)
+				.map(l => l.id);
+			expect(critLinks).to.deep.eq([1]);
+		});
+		test("slack is not calculated when only criticalPath is set", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				criticalPath: { type: "flexible" },
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+
+			tasks.forEach(task => expect(task.slack).to.be.undefined);
+		});
+		test("criticalPath is not calculated when only slack is set", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				slack: true,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { tasks, links } = store.getState();
+
+			tasks.forEach(task => expect(task.critical).to.be.undefined);
+			links.forEach(
+				link => expect((link as IGanttLink).critical).to.be.undefined
+			);
+		});
+		test("can calculate slack on init", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				slack: true,
+			});
+
+			vi.advanceTimersByTime(10);
+
+			const { tasks } = store.getState();
+
+			tasks.forEach(task => {
+				expect(task.slack).to.be.an("object");
+				expect(task.slack).to.have.property("totalSlack");
+				if (
+					task.slack.totalSlack > 0 &&
+					task.type !== "milestone" &&
+					task.type !== "summary"
+				) {
+					expect(task.$visibleSlack).to.be.a("number");
+				} else {
+					expect(task.$visibleSlack).to.be.undefined;
+				}
+			});
+		});
+		test("can calculate visible slack value based on projectEnd", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				slack: true,
+				projectEnd: new Date(2024, 3, 8),
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(30).slack.totalSlack).to.eq(5);
+			expect(tasks.byId(30).$visibleSlack).to.eq(4);
+			expect(tasks.byId(31).slack.totalSlack).to.eq(5);
+			expect(tasks.byId(31).$visibleSlack).to.eq(2);
+		});
+		test("can calculate visible slack value based on max tasks end", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				slack: true,
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(30).slack.totalSlack).to.eq(5);
+			expect(tasks.byId(30).$visibleSlack).to.eq(5);
+			expect(tasks.byId(31).slack.totalSlack).to.eq(5);
+			expect(tasks.byId(31).$visibleSlack).to.eq(3);
+		});
+		test("can recalculate task slack on task-update", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				slack: true,
+			});
+
+			store.in.exec("update-task", {
+				id: 30,
+				task: {
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 6),
+				},
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			const { tasks } = store.getState();
+
+			expect(tasks.byId(30).slack.totalSlack).to.eq(3);
+			expect(tasks.byId(30).$visibleSlack).to.eq(3);
+			expect(tasks.byId(31).slack.totalSlack).to.eq(5);
+			expect(tasks.byId(31).$visibleSlack).to.eq(3);
+
+			store.in.exec("update-task", {
+				id: 31,
+				task: {
+					start: new Date(2024, 3, 4),
+					end: new Date(2024, 3, 7),
+				},
+			});
+
+			vi.advanceTimersByTime(20); // wait for calculation as debounce 10ms is used
+
+			expect(tasks.byId(30).slack.totalSlack).to.eq(3);
+			expect(tasks.byId(30).$visibleSlack).to.eq(3);
+			expect(tasks.byId(31).slack.totalSlack).to.eq(4);
+			expect(tasks.byId(31).$visibleSlack).to.eq(2);
 		});
 	});
 });

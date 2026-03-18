@@ -52,7 +52,7 @@ context("Toolbar", () => {
 				},
 				check: () => {
 					cy.wxG("grid-item", taskId)
-						.prev()
+						.next()
 						.invoke("attr", "data-id")
 						.should("include", "temp");
 					cy.shot("add-task");

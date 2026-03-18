@@ -14,6 +14,7 @@
 		tasks={data.tasks}
 		links={data.links}
 		scales={data.scales}
+		zoom
 	/>
 </ContextMenu>
 <Editor {api} />

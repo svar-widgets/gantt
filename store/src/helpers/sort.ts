@@ -1,27 +1,38 @@
-import type { IParsedTask, TSort, TSortValue } from "../types";
+import { getValue } from "@svar-ui/grid-store";
+import type { IGanttColumn, IParsedTask, TSort, TSortValue } from "../types";
+
 function sortAsc(a: TSortValue, b: TSortValue): number {
 	if (typeof a === "string")
 		return a.localeCompare(b as string, undefined, { numeric: true });
-	if (typeof a === "object") return a.getTime() - (b as Date).getTime();
+	if (a instanceof Date || b instanceof Date)
+		return !a ? 1 : !b ? -1 : (a as Date).getTime() - (b as Date).getTime();
 	return ((a ?? 0) as number) - ((b ?? 0) as number);
 }
 
 function sortDesc(a: TSortValue, b: TSortValue): number {
 	if (typeof a === "string")
 		return -a.localeCompare(b as string, undefined, { numeric: true });
-	if (typeof b === "object") return b.getTime() - (a as Date).getTime();
+	if (a instanceof Date || b instanceof Date)
+		return !b ? 1 : !a ? -1 : (b as Date).getTime() - (a as Date).getTime();
 	return ((b ?? 0) as number) - ((a ?? 0) as number);
 }
 
-function sortBy({ key, order }: TSort) {
+function sortBy({ order, key }: TSort, column?: IGanttColumn) {
 	const sortMethod = order === "asc" ? sortAsc : sortDesc;
-	return (a: IParsedTask, b: IParsedTask) => sortMethod(a[key], b[key]);
+	return (a: IParsedTask, b: IParsedTask) =>
+		sortMethod(
+			column ? getValue(a, column) : a[key],
+			column ? getValue(b, column) : b[key]
+		);
 }
 
-function sortByMany(sortArray: TSort[]) {
+function sortByMany(sortArray: TSort[], columns: IGanttColumn[]) {
 	if (!sortArray || !sortArray.length) return;
 
-	const sorts = sortArray.map(s => sortBy(s));
+	const sorts = sortArray.map(s => {
+		const column = columns.find(c => c.id == s.key);
+		return sortBy(s, column);
+	});
 	if (sortArray.length === 1) return sorts[0];
 
 	return function (a: IParsedTask, b: IParsedTask) {
@@ -33,6 +44,10 @@ function sortByMany(sortArray: TSort[]) {
 	};
 }
 
-export function sort(data: IParsedTask[], conf: TSort[]) {
-	return data.sort(sortByMany(conf));
+export function sort(
+	data: IParsedTask[],
+	conf: TSort[],
+	columns: IGanttColumn[]
+) {
+	return data.sort(sortByMany(conf, columns));
 }

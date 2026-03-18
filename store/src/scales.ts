@@ -6,6 +6,7 @@ import type {
 	IZoomConfig,
 	TLengthUnit,
 	IMarker,
+	IData,
 } from "./types";
 import { getUnitStart, getAdder, getDiffer, getSmallerUnitCount } from "./time";
 import type GanttDataTree from "./GanttDataTree";
@@ -28,7 +29,10 @@ export function calcScales(
 	autoScale?: boolean,
 	minUnit?: string,
 	tasks?: GanttDataTree,
-	markers?: IMarker[]
+	markers?: IMarker[],
+	projectStart?: Date,
+	projectEnd?: Date,
+	baselines?: boolean
 ): { _start: Date; _end: Date } {
 	const flexStart = !prevStart || autoScale;
 	const flexEnd = !prevEnd || autoScale;
@@ -39,27 +43,25 @@ export function calcScales(
 
 	if (flexStart || flexEnd) {
 		tasks?.forEach(t => {
-			if (flexStart && (!_start || t.start <= _start)) {
-				_start = t.start;
+			let tStart = t.start;
+			if (baselines && t.base_start < t.start) tStart = t.base_start;
+			if (flexStart && (!_start || tStart <= _start)) {
+				_start = tStart;
 				_sFix = true;
 			}
-			const taskEnd = t.type === "milestone" ? t.start : t.end;
-			if (flexEnd && (!_end || taskEnd >= _end)) {
-				_end = taskEnd;
-				_eFix = true;
+
+			let tEnd = t.type === "milestone" ? t.start : t.end;
+			if (baselines) {
+				const bEnd = t.type === "milestone" ? t.base_start : t.base_end;
+				if (bEnd && bEnd > tEnd) tEnd = bEnd;
 			}
-		});
-		markers?.forEach(marker => {
-			if (flexStart && (!_start || marker.start <= _start)) {
-				_start = marker.start;
-				_sFix = true;
-			}
-			if (flexEnd && (!_end || marker.start >= _end)) {
-				_end = marker.start;
+			if (flexEnd && (!_end || tEnd >= _end)) {
+				_end = tEnd;
 				_eFix = true;
 			}
 		});
 	}
+
 	const adder = getAdder(minUnit || "day");
 	if (_start) {
 		if (_sFix) _start = adder(_start, -1);
@@ -80,7 +82,8 @@ export function resetScales(
 	width: number,
 	height: number,
 	_weekStart: Day,
-	scales: IScaleConfig[]
+	scales: IScaleConfig[],
+	minLength: number
 ): GanttScaleData | null {
 	const minUnit = getMinUnit(scales).unit;
 	const diff = getDiffer(minUnit, undefined, _weekStart);
@@ -91,7 +94,8 @@ export function resetScales(
 	end = tempEnd < end ? getAdder(minUnit)(tempEnd, 1) : tempEnd;
 
 	const fullWidth = numOfMinUnits * width;
-	const fullHeight = height * scales.length;
+	const fullHeight = height * Math.max(minLength, scales.length);
+
 	const rows = scales.map(line => {
 		const cells = [];
 		const add = getAdder(line.unit);
@@ -125,7 +129,7 @@ export function resetScales(
 			date = next;
 		}
 
-		return { cells, add, height };
+		return { cells, add, height: fullHeight / scales.length };
 	});
 
 	let lengthUnitWidth = width;
@@ -284,6 +288,73 @@ export function zoomScale(
 		cellWidth: Math.min(max, Math.max(min, newCellWidth)),
 		lengthUnit: nextLengthUnit,
 		zoom,
+	};
+}
+
+export function expandScale(
+	minWidth: number,
+	state: Partial<IData>
+): Partial<IData> {
+	const {
+		_start,
+		_scales,
+		start,
+		end,
+		_end,
+		cellWidth,
+		_scaleDate,
+		_zoomOffset,
+		_weekStart,
+	} = state;
+	const adder = getAdder(_scales.minUnit);
+
+	let width = _scales.width;
+	if (start && end) {
+		if (width < minWidth && width) {
+			const k = minWidth / width;
+			return {
+				cellWidth: cellWidth * k,
+			};
+		}
+		return {};
+	}
+	let step = 0;
+	while (width < minWidth) {
+		width += cellWidth;
+		step++;
+	}
+
+	let startStep = 0;
+	if (step) {
+		if (end) startStep = -step;
+		else if (_scaleDate && _zoomOffset !== null) {
+			const num = _zoomOffset / cellWidth;
+			const currentNum = _scales.diff(_scaleDate, _start, "hour");
+			startStep = Math.floor(currentNum - num);
+		}
+	}
+	let newStart = start;
+
+	if (!start) {
+		newStart = getUnitStart(
+			_scales.minUnit,
+			adder(_start, startStep),
+			_weekStart
+		);
+	}
+	let newScroll = 0;
+	if (_scaleDate) {
+		const num = _scales.diff(_scaleDate, newStart, "hour");
+		newScroll = Math.max(
+			0,
+			Math.round(num * cellWidth) - (_zoomOffset || 0)
+		);
+	}
+
+	return {
+		_start: newStart,
+		_end: end || adder(_end, step - startStep),
+		scrollLeft: newScroll,
 	};
 }
 

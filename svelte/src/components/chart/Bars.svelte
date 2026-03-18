@@ -3,6 +3,7 @@
 
 	import { locate, locateID, getID, setID } from "@svar-ui/lib-dom";
 	import Links from "./Links.svelte";
+	import Rollups from "./Rollups.svelte";
 	import { Button } from "@svar-ui/svelte-core";
 	import { isSegmentMoveAllowed, extendDragOptions } from "@svar-ui/gantt-store";
 
@@ -20,12 +21,15 @@
 		taskTypes,
 		baselines,
 		_selected: selected,
-		_scrollTask: scrollTask,
+		rollups,
+		_rollups: rRollups,
+		focusTask,
 		criticalPath,
 		tasks: tree,
 		schedule,
 		splitTasks,
 		summary,
+		slack,
 	} = api.getReactiveState();
 
 	// let tasks = $derived($rTasks.slice($area.start, $area.end));
@@ -200,7 +204,6 @@
 					width: width,
 					left: left,
 					inProgress: true,
-					start,
 					...(segment && { segmentIndex: index }),
 				});
 
@@ -356,11 +359,15 @@
 	}
 
 	function taskStyle(task) {
-		return `left:${task.$x}px;top:${task.$y}px;width:${task.$w}px;height:${task.$h}px;`;
+		return `left:${task.$x}px;top:${task.$y}px;width:${task.$w}px;height:${task.$h}px;line-height:${task.$h}px;`;
 	}
 
 	function baselineStyle(task) {
 		return `left:${task.$x_base}px;top:${task.$y_base}px;width:${task.$w_base}px;height:${task.$h_base}px;`;
+	}
+
+	function slackStyle(task) {
+		return `left:${task.$x_slack}px;top:${task.$y}px;width:${task.$w_slack}px;height:${task.$h}px;`;
 	}
 
 	function contextmenu(ev) {
@@ -423,8 +430,8 @@
 			container.contains(document.activeElement)
 	);
 	const focused = $derived(hasFocus && $selected[$selected.length - 1].id);
-	scrollTask.subscribe(value => {
-		if (hasFocus && value) {
+	focusTask.subscribe(value => {
+		if (value && value.column === false) {
 			const { id } = value;
 			const node = container.querySelector(
 				`.wx-bar[data-id='${setID(id)}']`
@@ -433,8 +440,8 @@
 		}
 	});
 
-	const isTaskCritical = taskId => {
-		return criticalPath && $tree.byId(taskId).$critical;
+	const isTaskCritical = task => {
+		return $criticalPath && task.critical;
 	};
 	function isLinkMarkerVisible(id) {
 		if ($schedule.auto) {
@@ -475,6 +482,16 @@
 	ondblclick={onDblClick}
 	ondragstart={() => false}
 >
+	{#if $slack}
+		{#each tasks as task (task.id)}
+			{#if task.$visibleSlack}
+				<div
+					class="wx-slack wx-slack-{task.type}"
+					style={slackStyle(task)}
+				></div>
+			{/if}
+		{/each}
+	{/if}
 	<Links {onSelectLink} {selectedLink} {readonly} />
 	{#each tasks as task (task.id)}
 		{#if !task.$skip}
@@ -483,7 +500,7 @@
 				class="wx-bar wx-{taskTypeCss(task.type)}"
 				class:wx-touch={touched && taskMove && task.id === taskMove.id}
 				class:wx-selected={linkFrom && linkFrom.id === task.id}
-				class:wx-critical={isTaskCritical(task.id)}
+				class:wx-critical={isTaskCritical(task)}
 				class:wx-reorder-task={task.$reorder}
 				class:wx-split={$splitTasks && task.segments}
 				style={taskStyle(task)}
@@ -509,7 +526,7 @@
 							class:wx-selected={linkFrom &&
 								linkFrom.id === task.id &&
 								linkFrom.start}
-							class:wx-critical={isTaskCritical(task.id)}
+							class:wx-critical={isTaskCritical(task)}
 						>
 							<div class="wx-inner"></div>
 						</div>
@@ -573,13 +590,18 @@
 							class:wx-selected={linkFrom &&
 								linkFrom.id === task.id &&
 								!linkFrom.start}
-							class:wx-critical={isTaskCritical(task.id)}
+							class:wx-critical={isTaskCritical(task)}
 						>
 							<div class="wx-inner"></div>
 						</div>
 					{/if}
 				{/if}
 			</div>
+		{/if}
+		{#if $rollups && $rRollups?.[task.id]}
+			{#each $rRollups[task.id] as rollup}
+				<Rollups {rollup} parent={task} />
+			{/each}
 		{/if}
 		{#if $baselines && !task.$skip_baseline}
 			<div
@@ -592,6 +614,14 @@
 </div>
 
 <style>
+	.wx-rollup {
+		position: absolute;
+		z-index: 1;
+		background-color: var(--wx-gantt-task-color);
+		border: 1px solid var(--wx-gantt-marker-color);
+		border-color: var(--wx-gantt-marker-color);
+	}
+
 	.wx-baseline {
 		position: absolute;
 		background-color: #a883e4;
@@ -897,5 +927,23 @@
 	.wx-critical.wx-split .wx-link.wx-selected,
 	.wx-critical.wx-split .wx-link.wx-selected .wx-inner {
 		border-color: var(--wx-gantt-task-critical-color);
+	}
+
+	.wx-slack {
+		box-sizing: border-box;
+		position: absolute;
+		border-radius: var(--wx-gantt-bar-border-radius);
+		border-bottom-left-radius: 0;
+		border-top-left-radius: 0;
+	}
+	.wx-slack-task {
+		border: 1px solid var(--wx-gantt-task-slack-border-color);
+		background: repeating-linear-gradient(
+			-60deg,
+			var(--wx-gantt-task-slack-border-color),
+			var(--wx-gantt-task-slack-border-color) 1px,
+			var(--wx-gantt-task-slack-color) 1px,
+			var(--wx-gantt-task-slack-color) 8px
+		);
 	}
 </style>

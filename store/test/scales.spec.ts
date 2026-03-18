@@ -30,7 +30,8 @@ describe("scales", () => {
 			cellWidth,
 			scaleHeight,
 			1,
-			scales
+			scales,
+			1
 		) as GanttScaleData;
 
 		expect(_scales.start).to.deep.eq(new Date(2024, 3, 1));

@@ -9,7 +9,7 @@
 </script>
 
 <div class="wx-content" style={getStyle(row, column)}>
-	{#if row.data || row.lazy}
+	{#if !row.$empty && (row.data || row.lazy)}
 		<i
 			class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
 			data-action="open-task"

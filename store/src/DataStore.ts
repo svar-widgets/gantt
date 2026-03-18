@@ -1,8 +1,15 @@
 import { Store, EventBus, DataArray, DataRouter, tempID } from "@svar-ui/lib-state";
 import type { TDataConfig, TWritableCreator, TID } from "@svar-ui/lib-state";
+import { createFilter, IFilterColumn } from "@svar-ui/grid-store";
 
 import GanttDataTree from "./GanttDataTree";
-import { calcScales, resetScales, getMinUnit, zoomScale } from "./scales";
+import {
+	calcScales,
+	resetScales,
+	getMinUnit,
+	zoomScale,
+	expandScale,
+} from "./scales";
 import {
 	updateTask,
 	dragSummary,
@@ -37,9 +44,10 @@ import type {
 	IZoomConfig,
 	IParsedTask,
 	TSort,
-	TScrollTask,
 	IMarker,
 	IExportConfig,
+	TFilterHandler,
+	TScrollMode,
 } from "./types";
 
 import { isEqual } from "date-fns";
@@ -66,6 +74,9 @@ export default class DataStore extends Store<IData> {
 						"scales",
 						"autoScale",
 						"markers",
+						"projectStart",
+						"projectEnd",
+						"baselines",
 					],
 					out: ["_start", "_end"],
 					exec: (ctx: TDataConfig) => {
@@ -78,17 +89,22 @@ export default class DataStore extends Store<IData> {
 							scales,
 							autoScale,
 							markers,
+							projectStart,
+							projectEnd,
+							baselines,
 						} = this.getState();
 						if (!start || !end || autoScale) {
 							const minUnit = getMinUnit(scales).unit;
-
 							const bounds = calcScales(
 								start,
 								end,
 								autoScale,
 								minUnit,
 								tasks,
-								markers
+								markers,
+								projectStart,
+								projectEnd,
+								baselines
 							);
 							if (
 								bounds._end !== _end ||
@@ -102,6 +118,24 @@ export default class DataStore extends Store<IData> {
 				},
 				// prepare scale structure for rendering
 				{
+					in: ["columns"],
+					out: ["_headerLength"],
+					exec: (ctx: TDataConfig) => {
+						const columns = this.getState().columns;
+						let count = 1;
+						if (columns.length) {
+							columns.forEach(col => {
+								count = Math.max(
+									(col.header as IFilterColumn["header"])
+										.length,
+									count
+								);
+							});
+						}
+						this.setState({ _headerLength: count }, ctx);
+					},
+				},
+				{
 					in: [
 						"_start",
 						"_end",
@@ -110,6 +144,7 @@ export default class DataStore extends Store<IData> {
 						"scales",
 						"lengthUnit",
 						"_weekStart",
+						"_headerLength",
 					],
 					out: ["_scales"],
 					exec: (ctx: TDataConfig) => {
@@ -122,6 +157,7 @@ export default class DataStore extends Store<IData> {
 							scaleHeight,
 							scales,
 							_weekStart,
+							_headerLength,
 						} = state;
 
 						const minUnit = getMinUnit(scales).unit;
@@ -135,7 +171,8 @@ export default class DataStore extends Store<IData> {
 							cellWidth,
 							scaleHeight,
 							_weekStart,
-							scales
+							scales,
+							_headerLength
 						);
 						this.setState({ _scales }, ctx);
 					},
@@ -144,6 +181,7 @@ export default class DataStore extends Store<IData> {
 				{
 					in: [
 						"_scales",
+						"rollups",
 						"tasks",
 						"cellHeight",
 						"baselines",
@@ -159,6 +197,7 @@ export default class DataStore extends Store<IData> {
 							baselines,
 							splitTasks,
 							unscheduledTasks,
+							_rollups,
 						} = this.getState();
 
 						const _tasks = tasks.toArray().map((task, i) =>
@@ -169,6 +208,7 @@ export default class DataStore extends Store<IData> {
 								baselines,
 								splitTasks,
 								unscheduledTasks,
+								_rollups,
 							})
 						);
 						this.setState({ _tasks }, ctx);
@@ -183,34 +223,41 @@ export default class DataStore extends Store<IData> {
 							tasks,
 							links,
 							cellHeight,
-							baselines,
 							criticalPath,
+							_isFiltered,
 						} = this.getState();
 
 						const _links = links
 							.map<IGanttLink>(link => {
 								const startTask = tasks.byId(link.source);
 								const endTask = tasks.byId(link.target);
+
 								return updateLink(
 									link as IGanttLink,
 									startTask as IGanttTask,
 									endTask as IGanttTask,
-									cellHeight,
-									baselines
+									cellHeight
 								);
 							})
 							.toSorted((a: IGanttLink, b: IGanttLink) => {
 								if (criticalPath) {
 									// sort by length (shortest first) when critical status is the same
-									if (!!a.$critical === !!b.$critical) {
+									if (!!a.critical === !!b.critical) {
 										return b.$pl - a.$pl;
 									}
 									// critical links first
-									return a.$critical ? 1 : -1;
+									return a.critical ? 1 : -1;
 								}
 								return b.$pl - a.$pl;
 							})
-							.filter(a => a !== null);
+							.filter(a => {
+								if (a && _isFiltered)
+									return (
+										tasks.isFilteredId(a.source) &&
+										tasks.isFilteredId(a.target)
+									);
+								return a !== null;
+							});
 						this.setState({ _links }, ctx);
 					},
 				},
@@ -232,10 +279,17 @@ export default class DataStore extends Store<IData> {
 					in: ["tasks", "selected"],
 					out: ["_selected"],
 					exec: (ctx: TDataConfig) => {
-						const { tasks, selected } = this.getState();
+						const { tasks, selected, _isFiltered } =
+							this.getState();
 						const _selected = selected
 							.map(id => tasks.byId(id))
-							.filter((task: ITask) => !!task);
+							.filter((task: ITask) => {
+								if (!task) return false;
+								return (
+									!_isFiltered || tasks.isFilteredId(task.id)
+								);
+							});
+
 						this.setState({ _selected }, ctx);
 					},
 				},
@@ -249,6 +303,7 @@ export default class DataStore extends Store<IData> {
 							this.setState({ cellWidth: _cellWidth }, ctx);
 					},
 				},
+
 			],
 			// data initializers
 			{
@@ -278,8 +333,10 @@ export default class DataStore extends Store<IData> {
 				id,
 				toggle,
 				range,
-				show,
+				show = true,
 				segmentIndex,
+				focus,
+				eventSource,
 			}: TMethodsConfig["select-task"]) => {
 				const { selected, _tasks, activeTask, splitTasks } =
 					this.getState();
@@ -330,10 +387,25 @@ export default class DataStore extends Store<IData> {
 					selected: ids,
 				};
 
-				if (show && ids.length)
-					update._scrollTask = { id: ids[0], mode: show };
-
 				this.setStateAsync(update);
+				if (ids.length) {
+					if (focus) show = focus === "chart" ? "xy" : show || "y";
+					if (show) {
+						this.scrollToTask(
+							ids[0],
+							show,
+							eventSource || "select-task"
+						);
+						if (focus) {
+							this.setStateAsync({
+								focusTask: {
+									id: ids[0],
+									column: focus === "grid",
+								},
+							});
+						}
+					}
+				}
 
 				if (
 					!unselect &&
@@ -555,29 +627,27 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on("drag-task", (ev: TMethodsConfig["drag-task"]) => {
 			const state = this.getState();
-			const { tasks, _tasks, _selected, _scales, cellWidth, cellHeight } =
-				state;
+			const { tasks, _tasks, _selected, rollups, slack } = state;
 			const task = tasks.byId(ev.id);
-			const { left, top, width, start, inProgress } = ev;
+			const { left, top, width, inProgress } = ev;
 
-			const update: Partial<IData> = { _tasks, _selected };
+			const update: Partial<IData> = {
+				_tasks,
+				_selected,
+			};
 
 			if (typeof width !== "undefined") {
 				task.$w = width;
-				dragSummary(tasks, task, { _scales, cellWidth });
+				dragSummary(tasks, task);
 			}
+
 			if (typeof left !== "undefined") {
 				if (task.type === "summary") {
 					const dx = left - task.$x;
-					dragSummaryKids(task, dx, { _scales, cellWidth });
+					dragSummaryKids(task, dx, !!rollups);
 				}
 				task.$x = left;
-				dragSummary(
-					tasks,
-					task,
-					{ _scales, cellWidth, cellHeight },
-					!start
-				);
+				dragSummary(tasks, task);
 			}
 			if (typeof top !== "undefined") {
 				task.$y = top + 4;
@@ -716,8 +786,7 @@ export default class DataStore extends Store<IData> {
 				calendar,
 			} = this.getState();
 
-			const { target, mode, task, show, select = true } = ev;
-
+			const { target, mode, task, show, select = true, focus } = ev;
 			if (!ev.eventSource && unscheduledTasks) task.unscheduled = true;
 			let ind = -1;
 			let parent;
@@ -775,7 +844,7 @@ export default class DataStore extends Store<IData> {
 				tasks,
 			};
 
-			if (parent && show) {
+			if (show) {
 				while (parent && parent.id) {
 					inBus.exec("open-task", {
 						id: parent.id,
@@ -783,8 +852,6 @@ export default class DataStore extends Store<IData> {
 					});
 					parent = tasks.byId(parent.parent);
 				}
-
-				update._scrollTask = { id: newTask.id, mode: show };
 			}
 
 			ev.id = newTask.id;
@@ -799,13 +866,23 @@ export default class DataStore extends Store<IData> {
 			ev.id = newTask.id;
 			ev.task = newTask;
 
-			if (select) inBus.exec("select-task", { id: newTask.id });
+			if (select) {
+				inBus.exec("select-task", {
+					id: newTask.id,
+					show,
+					focus,
+					eventSource: "add-task",
+				});
+			} else if (show) {
+				this.scrollToTask(newTask.id, show, "add-task");
+			}
 		});
 
 		inBus.on("delete-task", (ev: TMethodsConfig["delete-task"]) => {
 			const { id } = ev;
 			const { tasks, links, selected } = this.getState();
-			ev.source = tasks.byId(id).parent;
+			const task = tasks.byId(id);
+			ev.source = task.parent;
 
 			const summary = tasks.getSummaryId(id);
 
@@ -964,15 +1041,52 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on(
 			"scroll-chart",
-			({ left, top }: TMethodsConfig["scroll-chart"]) => {
-				if (!isNaN(left)) {
-					const d = this.calcScaleDate(left);
-					this.setState({
-						scrollLeft: left,
-						_scaleDate: d,
-					});
+			({
+				left,
+				top,
+				date,
+				eventSource,
+			}: TMethodsConfig["scroll-chart"]) => {
+				const {
+					_chartWidth,
+					_chartHeight,
+					_tasks,
+					cellHeight,
+					_scales,
+					cellWidth,
+					_start,
+				} = this.getState();
+				let update: Partial<IData> = {};
+				if (date) {
+					const num = _scales.diff(date, _start, "hour");
+					left = Math.round(num * cellWidth);
 				}
-				if (!isNaN(top)) this.setState({ scrollTop: top });
+				if (!isNaN(left)) {
+					if (
+						typeof _chartWidth !== "undefined" &&
+						!isNaN(_scales.width)
+					) {
+						const maxLeft = _scales.width - _chartWidth;
+						left = Math.max(Math.min(left, maxLeft), 0);
+					}
+					update = {
+						scrollLeft: left,
+						_scaleDate: this.calcScaleDate(left),
+						_zoomOffset: null,
+					};
+				}
+				if (!isNaN(top)) {
+					if (typeof _chartHeight !== "undefined") {
+						const maxTop =
+							_scales.height +
+							_tasks.length * cellHeight -
+							_chartHeight;
+						top = Math.max(Math.min(top, maxTop), 0);
+					}
+					update.scrollTop = top;
+				}
+				if (eventSource === "add-task") this.setStateAsync(update);
+				else this.setState(update);
 			}
 		);
 
@@ -1062,59 +1176,10 @@ export default class DataStore extends Store<IData> {
 		);
 
 		inBus.on(
-			"expand-scale",
-			({ minWidth }: TMethodsConfig["expand-scale"]) => {
-				const {
-					_start,
-					_scales,
-					start,
-					end,
-					_end,
-					cellWidth,
-					_scaleDate,
-					_zoomOffset,
-				} = this.getState();
-				const adder = getAdder(_scales.minUnit);
-
-				let width = _scales.width;
-				if (start && end) {
-					if (width < minWidth && width) {
-						const k = minWidth / width;
-						this.setState({
-							cellWidth: cellWidth * k,
-						});
-					}
-					return true;
-				}
-				let step = 0;
-				while (width < minWidth) {
-					width += cellWidth;
-					step++;
-				}
-
-				const startStep = step && end ? -step : 0;
-				const newStart = start || adder(_start, startStep);
-				let newScroll = 0;
-				if (_scaleDate) {
-					const num = _scales.diff(_scaleDate, newStart, "hour");
-					newScroll = Math.max(
-						0,
-						Math.round(num * cellWidth) - (_zoomOffset || 0)
-					);
-				}
-
-				this.setState({
-					_start: newStart,
-					_end: end || adder(_end, step),
-					scrollLeft: newScroll,
-				});
-			}
-		);
-		inBus.on(
 			"sort-tasks",
 			({ key, order, add }: TMethodsConfig["sort-tasks"]) => {
 				const state = this.getState();
-				const { tasks } = state;
+				const { tasks, columns } = state;
 				let sort = state._sort;
 				const sortBy: TSort = { key, order };
 
@@ -1126,10 +1191,36 @@ export default class DataStore extends Store<IData> {
 					sort[index] = sortBy;
 				} else sort = [sortBy];
 
-				tasks.sort(sort);
+				tasks.sort(sort, columns);
 				this.setState({ _sort: sort, tasks });
 			}
 		);
+
+		inBus.on("filter-tasks", (ev: IDataMethodsConfig["filter-tasks"]) => {
+			const { open, key, value } = ev;
+			let filter = ev.filter;
+
+			const state = this.getState();
+			const { tasks, columns } = state;
+
+			let filterValues = state.filterValues;
+			if (key) {
+				filterValues = {
+					...filterValues,
+					[key]: value,
+				};
+			} else if (!Object.keys(ev).length) filterValues = {};
+
+			if (
+				!filter &&
+				Object.values(filterValues).some(v => v || v === 0)
+			) {
+				filter = createFilter(filterValues, columns as IFilterColumn[]);
+			}
+			tasks.filterTree(filter, open ?? true);
+			this.setState({ tasks, _isFiltered: !!filter, filterValues });
+		});
+
 		inBus.on(
 			"hotkey",
 			({ key, event, eventSource }: IDataMethodsConfig["hotkey"]) => {
@@ -1151,7 +1242,8 @@ export default class DataStore extends Store<IData> {
 						}
 						if (id) {
 							const show = eventSource === "chart" ? "xy" : true;
-							this.in.exec("select-task", { id, show });
+							const focus = eventSource;
+							this.in.exec("select-task", { id, show, focus });
 						}
 						break;
 					}
@@ -1194,6 +1286,21 @@ export default class DataStore extends Store<IData> {
 				}
 			}
 		);
+		inBus.on(
+			"resize-chart",
+			({ width, height, scrollSize }: TMethodsConfig["resize-chart"]) => {
+				let update: Partial<IData> = {};
+				const state = this.getState();
+				if (width > state._scales?.width)
+					update = expandScale(width, state);
+				this.setState({
+					...update,
+					_chartWidth: width,
+					_chartHeight: height,
+					_scrollSize: scrollSize,
+				});
+			}
+		);
 	}
 
 	init(state: Partial<IDataConfig>) {
@@ -1203,6 +1310,8 @@ export default class DataStore extends Store<IData> {
 					scrollLeft: 0,
 					scrollTop: 0,
 					area: { from: 0, start: 0, end: 0 },
+					_isFiltered: false,
+					filterValues: {},
 				};
 
 		if (state.cellWidth) state._cellWidth = state.cellWidth;
@@ -1220,16 +1329,23 @@ export default class DataStore extends Store<IData> {
 			state.summary = {};
 		}
 
-		if (Array.isArray(state.tasks)) {
+		if (!(state.tasks as any)._ready && Array.isArray(state.tasks)) {
+			(state.tasks as any)._ready = true;
+			// reset filtering and history on tasks update
 			this.getHistory()?.resetHistory();
+			const currentState = this.getState();
+			if (currentState.tasks && currentState._isFiltered) {
+				this.setState({ _isFiltered: false, filterValues: {} });
+				currentState.tasks.filterTree();
+			}
 		}
 
 		this._router.init({
-			_scrollTask: null,
 			selected: [],
 			markers: [],
 			autoScale: true,
 			durationUnit: "day",
+			focusTask: null,
 			...update,
 			...state,
 		});
@@ -1379,6 +1495,49 @@ export default class DataStore extends Store<IData> {
 		const index = data.findIndex((t: IParsedTask) => t.id === id);
 		return data[index - 1];
 	}
+	scrollToTask(
+		id: TID,
+		mode: TScrollMode,
+		eventSource?: keyof IDataMethodsConfig
+	) {
+		const {
+			_chartWidth,
+			_chartHeight,
+			scrollLeft,
+			scrollTop,
+			cellWidth,
+			cellHeight,
+			tasks,
+			_tasks,
+			_scrollSize,
+		} = this.getState();
+
+		const task = this.getTask(id);
+		const ev: IDataMethodsConfig["scroll-chart"] = { eventSource };
+		if (mode?.toString().indexOf("x") !== -1) {
+			if (task.$x + task.$w / 2 < scrollLeft) {
+				ev.left = Math.max(task.$x - (cellWidth || 0), 0);
+			} else if (task.$x + task.$w / 2 >= _chartWidth + scrollLeft) {
+				const width = _chartWidth < task.$w ? cellWidth : task.$w;
+				ev.left = task.$x - _chartWidth + width;
+			}
+		}
+		const rows = eventSource === "add-task" ? tasks.toArray() : _tasks;
+		const index = rows.findIndex(t => t.id === id);
+		if (index > -1) {
+			const scrollY = index * cellHeight;
+			let top = null;
+			if (scrollY < scrollTop) {
+				top = scrollY;
+			} else if (scrollY + cellHeight > scrollTop + _chartHeight) {
+				top = scrollY - _chartHeight + cellHeight + _scrollSize;
+			}
+			if (top !== null) {
+				ev.top = Math.max(top, 0);
+			}
+			this.in.exec("scroll-chart", ev);
+		}
+	}
 }
 
 type CombineTypes<T, N> = {
@@ -1392,7 +1551,7 @@ export type IDataMethodsConfig = CombineTypes<
 			task: Partial<ITask>;
 			target?: TID;
 			mode?: "before" | "after" | "child";
-			show?: TScrollTask["mode"];
+			show?: TScrollMode;
 			select?: boolean;
 			eventSource?: string;
 		};
@@ -1411,7 +1570,9 @@ export type IDataMethodsConfig = CombineTypes<
 			id: TID;
 			toggle?: boolean;
 			range?: boolean;
-			show?: TScrollTask["mode"];
+			column?: string | boolean;
+			show?: TScrollMode;
+			focus?: "grid" | "chart";
 		};
 		["drag-task"]: {
 			id: TID;
@@ -1419,7 +1580,6 @@ export type IDataMethodsConfig = CombineTypes<
 			width?: number;
 			left?: number;
 			top?: number;
-			start?: boolean;
 			inProgress?: boolean;
 		};
 		["copy-task"]: {
@@ -1451,7 +1611,12 @@ export type IDataMethodsConfig = CombineTypes<
 		["update-link"]: { id: TID; link: Partial<ILink> };
 		["delete-link"]: { id: TID };
 
-		["scroll-chart"]: { left?: number; top?: number };
+		["scroll-chart"]: {
+			left?: number;
+			top?: number;
+			date?: Date;
+			eventSource?: string;
+		};
 		["render-data"]: IVisibleArea;
 		["request-data"]: {
 			id: TID;
@@ -1469,17 +1634,19 @@ export type IDataMethodsConfig = CombineTypes<
 			ratio?: number;
 			offset?: number;
 		};
-		["expand-scale"]: {
-			minWidth: number;
-			date?: Date;
-			offset?: number;
-		};
 		["sort-tasks"]: { key: string; order: "asc" | "desc"; add?: boolean };
+		["filter-tasks"]: {
+			filter?: TFilterHandler;
+			key?: string;
+			value?: any;
+			open?: boolean;
+		};
 		["hotkey"]: {
 			key: string;
 			event: any;
 			eventSource?: string;
 		};
+		["resize-chart"]: { width: number; height: number; scrollSize: number };
 		["schedule-tasks"]: {
 			id?: TID;
 			task?: Partial<ITask>;

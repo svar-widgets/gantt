@@ -52,6 +52,9 @@ export const defaultEditorItems: TEditorItem[] = [
 		key: "start",
 		comp: "date",
 		label: "Start date",
+		config: {
+			format: "%d-%m-%Y",
+		},
 		isHidden: task => isSummary(task),
 		isDisabled: isUnscheduled,
 	},
@@ -59,6 +62,9 @@ export const defaultEditorItems: TEditorItem[] = [
 		key: "end",
 		comp: "date",
 		label: "End date",
+		config: {
+			format: "%d-%m-%Y",
+		},
 		isHidden: task => isSummary(task) || isMilestone(task),
 		isDisabled: isUnscheduled,
 	},

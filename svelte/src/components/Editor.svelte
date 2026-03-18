@@ -7,7 +7,13 @@
 	import { en } from "@svar-ui/gantt-locales";
 	import { en as coreEn } from "@svar-ui/core-locales";
 
-	import { RichSelect, Slider, Counter, TwoState } from "@svar-ui/svelte-core";
+	import {
+		RichSelect,
+		Slider,
+		Counter,
+		TwoState,
+		Checkbox,
+	} from "@svar-ui/svelte-core";
 	import Links from "./editor/Links.svelte";
 	import DateTimePicker from "./editor/DateTimePicker.svelte";
 
@@ -20,6 +26,7 @@
 	registerEditorItem("slider", Slider);
 	registerEditorItem("counter", Counter);
 	registerEditorItem("links", Links);
+	registerEditorItem("checkbox", Checkbox);
 
 	let l = getContext("wx-i18n");
 	if (!l) {
@@ -30,6 +37,7 @@
 	const i18nData = l.getRaw();
 	const f = i18nData.gantt?.dateFormat || i18nData.formats?.dateFormat;
 	const dateFormat = dateToString(f, i18nData.calendar);
+	let state = $derived(api?.getReactiveState());
 
 	let {
 		api,
@@ -90,10 +98,10 @@
 		compactMode = mode;
 	}
 
-	let state = $derived(api?.getReactiveState());
 	let activeTask = $derived(state?._activeTask ?? null);
 	let taskId = $derived(state?.activeTask ?? null);
 	let unscheduledTasks = $derived(state?.unscheduledTasks);
+	let rollups = $derived(state?.rollups);
 	let summary = $derived(state?.summary);
 	let links = $derived(state?.links);
 	let segmentIndex = $derived(state?.splitTasks && $taskId?.segmentIndex);
@@ -103,6 +111,7 @@
 	let baseItems = $derived(
 		getEditorItems({
 			unscheduledTasks: $unscheduledTasks,
+			rollups: $rollups,
 			summary: $summary,
 			taskTypes: $taskTypes,
 		})

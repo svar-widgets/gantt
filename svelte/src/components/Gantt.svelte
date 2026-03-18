@@ -55,6 +55,7 @@
 		cellBorders = "full",
 		zoom = false,
 		baselines = false,
+		rollups = false,
 		highlightTime = null,
 		init = null,
 		autoScale = true,
@@ -67,6 +68,7 @@
 		undo = false,
 		splitTasks = false,
 		summary = null,
+		slack = false,
 		_export = false,
 		...restProps
 	} = $props();
@@ -189,6 +191,7 @@
 			selected,
 			activeTask,
 			baselines,
+			rollups: rollups === true ? { type: "closest" } : rollups,
 			autoScale,
 			unscheduledTasks,
 			markers,
@@ -198,6 +201,7 @@
 			projectStart,
 			projectEnd,
 			calendar,
+			slack,
 			undo,
 			_weekStart: lCalendar.weekStart,
 			splitTasks,

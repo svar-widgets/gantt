@@ -23,16 +23,18 @@
 	const {
 		scrollTop,
 		cellHeight,
-		_scrollTask: scrollTask,
+		focusTask,
 		_selected: selected,
 		area,
 		_tasks: rTasks,
 		_scales: scales,
+		_headerLength,
 		columns,
 		_sort: sort,
 		calendar,
 		durationUnit,
 		splitTasks,
+		filterValues,
 	} = api.getReactiveState();
 
 	let dragTask = $state(null);
@@ -44,6 +46,7 @@
 				task: { text: _("New Task") },
 				mode: "child",
 				show: true,
+				focus: id ? "grid" : null,
 			});
 		} else if (action === "open-task") {
 			const task = tasks.find(a => a.id === id);
@@ -64,7 +67,8 @@
 					id,
 					toggle: e.ctrlKey || e.metaKey,
 					range: e.shiftKey,
-					show: true,
+					show: "xy",
+					focus: "grid",
 				});
 			}
 		} else if (action === "add-task") {
@@ -86,14 +90,16 @@
 		const id = detail.id;
 		const { before, after } = detail;
 		const inProgress = detail.onMove;
-
 		let target = before || after;
 		let mode = before ? "before" : "after";
-
 		if (inProgress) {
 			if (mode === "after") {
-				const task = api.getTask(target);
-				if (task.data?.length && task.open) {
+				const index = allTasks.findIndex(t => t.id === id);
+				const targetIndex = allTasks.findIndex(t => t.id === target);
+				const task = allTasks[targetIndex];
+				if (index - targetIndex === 1) {
+					mode = "before";
+				} else if (task.data && task.open) {
 					mode = "before";
 					target = task.data[0].id;
 				}
@@ -145,6 +151,7 @@
 	}
 
 	let gridWidth = $state(0); // clientWidth
+	let gridHeight = $state(0);
 
 	let table = $state();
 	let tableContainer = $state();
@@ -174,8 +181,8 @@
 		tapi.intercept("hotkey", handleHotkey);
 		tapi.intercept("scroll", () => false);
 		tapi.intercept("select-row", () => false);
-		tapi.intercept("sort-rows", e => {
-			const { key, add } = e;
+		tapi.intercept("sort-rows", ev => {
+			const { key, add } = ev;
 			let keySort = $sort ? $sort.find(s => s.key === key) : null;
 			let order = "asc";
 			if (keySort)
@@ -185,6 +192,16 @@
 				key,
 				order,
 				add,
+			});
+			return false;
+		});
+		tapi.intercept("filter-rows", ev => {
+			const { key, value } = ev;
+
+			api.exec("filter-tasks", {
+				key,
+				value,
+				open: true,
 			});
 			return false;
 		});
@@ -246,15 +263,18 @@
 					? "50px"
 					: "0"
 	);
-
+	const tableHeight = $derived(
+		`min-height:${gridHeight + $cellHeight * 4}px;`
+	);
 	const tableStyle = $derived(
-		scrollX && display === "all"
-			? `width:${columnWidth}px;`
-			: display === "grid"
-				? scrollX
-					? `width:${columnWidth}px;`
-					: `width:100%;`
-				: ``
+		tableHeight +
+			(scrollX && display === "all"
+				? `width:${columnWidth}px;`
+				: display === "grid"
+					? scrollX
+						? `width:${columnWidth}px;`
+						: `width:100%;`
+					: ``)
 	);
 
 	// --------
@@ -267,11 +287,13 @@
 	// --------
 
 	const tasks = $derived($rTasks.slice($area.start, $area.end));
-	const allTasks = $derived(
-		dragTask && !tasks.find(t => t.id === dragTask.id)
-			? [...tasks, dragTask]
-			: tasks
-	);
+	const allTasks = $derived.by(() => {
+		const rows =
+			dragTask && !tasks.find(t => t.id === dragTask.id)
+				? [...tasks, dragTask]
+				: tasks;
+		return rows.map(t => ({ ...t }));
+	});
 
 	// COLUMNS
 	// --------
@@ -311,11 +333,11 @@
 	const cols = $derived.by(() => {
 		let cols = $columns.map(col => {
 			col = { ...col };
-			const header = col.header;
-			if (typeof header === "object") {
-				const text = header.text && _(header.text);
-				col.header = { ...header, text };
-			} else col.header = _(header);
+			const header = [...col.header];
+			header.forEach(line => {
+				if (line.text) line.text = _(line.text);
+			});
+			col.header = header;
 			return col;
 		});
 		const ti = cols.findIndex(c => c.id === "text");
@@ -327,10 +349,8 @@
 		}
 		if (ai !== -1) {
 			cols[ai].cell = cols[ai].cell || ActionCell;
-
-			const header = cols[ai].header;
-			if (typeof header !== "object") cols[ai].header = { text: header };
-			cols[ai].header.cell = header.cell || ActionCell;
+			const header = cols[ai].header[0];
+			cols[ai].header[0].cell = header.cell || ActionCell;
 
 			if (readonly) {
 				cols.splice(ai, 1);
@@ -358,6 +378,11 @@
 			return marks;
 		}
 		return {};
+	});
+
+	// preserve filters while sorting
+	let filters = $derived.by(() => {
+		return sortMarks ? { ...$filterValues } : $filterValues;
 	});
 
 	const fitColumns = $derived.by(() => {
@@ -420,14 +445,9 @@
 		if (table && allTasks !== null)
 			table.querySelector(".wx-body").style.top =
 				-($scrollTop - scrollDelta) + "px";
-		tableContainer.scrollTop = 0;
 	}
 
 	// Observe grid inner container and set offset on size change
-	const ro = new ResizeObserver(() => {
-		setScrollOffset();
-	});
-
 	$effect(() => {
 		if (table) {
 			fitColumns;
@@ -435,28 +455,33 @@
 			display;
 			basis;
 			allTasks;
+			const ro = new ResizeObserver(() => {
+				setScrollOffset();
+			});
 			ro.observe(table.querySelector(".wx-table-box .wx-body"));
+			return () => {
+				ro.disconnect();
+			};
 		}
-		return () => {
-			ro.disconnect();
-		};
 	});
 
-	scrollTask.subscribe(value => {
+	let pending = false;
+	focusTask.subscribe(value => {
 		if (!value) return;
-		const { id } = value;
+		const { id, column } = value;
 		// focus a new cell
-		const focusCell = tableAPI.getState().focusCell;
-		if (
-			focusCell &&
-			focusCell.row !== id &&
-			table &&
-			table.contains(document.activeElement)
-		) {
-			tableAPI.exec("focus-cell", {
-				row: id,
-				column: focusCell.column,
-			});
+		if (column) {
+			if (!pending) {
+				pending = true;
+				requestAnimationFrame(() => {
+					const focusCell = tableAPI.getState().focusCell;
+					tableAPI.exec("focus-cell", {
+						row: id,
+						column: focusCell?.column || cols[0]?.id,
+					});
+					pending = false;
+				});
+			}
 		}
 	});
 </script>
@@ -467,6 +492,7 @@
 	class="wx-table-container"
 	style="flex: 0 0 {basis};"
 	bind:clientWidth={gridWidth}
+	bind:clientHeight={gridHeight}
 	bind:this={tableContainer}
 >
 	<div
@@ -486,7 +512,7 @@
 			{init}
 			sizes={{
 				rowHeight: $cellHeight,
-				headerHeight: headerHeight - 1,
+				headerHeight: headerHeight / $_headerLength,
 			}}
 			rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
 			columnStyle={col =>
@@ -495,6 +521,7 @@
 			columns={fitColumns}
 			selectedRows={[...sel]}
 			{sortMarks}
+			filterValues={filters}
 		/>
 	</div>
 </div>
@@ -519,6 +546,7 @@
 		--wx-table-header-background: var(--wx-background);
 		--wx-table-header-border: var(--wx-gantt-border);
 		--wx-table-header-cell-border: var(--wx-gantt-border);
+		height: 100%;
 	}
 	.wx-table :global(.wx-grid .wx-table-box) {
 		border: none;
@@ -568,6 +596,7 @@
 		text-transform: var(--wx-grid-header-text-transform);
 		color: var(--wx-grid-header-font-color);
 		padding: 0 5px;
+		border-bottom-color: transparent;
 	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell:first-child) {
 		padding-left: 14px;

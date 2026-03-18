@@ -1,9 +1,16 @@
 import { DataTree, tempID, TID } from "@svar-ui/lib-state";
-import type { ITask, IParsedTask, TSort } from "./types";
+import {
+	ITask,
+	IParsedTask,
+	TSort,
+	TFilterHandler,
+	IGanttColumn,
+} from "./types";
 import { sort } from "./helpers/sort";
+import { deleteFromFiltered, filterTask } from "./helpers/filter";
 
 export default class GanttDataTree extends DataTree<IParsedTask> {
-	private _sort: TSort[];
+	private _filteredIds: Set<string | number>;
 
 	constructor(tasks?: Partial<ITask>[]) {
 		super();
@@ -13,11 +20,9 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		if (!tasks || !tasks.length) return;
 		const preparedTasks = tasks.map(task => this.normalizeTask(task));
 		super.parse(preparedTasks as IParsedTask[], parent);
-		if (this._sort) this.sortBranch(this._sort, parent);
 	}
 	getBranch(id: TID) {
 		const task = this._pool.get(id);
-
 		return this._pool.get(task.parent || 0).data;
 	}
 	contains(id: TID, target: TID): boolean {
@@ -43,7 +48,11 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 	add(task: Partial<ITask>, index: number): IParsedTask {
 		const normalizedTask = this.normalizeTask(task);
 		super.add(normalizedTask as IParsedTask, index);
-
+		if (this._filteredIds) this._filteredIds.add(normalizedTask.id);
+		if (this._filteredIds && task.parent) {
+			const pTask = this.byId(task.parent);
+			if (this.hasChildItems(pTask)) delete pTask.$empty;
+		}
 		return normalizedTask as IParsedTask;
 	}
 
@@ -55,6 +64,16 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			ids = ids.concat(kIds);
 		});
 		return ids;
+	}
+	remove(id: TID) {
+		const task = this.byId(id);
+		if (this._filteredIds)
+			deleteFromFiltered(this._filteredIds, id, task.data);
+		super.remove(id);
+		if (this._filteredIds && task.parent) {
+			const pTask = this.byId(task.parent);
+			if (!this.hasChildItems(pTask)) pTask.$empty = true;
+		}
 	}
 
 	normalizeTask(task: Partial<ITask>): ITask {
@@ -82,7 +101,7 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 	}
 
 	getSummaryId(id: TID): TID | null;
-	getSummaryId(id: TID, all: true): TID[] | null;
+	getSummaryId(id: TID, all: boolean): TID[] | null;
 	getSummaryId(id: TID, all: boolean = false): TID | TID[] | null {
 		const task = this._pool.get(id);
 		if (!task.parent) return null;
@@ -103,16 +122,15 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		return this.getSummaryId(parent.id);
 	}
 
-	sort(conf: TSort[]) {
-		this._sort = conf;
-		if (conf) this.sortBranch(conf, 0);
+	sort(conf: TSort[], columns: IGanttColumn[]) {
+		if (conf) this.sortBranch(conf, 0, columns);
 	}
-	sortBranch(conf: TSort[], parent?: TID) {
+	sortBranch(conf: TSort[], parent: TID, columns: IGanttColumn[]) {
 		const data = this._pool.get(parent || 0).data;
 		if (data) {
-			sort(data, conf);
+			sort(data, conf, columns);
 			data.forEach(item => {
-				this.sortBranch(conf, item.id);
+				this.sortBranch(conf, item.id, columns);
 			});
 		}
 	}
@@ -126,6 +144,32 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		this.forEach(t => {
 			this.remove(t.id);
 		});
+	}
+	filterTree(filter?: TFilterHandler, open?: boolean) {
+		if (filter) {
+			const root = this._pool.get(0);
+			const ids = new Set<TID>();
+			filterTask(root, filter, ids, open);
+			this._filteredIds = ids;
+		} else {
+			this._filteredIds = null;
+		}
+	}
+	toArray(all?: boolean) {
+		let out = super.toArray();
+		if (!all && this._filteredIds) {
+			out = out.filter(t => this.isFilteredId(t.id));
+		}
+		return out;
+	}
+	isFilteredId(id: TID) {
+		return this._filteredIds?.has(id);
+	}
+	hasChildItems(task: Partial<IParsedTask>) {
+		const childCount = task.data?.length;
+		if (childCount && this._filteredIds)
+			return task.data.some(t => this.isFilteredId(t.id));
+		return !!childCount;
 	}
 }
 

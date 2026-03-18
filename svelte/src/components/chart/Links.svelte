@@ -21,7 +21,7 @@
 	{#each $links as link (link.id)}
 		<polyline
 			class="wx-line"
-			class:wx-critical={$criticalPath && link.$critical}
+			class:wx-critical={$criticalPath && link.critical}
 			points={link.$p}
 			onclick={() => !readonly && onSelectLink(link.id)}
 			class:wx-line-selectable={!readonly}

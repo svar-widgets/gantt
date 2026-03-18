@@ -22,6 +22,7 @@ import GanttToolbarButtons from "./cases/GanttToolbarButtons.svelte";
 import GanttText from "./cases/GanttText.svelte";
 import GanttLocale from "./cases/GanttLocale.svelte";
 import GanttStartEnd from "./cases/GanttStartEnd.svelte";
+import GanttScaleDate from "./cases/GanttScaleDate.svelte";
 import GanttFullscreen from "./cases/GanttFullscreen.svelte";
 import GanttZoom from "./cases/GanttZoom.svelte";
 import GanttCustomZoom from "./cases/GanttCustomZoom.svelte";
@@ -35,6 +36,10 @@ import ContextMenuOptions from "./cases/ContextMenuOptions.svelte";
 import GanttHolidays from "./cases/GanttHolidays.svelte";
 import GanttSort from "./cases/GanttSort.svelte";
 import GanttCustomSort from "./cases/GanttCustomSort.svelte";
+import GanttFilter from "./cases/GanttFilter.svelte";
+import GanttFilterInline from "./cases/GanttFilterInline.svelte";
+import GanttFilterBuilder from "./cases/GanttFilterBuilder.svelte";
+import GanttFilterQuery from "./cases/GanttFilterQuery.svelte";
 import GanttEditor from "./cases/GanttEditor.svelte";
 import GanttEditorConfig from "./cases/GanttEditorConfig.svelte";
 import GanttEditorCustomControls from "./cases/GanttEditorCustomControls.svelte";
@@ -51,7 +56,6 @@ import GanttEditorValidation from "./cases/GanttEditorValidation.svelte";
 
 export const links = [
 	["/base/:skin", "Basic Gantt", BasicInit, "BasicInit"],
-
 	["/sizes/:skin", "Scale / cell sizes", GanttSizes, "GanttSizes"],
 	[
 		"/cell-borders/:skin",
@@ -61,6 +65,7 @@ export const links = [
 	],
 	["/scales/:skin", "Custom scales", GanttScales, "GanttScales"],
 	["/start-end/:skin", "Start/end dates", GanttStartEnd, "GanttStartEnd"],
+	["/scroll-date/:skin", "Scroll to date", GanttScaleDate, "GanttScaleDate"],
 	[
 		"/custom-scale/:skin",
 		"Custom scale unit",
@@ -179,6 +184,25 @@ export const links = [
 	],
 	["/sorting/:skin", "Custom sorting", GanttSort, "GanttSort"],
 	["/sorting-api/:skin", "Sort by API", GanttCustomSort, "GanttCustomSort"],
+	[
+		"/filtering/:skin",
+		"Inline Filtering",
+		GanttFilterInline,
+		"GanttFilterInline",
+	],
+	["/filtering-api/:skin", "External filters", GanttFilter, "GanttFilter"],
+	[
+		"/filtering-builder/:skin",
+		"Integration with Filter Builder",
+		GanttFilterBuilder,
+		"GanttFilterBuilder",
+	],
+	[
+		"/filtering-query/:skin",
+		"Integration with Filter Query",
+		GanttFilterQuery,
+		"GanttFilterQuery",
+	],
 
 	["/backend/:skin", "Backend data", GanttBackend, "GanttBackend"],
 	[

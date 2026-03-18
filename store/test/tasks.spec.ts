@@ -30,6 +30,7 @@ describe("tasks", () => {
 			cellWidth,
 			cellHeight,
 			_scales,
+			baselines: false,
 		});
 
 		expect(updatedTask.$x).to.eq(100);
@@ -64,6 +65,7 @@ describe("tasks", () => {
 			cellWidth,
 			cellHeight,
 			_scales,
+			baselines: false,
 		});
 
 		expect(updatedTask.$x).to.eq(84.5);

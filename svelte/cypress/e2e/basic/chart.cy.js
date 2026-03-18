@@ -397,5 +397,86 @@ context(
 					.should("have.attr", "style", "width:100%");
 			});
 		});
+
+		describe("slack bars", () => {
+			beforeEach(() => {
+				cy.visit("/index.html#/slack/willow");
+				cy.viewport(1300, 900);
+			});
+
+			it("slack bars exist", () => {
+				cy.get(".wx-slack").should("have.length", 4);
+				cy.get(".wx-slack.wx-slack-task").should("have.length", 4);
+
+				cy.get(".wx-button-expand-left").click();
+				cy.shot("tasks-slack");
+			});
+
+			it("elements are clickable when slack bars exist", () => {
+				cy.wxG("polyline", 1).as("link");
+				cy.get("@link").click({ force: true });
+				cy.get(".wx-line.wx-line-selected").should("exist");
+
+				cy.wxG("link", 10, "right").click();
+				cy.wxG("link", 10, "right").should("be.visible");
+				cy.get(".wx-line.wx-line-selected").should("not.exist");
+				cy.wxG("link", 11, "right").click();
+				cy.get(".wx-line")
+					.first()
+					.should("exist")
+					.click({ force: true });
+				cy.get(".wx-line.wx-line-selected").as("link");
+				cy.get("@link").should("exist");
+				cy.wxG("chart-item", 11).find(".wx-delete-button-icon").click();
+				cy.get("@link").should("not.exist");
+				cy.get(".wx-line.wx-line-selected").should("not.exist");
+			});
+		});
+
+		describe("critical path", () => {
+			beforeEach(() => {
+				cy.visit("/index.html#/critical-path/willow");
+				cy.viewport(1300, 900);
+			});
+
+			it("critical bars exist", () => {
+				cy.get(".wx-bar.wx-critical").should("have.length", 6);
+
+				[2, 20, 21, 22, 23, 24].forEach(id => {
+					cy.wxG("chart-item", id).should(
+						"have.class",
+						"wx-critical"
+					);
+				});
+
+				// random ids that should not have specific class
+				[10, 3, 32].forEach(id => {
+					cy.wxG("chart-item", id).should(
+						"not.have.class",
+						"wx-critical"
+					);
+				});
+
+				cy.shot("critical-bars");
+			});
+
+			it("critical links exist", () => {
+				cy.get(".wx-line.wx-critical").should("have.length", 4);
+
+				[4, 5, 6, 7].forEach(id => {
+					cy.wxG("polyline", id).should("have.class", "wx-critical");
+				});
+
+				// random ids that should not have specific class
+				[2, 9].forEach(id => {
+					cy.wxG("polyline", id).should(
+						"not.have.class",
+						"wx-critical"
+					);
+				});
+
+				cy.shot("critical-links");
+			});
+		});
 	}
 );

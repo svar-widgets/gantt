@@ -23,13 +23,10 @@
 		_selected: selected,
 		scrollTop: rScrollTop,
 		scrollLeft: rScrollLeft,
-		cellWidth,
 		cellHeight,
 		_scales: scales,
 		zoom,
-		context,
 		_markers,
-		_scrollTask: rScrollTask,
 	} = api.getReactiveState();
 
 	let chartHeight = $state();
@@ -61,16 +58,15 @@
 	});
 
 	function onScroll() {
-		const scroll = { left: true, top: true };
-		setScroll(scroll);
+		setScroll();
 		dataRequest();
 	}
 
-	function setScroll(scroll) {
-		const pos = {};
-		if (scroll.top) pos.top = chart.scrollTop;
-		if (scroll.left) pos.left = chart.scrollLeft;
-		api.exec("scroll-chart", pos);
+	function setScroll() {
+		const ev = {};
+		if (chart.scrollTop !== $rScrollTop) ev.top = chart.scrollTop;
+		if (chart.scrollLeft !== $rScrollLeft) ev.left = chart.scrollLeft;
+		api.exec("scroll-chart", ev);
 	}
 
 	function dataRequest() {
@@ -86,23 +82,6 @@
 			from,
 		});
 	}
-
-	function showTask(value) {
-		if ($context || !value) return;
-
-		const { id, mode } = value;
-
-		if (mode.toString().indexOf("x") < 0) return;
-		const { clientWidth } = chart;
-		const task = api.getTask(id);
-		if (task.$x + task.$w < chart.scrollLeft) {
-			api.exec("scroll-chart", { left: task.$x - (cellWidth || 0) });
-		} else if (task.$x >= clientWidth + chart.scrollLeft) {
-			const width = clientWidth < task.$w ? $cellWidth : task.$w;
-			api.exec("scroll-chart", { left: task.$x - clientWidth + width });
-		}
-	}
-	rScrollTask.subscribe(value => showTask(value));
 
 	let lastWheelTime = performance.now();
 	const MAX_ZOOM_RATE = 0.003; // per ms

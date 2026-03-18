@@ -77,6 +77,13 @@ context("Scale zoom works", () => {
 	});
 
 	it("zoom out ok", () => {
+		const resizeObserverLoopErrRe =
+			/^[^(ResizeObserver loop limit exceeded)]/;
+		Cypress.on("uncaught:exception", err => {
+			if (resizeObserverLoopErrRe.test(err.message)) {
+				return false;
+			}
+		});
 		cy.visit("/index.html#/zoom/willow");
 		cy.viewport(1300, 900);
 		cy.wait(500);

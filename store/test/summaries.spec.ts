@@ -1,12 +1,13 @@
 import { expect, test } from "vitest";
-import { DataStore } from "../src/index";
+import { DataStore, normalizeLinks } from "../src/index";
 import { writable } from "svelte/store";
 import { getData, summaryDates, summaryPrettyDates } from "./stubs/data";
 import { parseTaskDates } from "../src/normalizeDates";
 
 function getDataStore(data: any) {
 	const store = new DataStore(writable);
-	parseTaskDates(data.tasks, "day");
+	parseTaskDates(data.tasks, { durationUnit: "day" });
+	if (data.links) data.links = normalizeLinks(data.links);
 	store.init({
 		...data,
 	});

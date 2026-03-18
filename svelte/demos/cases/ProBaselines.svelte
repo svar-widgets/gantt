@@ -17,11 +17,17 @@
 							key: "base_start",
 							comp: "date",
 							label: "Baseline start",
+							config: {
+								format: "%d-%m-%Y",
+							},
 						},
 						{
 							key: "base_end",
 							comp: "date",
 							label: "Baseline end",
+							config: {
+								format: "%d-%m-%Y",
+							},
 						},
 						{
 							key: "base_duration",

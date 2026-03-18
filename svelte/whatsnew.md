@@ -1,3 +1,30 @@
+## 2.6.0
+
+### New features
+
+-   Ability to filter data by API calls
+-   Ability to filter data via header filters
+-   Integration with SVAR Filter
+-   Calculating and visualizing slack | PRO feature
+-   Rollups | PRO feature
+
+### Updates
+
+-   Ability to scroll to a specific date with the "scroll-chart" action
+-   "resize-chart" action is added to monitor widget dimensions
+
+### Fixes
+
+-   Export to PNG/PDF: incorrect link positions
+-   The "scroll-chart" action does not scroll to provided coordinates
+-   Chart and grid are sometimes misaligned when vertical scroll appears
+-   Incorrect visible date during zooming
+-   Gantt fails to initialize in SvelteKit with server-side rendering
+
+### Breaking changes
+
+-   "expand-scale" action is removed
+
 ## 2.5.2
 
 ### Fixes

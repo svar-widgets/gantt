@@ -9,7 +9,8 @@ type TDataType =
 	| "range"
 	| "summaries"
 	| "pretty"
-	| "autoScheduling";
+	| "autoScheduling"
+	| "critical";
 
 export const cellWidth = 100;
 export const cellHeight = 38;
@@ -516,6 +517,30 @@ const autoSchedulingTasks: ITask[] = [
 		start: new Date(2024, 3, 2),
 		end: new Date(2024, 3, 5),
 	},
+	{
+		id: 3,
+		text: "Task 3",
+		type: "task",
+		parent: 0,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 5),
+	},
+	{
+		id: 4,
+		text: "Task 4",
+		type: "task",
+		parent: 0,
+		start: new Date(2024, 3, 4),
+		end: new Date(2024, 3, 6),
+	},
+	{
+		id: 5,
+		text: "Task 5",
+		type: "task",
+		parent: 0,
+		start: new Date(2024, 3, 5),
+		end: new Date(2024, 3, 7),
+	},
 ];
 
 const autoSchedulingLinks: ILink[] = [
@@ -560,6 +585,145 @@ const autoSchedulingLinks: ILink[] = [
 		id: 7,
 		source: 1,
 		target: 2,
+		type: "e2s",
+	},
+	{
+		id: 8,
+		source: 3,
+		target: 4,
+		type: "e2s",
+	},
+	{
+		id: 9,
+		source: 4,
+		target: 5,
+		type: "e2s",
+	},
+];
+
+const criticalTasks: ITask[] = [
+	{
+		id: 1,
+		text: "Task 1",
+		type: "summary",
+		parent: 0,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 9),
+		open: true,
+	},
+	{
+		id: 10,
+		text: "Task 10",
+		type: "task",
+		parent: 1,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 4),
+	},
+	{
+		id: 11,
+		text: "Task 11",
+		type: "task",
+		parent: 1,
+		start: new Date(2024, 3, 4),
+		end: new Date(2024, 3, 7),
+	},
+	{
+		id: 12,
+		text: "Task 12",
+		type: "task",
+		parent: 1,
+		start: new Date(2024, 3, 7),
+		end: new Date(2024, 3, 9),
+	},
+	{
+		id: 2,
+		text: "Task2",
+		type: "summary",
+		parent: 0,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 9),
+		open: true,
+	},
+	{
+		id: 20,
+		text: "Task 20",
+		type: "task",
+		parent: 2,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 4),
+	},
+	{
+		id: 21,
+		text: "Task 21",
+		type: "task",
+		parent: 2,
+		start: new Date(2024, 3, 4),
+		end: new Date(2024, 3, 7),
+	},
+	{
+		id: 22,
+		text: "Task 22",
+		type: "task",
+		parent: 2,
+		start: new Date(2024, 3, 7),
+		end: new Date(2024, 3, 9),
+	},
+	{
+		id: 3,
+		text: "Task 3",
+		type: "summary",
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 6),
+		open: true,
+	},
+	{
+		id: 30,
+		text: "Task 30",
+		type: "task",
+		parent: 3,
+		start: new Date(2024, 3, 2),
+		end: new Date(2024, 3, 4),
+	},
+	{
+		id: 31,
+		text: "Task 31",
+		type: "task",
+		parent: 3,
+		start: new Date(2024, 3, 4),
+		end: new Date(2024, 3, 6),
+	},
+	{
+		id: 32,
+		text: "Task 32",
+		type: "milestone",
+		parent: 3,
+		start: new Date(2024, 3, 5),
+	},
+];
+
+const criticalLinks: ILink[] = [
+	{
+		id: 1,
+		source: 10,
+		target: 11,
+		type: "e2s",
+	},
+	{
+		id: 2,
+		source: 11,
+		target: 12,
+		type: "e2s",
+	},
+	{
+		id: 3,
+		source: 20,
+		target: 21,
+		type: "e2s",
+	},
+	{
+		id: 4,
+		source: 21,
+		target: 22,
 		type: "e2s",
 	},
 ];
@@ -829,6 +993,7 @@ const tasks = {
 	summaries: summaryTasks,
 	pretty: prettyTasks,
 	autoScheduling: autoSchedulingTasks,
+	critical: criticalTasks,
 };
 
 const summaryLinks: ILink[] = [
@@ -969,6 +1134,7 @@ const links: Partial<Record<TDataType, ILink[]>> = {
 	summaries: summaryLinks,
 	pretty: prettyLinks,
 	autoScheduling: autoSchedulingLinks,
+	critical: criticalLinks,
 };
 
 export const summaryDates: Record<string, any> = {

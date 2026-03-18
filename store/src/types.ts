@@ -9,7 +9,8 @@ import type {
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 import type DataStore from "./DataStore";
-import type { IApi as ITableApi, IColumn } from "@svar-ui/grid-store";
+import type { IApi as ITableApi, IColumn, IFilterValues } from "@svar-ui/grid-store";
+import { TaskSlackInfo } from "@svar-ui/lib-schedule";
 
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };
@@ -91,7 +92,7 @@ export interface IGanttLink extends ILink {
 	id: TID;
 	$p: string;
 	$pl: number;
-	$critical?: boolean;
+	critical?: boolean;
 }
 
 export interface ITask {
@@ -105,6 +106,7 @@ export interface ITask {
 	base_end?: Date;
 	base_duration?: number;
 
+	rollup?: boolean;
 	open?: boolean;
 	text?: string;
 	details?: string;
@@ -133,8 +135,17 @@ export interface IGanttTask extends IParsedTask {
 	$x_base?: number;
 	$w_base?: number;
 
+	$x_rollup?: number;
+	$h_rollup?: number;
+	$y_rollup_relative?: number;
+	$w_rollup?: number;
+
 	$reorder?: boolean;
-	$critical?: boolean;
+	critical?: boolean;
+	slack?: TaskSlackInfo;
+	$visibleSlack?: number;
+	$x_slack?: number;
+	$w_slack?: number;
 }
 
 export type TDispatch = <A extends keyof TMethodsConfig>(
@@ -256,6 +267,7 @@ export interface IConfig {
 	undo?: boolean;
 	unscheduledTasks?: boolean;
 	baselines?: boolean;
+	rollups?: { type: "all" | "closest" };
 	markers?: IMarker[];
 	criticalPath?: ICriticalPathConfig;
 	projectStart?: Date;
@@ -263,6 +275,7 @@ export interface IConfig {
 	calendar?: Calendar;
 	splitTasks?: boolean;
 	summary?: ISummaryConfig;
+	slack?: boolean;
 }
 
 export interface IDataConfig extends IConfig {
@@ -270,11 +283,16 @@ export interface IDataConfig extends IConfig {
 	scrollTop: number;
 	area: IVisibleArea;
 	history?: IHistory;
+	filterValues?: IFilterValues;
+	focusTask?: TFocusTask;
 	_cellWidth?: number;
 	_sort?: TSort[];
-	_scrollTask?: TScrollTask;
 	_weekStart?: Day;
 	_markers?: IMarker[];
+	_isFiltered?: boolean;
+	_chartWidth?: number;
+	_chartHeight?: number;
+	_scrollSize?: number;
 }
 
 export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
@@ -283,6 +301,9 @@ export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
 	links: DataArray<ILink>;
 
 	_tasks: IParsedTask[];
+	_rollups: {
+		[key: TID]: Array<ITask>;
+	};
 	_links: IGanttLink[];
 	_selected?: ITask[];
 	_activeTask?: ITask;
@@ -292,7 +313,11 @@ export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
 	_scaleDate?: Date;
 	_zoomOffset?: number;
 	_weekStart?: Day;
-	_scrollTask?: TScrollTask;
+	_isFiltered?: boolean;
+	_headerLength?: number;
+	_chartWidth?: number;
+	_chartHeight?: number;
+	_scrollSize?: number;
 }
 
 export interface IDataHash<T = any> {
@@ -366,6 +391,7 @@ export type IGanttColumn = {
 	cell?: any;
 	editor?: IColumn["editor"];
 	options?: IColumn["options"];
+	getter?: (obj: IDataHash) => any;
 };
 
 export type TCommonShape = {
@@ -397,6 +423,10 @@ export type TComboFieldShape = TCommonShape & {
 	options?: { id: any; label: string }[];
 };
 
+export type TCheckboxShape = TCommonShape & {
+	comp: "checkbox";
+};
+
 export type TSliderShape = TCommonShape & {
 	comp: "slider";
 };
@@ -422,7 +452,8 @@ export type TEditorItem =
 	| TDateFieldShape
 	| TRadioShape
 	| ILinksShape
-	| ITwoStateShape;
+	| ITwoStateShape
+	| TCheckboxShape;
 
 export type ITaskType = {
 	id: TID;
@@ -435,7 +466,12 @@ export type TSort = {
 };
 export type TSortValue = string | number | Date;
 
-export type TScrollTask = { id: TID; mode?: "x" | "y" | "xy" | boolean };
+export type TFilterHandler = (task: any) => boolean;
+export type TScrollMode = "x" | "y" | "xy" | boolean;
+export type TFocusTask = {
+	id: TID;
+	column?: boolean;
+};
 
 export interface IApi {
 	exec: <A extends keyof TMethodsConfig | (string & {})>(

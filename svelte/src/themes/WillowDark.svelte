@@ -32,6 +32,8 @@
 		--wx-gantt-task-border: 1px solid transparent;
 		--wx-gantt-task-critical-color: var(--wx-gantt-critical-color);
 		--wx-gantt-task-critical-fill-color: #c83434;
+		--wx-gantt-task-slack-color: #2c3440;
+		--wx-gantt-task-slack-border-color: #597194;
 
 		--wx-gantt-summary-color: #00ba94;
 		--wx-gantt-summary-font-color: #ffffffe5;

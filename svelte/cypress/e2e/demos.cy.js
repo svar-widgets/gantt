@@ -18,6 +18,7 @@ const cases = [
 	"/custom-form-controls/:skin",
 	"/custom-edit-form/:skin",
 	"/baseline/:skin",
+	"/rollups/:skin",
 	"/cell-borders/:skin",
 	"/sizes/:skin",
 	"/scales/:skin",

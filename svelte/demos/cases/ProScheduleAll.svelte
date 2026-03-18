@@ -2,7 +2,7 @@
 	import { getData } from "../data";
 	import { Gantt, Editor, ContextMenu } from "../../src";
 	import { DatePicker, Field, Checkbox } from "@svar-ui/svelte-core";
-	import { Calendar } from "@svar-ui/gantt-store";
+	import { Calendar, defaultColumns } from "@svar-ui/gantt-store";
 
 	const data = getData("calendar", {
 		splitTasks: true,
@@ -21,8 +21,39 @@
 	let baselines = $state(true);
 	let unscheduledTasks = $state(true);
 	let splitTasks = $state(true);
+	let slack = $state(false);
 
 	let cellHeight = $state(44);
+
+	const slackColumns = [
+		{
+			id: "text",
+			header: "Task name",
+			flexgrow: 1,
+		},
+		{
+			id: "duration",
+			header: "Duration",
+			align: "center",
+			width: 100,
+		},
+		{
+			id: "slack",
+			header: "Total slack",
+			align: "center",
+			width: 100,
+			getter: t => t.slack?.totalSlack,
+			template: v => v || "-",
+		},
+		{
+			id: "add-task",
+			header: "Add task",
+			width: 50,
+			align: "center",
+		},
+	];
+
+	const columns = $derived(slack ? slackColumns : defaultColumns);
 
 	const markers = $derived(
 		projectStart
@@ -103,6 +134,7 @@
 			label="Split tasks"
 			onchange={onSplitChange}
 		/>
+		<Checkbox bind:value={slack} label="Slack" />
 	</div>
 	<div class="gantt">
 		<Editor {api} />
@@ -125,6 +157,8 @@
 				{baselines}
 				{unscheduledTasks}
 				{splitTasks}
+				{slack}
+				{columns}
 			/>
 		</ContextMenu>
 	</div>

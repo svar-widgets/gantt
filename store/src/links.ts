@@ -1,5 +1,6 @@
 import { tempID } from "@svar-ui/lib-state";
 import type { IGanttTask, IGanttLink, ILink } from "./types";
+import { heightAdjustment } from "./tasks";
 
 const delta = 20;
 
@@ -7,11 +8,8 @@ export const updateLink = function (
 	link: IGanttLink,
 	startTask: IGanttTask,
 	endTask: IGanttTask,
-	height: number,
-	baselines: boolean
+	cellHeight: number
 ): IGanttLink {
-	const dy = Math.round(height / 2) - 3;
-
 	if (
 		!startTask ||
 		!endTask ||
@@ -47,23 +45,25 @@ export const updateLink = function (
 	}
 
 	const sx = s_start ? startTask.$x : startTask.$x + startTask.$w;
-	const sy = baselines ? startTask.$y - 7 : startTask.$y;
+	const sy = startTask.$y + startTask.$h / 2;
 	const ex = e_start ? endTask.$x : endTask.$x + endTask.$w;
-	const ey = baselines ? endTask.$y - 7 : endTask.$y;
+	const ey = endTask.$y + endTask.$h / 2;
+
+	const offset = (cellHeight - heightAdjustment - endTask.$h) / 2;
 
 	if (sx !== ex || sy !== ey) {
 		const lineCoords = getLineCoords(
 			sx,
-			sy + dy,
+			sy,
 			ex,
-			ey + dy,
+			ey,
 			s_start,
 			e_start,
-			height / 2,
-			baselines
+			cellHeight / 2,
+			offset
 		);
 
-		const arrowCoords = getArrowCoords(ex, ey + dy, e_start);
+		const arrowCoords = getArrowCoords(ex, ey, e_start);
 		link.$p = `${lineCoords},${arrowCoords}`;
 		link.$pl = getPolylineLength(link.$p);
 	}
@@ -98,7 +98,7 @@ function getLineCoords(
 	s_start: boolean,
 	e_start: boolean,
 	gapp: number,
-	baselines: boolean
+	offset: number
 ): string {
 	const shift = delta * (s_start ? -1 : 1);
 	const backshift = delta * (e_start ? -1 : 1);
@@ -113,7 +113,7 @@ function getLineCoords(
 	const same = e_start === s_start;
 	if (!same) {
 		if ((ex1 <= sx + delta - 2 && e_start) || (ex1 > sx && !e_start)) {
-			dy = baselines ? dy - gapp + 6 : dy - gapp;
+			dy = dy - gapp + offset;
 		}
 	}
 

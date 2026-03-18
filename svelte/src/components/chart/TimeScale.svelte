@@ -31,6 +31,7 @@
 		background-color: var(--wx-background);
 		box-shadow: var(--wx-timescale-shadow);
 		z-index: 5;
+		border-bottom: var(--wx-gantt-border);
 	}
 
 	.wx-row,
@@ -39,7 +40,7 @@
 		box-sizing: border-box;
 	}
 
-	.wx-row {
+	.wx-row:not(:last-child) {
 		border-bottom: var(--wx-gantt-border);
 	}
 

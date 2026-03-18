@@ -177,6 +177,7 @@ function runSingleAction(
 			task: { type: "task", text: _("New Task") },
 			target: id,
 			show: true,
+			mode: "after",
 			select: false,
 		};
 		data = {};
@@ -211,10 +212,11 @@ function runSingleAction(
 		});
 		return;
 	}
-	if (typeof mode !== "undefined") extraData = { mode, ...extraData };
+	if (typeof mode !== "undefined") extraData = { ...extraData, mode };
 	data = { ...data, ...extraData };
 
 	exec(op, data);
+
 	if (select) exec("select-task", { id: data.id, toggle: !!order });
 }
 

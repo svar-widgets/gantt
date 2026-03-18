@@ -47,11 +47,18 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 		const width = flexgrow ? 1 : a.width || (isAddTaskColumn ? 50 : 120);
 
 		const editor = a.editor && processEditor(a.id, a.editor);
+		let header = Array.isArray(a.header) ? a.header : [a.header];
+		header = header.map(line => {
+			if (typeof line !== "object") line = { text: line };
+			if (line.filter && typeof line.filter !== "object")
+				line.filter = { type: line.filter };
+			return line;
+		});
 
 		return {
 			width,
 			align,
-			header: a.header,
+			header,
 			id: a.id,
 			template: a.template,
 			_template: a._template,
@@ -61,6 +68,7 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 			sort: a.sort ?? !isAddTaskColumn,
 			...(editor && { editor }),
 			...(a.options && { options: a.options }),
+			getter: a.getter,
 		};
 	});
 	return resColumns;

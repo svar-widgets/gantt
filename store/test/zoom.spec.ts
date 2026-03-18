@@ -1,5 +1,5 @@
 import { test, expect, describe, beforeEach, vi, afterEach } from "vitest";
-import { DataStore } from "../src/index";
+import { DataStore, normalizeLinks } from "../src/index";
 import { getData, unitFormats } from "./stubs/data";
 import { writable } from "./stubs/writable";
 
@@ -11,6 +11,7 @@ let store: DataStore;
 function resetState(data?: any) {
 	if (!data) data = getData();
 	parseTaskDates(data.tasks, { durationUnit: "day" });
+	if (data.links) data.links = normalizeLinks(data.links);
 	store = new DataStore(writable);
 
 	store.init({ ...data });

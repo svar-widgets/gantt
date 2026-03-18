@@ -148,6 +148,7 @@ const tasks = [
 		progress: 10,
 		parent: 11,
 		type: "task",
+		details: "Build and iterate on early-stage prototypes.",
 		assigned: "",
 	},
 	{
@@ -158,6 +159,7 @@ const tasks = [
 		progress: 0,
 		parent: 11,
 		type: "task",
+		details: "Collect user feedback to improve the design.",
 		assigned: "",
 	},
 
@@ -168,6 +170,7 @@ const tasks = [
 		progress: 100,
 		parent: 1,
 		type: "milestone",
+		details: "Sign-off on the agreed project strategy.",
 		assigned: "",
 	},
 
@@ -180,6 +183,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Coordinate resources, schedule, and deliverables.",
 		assigned: 2,
 	},
 	{
@@ -190,6 +194,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		details: "Identify and allocate team resources and budget.",
 		assigned: "",
 	},
 	{
@@ -200,6 +205,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		details: "Obtain stakeholder sign-off on the project plan.",
 		assigned: "",
 	},
 	{
@@ -210,6 +216,7 @@ const tasks = [
 		progress: 0,
 		parent: 2,
 		type: "task",
+		details: "Onboard team members and align on goals.",
 		assigned: "",
 	},
 	{
@@ -220,6 +227,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		details: "Monitor and adjust resource allocation as needed.",
 		assigned: "",
 	},
 
@@ -232,6 +240,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Design, build, and iterate on the product.",
 		assigned: "",
 	},
 	{
@@ -242,6 +251,7 @@ const tasks = [
 		progress: 7,
 		parent: 3,
 		type: "task",
+		details: "Build the initial product prototype for review.",
 		assigned: 3,
 	},
 	{
@@ -252,6 +262,7 @@ const tasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Implement the core features and workflows.",
 		assigned: "",
 	},
 	{
@@ -262,6 +273,7 @@ const tasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Polish and finalize the minimum viable artifact.",
 		assigned: "",
 	},
 
@@ -274,6 +286,7 @@ const tasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Validate all features through structured testing.",
 		assigned: "",
 	},
 	{
@@ -284,6 +297,7 @@ const tasks = [
 		progress: 24,
 		parent: 4,
 		type: "task",
+		details: "Verify prototype behavior against requirements.",
 		assigned: 4,
 	},
 	{
@@ -294,6 +308,7 @@ const tasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		details: "Test core functionality for correctness.",
 		assigned: "",
 	},
 	{
@@ -304,6 +319,7 @@ const tasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		details: "Validate the minimum viable artifact before release.",
 		assigned: "",
 	},
 	{
@@ -395,6 +411,7 @@ const calendarTasks = [
 		progress: 10,
 		parent: 11,
 		type: "task",
+		details: "Build and iterate on early-stage prototypes.",
 		assigned: "",
 	},
 	{
@@ -405,6 +422,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 11,
 		type: "task",
+		details: "Collect user feedback to improve the design.",
 		assigned: "",
 	},
 
@@ -415,6 +433,7 @@ const calendarTasks = [
 		progress: 100,
 		parent: 1,
 		type: "milestone",
+		details: "Sign-off on the agreed project strategy.",
 		assigned: "",
 	},
 
@@ -427,6 +446,7 @@ const calendarTasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Coordinate resources, schedule, and deliverables.",
 		assigned: 2,
 	},
 	{
@@ -437,6 +457,7 @@ const calendarTasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		details: "Identify and allocate team resources and budget.",
 		assigned: "",
 	},
 	{
@@ -446,6 +467,7 @@ const calendarTasks = [
 		progress: 10,
 		parent: 2,
 		type: "milestone",
+		details: "Obtain stakeholder sign-off on the project plan.",
 		assigned: "",
 	},
 	{
@@ -456,6 +478,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 2,
 		type: "task",
+		details: "Onboard team members and align on goals.",
 		assigned: "",
 	},
 	{
@@ -466,6 +489,7 @@ const calendarTasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		details: "Monitor and adjust resource allocation as needed.",
 		assigned: "",
 	},
 
@@ -478,6 +502,7 @@ const calendarTasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Design, build, and iterate on the product.",
 		assigned: "",
 	},
 	{
@@ -488,6 +513,7 @@ const calendarTasks = [
 		progress: 7,
 		parent: 3,
 		type: "task",
+		details: "Build the initial product prototype for review.",
 		assigned: 3,
 	},
 	{
@@ -498,6 +524,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Implement the core features and workflows.",
 		assigned: "",
 	},
 	{
@@ -508,6 +535,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Polish and finalize the minimum viable artifact.",
 		assigned: "",
 	},
 
@@ -520,6 +548,7 @@ const calendarTasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Validate all features through structured testing.",
 		assigned: "",
 	},
 	{
@@ -530,6 +559,7 @@ const calendarTasks = [
 		progress: 24,
 		parent: 4,
 		type: "task",
+		details: "Verify prototype behavior against requirements.",
 		assigned: 4,
 	},
 	{
@@ -540,6 +570,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		details: "Test core functionality for correctness.",
 		assigned: "",
 	},
 	{
@@ -550,6 +581,7 @@ const calendarTasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		details: "Validate the minimum viable artifact before release.",
 		assigned: "",
 	},
 	{
@@ -660,6 +692,7 @@ const tasksHour = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Set up all physical and technical aspects of the venue.",
 	},
 	{
 		id: 11,
@@ -669,6 +702,7 @@ const tasksHour = [
 		progress: 100,
 		parent: 1,
 		type: "task",
+		details: "Arrange stage furniture, screens, and equipment.",
 	},
 	{
 		id: 12,
@@ -678,6 +712,7 @@ const tasksHour = [
 		progress: 100,
 		parent: 1,
 		type: "task",
+		details: "Configure AV systems, lighting, and streaming setup.",
 	},
 	{
 		id: 13,
@@ -687,6 +722,7 @@ const tasksHour = [
 		progress: 85,
 		parent: 1,
 		type: "task",
+		details: "Install decorations and branded visual elements.",
 	},
 	{
 		id: 2,
@@ -697,6 +733,7 @@ const tasksHour = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Run full rehearsals to ensure a smooth event.",
 	},
 	{
 		id: 21,
@@ -706,6 +743,7 @@ const tasksHour = [
 		progress: 100,
 		parent: 2,
 		type: "task",
+		details: "Rehearse presentations and confirm speaker timing.",
 	},
 	{
 		id: 22,
@@ -714,6 +752,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 2,
 		type: "milestone",
+		details: "Confirm audio levels and equipment readiness.",
 	},
 	{
 		id: 23,
@@ -723,6 +762,7 @@ const tasksHour = [
 		progress: 40,
 		parent: 2,
 		type: "task",
+		details: "Complete end-to-end rehearsal of the conference.",
 	},
 
 	{
@@ -734,6 +774,7 @@ const tasksHour = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Execute the main event from setup to closing.",
 	},
 	{
 		id: 31,
@@ -743,6 +784,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Arrange food and beverage stations for attendees.",
 	},
 	{
 		id: 32,
@@ -752,6 +794,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Final verification of all technical systems.",
 	},
 	{
 		id: 33,
@@ -761,6 +804,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Process attendee check-in and distribute materials.",
 	},
 	{
 		id: 34,
@@ -770,6 +814,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		details: "Deliver keynotes, talks, and panel sessions.",
 	},
 	{
 		id: 35,
@@ -778,6 +823,7 @@ const tasksHour = [
 		progress: 0,
 		parent: 3,
 		type: "milestone",
+		details: "Wrap up the event with closing remarks.",
 	},
 ];
 
@@ -842,6 +888,7 @@ const critTasks = [
 		progress: 10,
 		parent: 11,
 		type: "task",
+		details: "Build and iterate on early-stage prototypes.",
 	},
 	{
 		id: 113,
@@ -851,6 +898,7 @@ const critTasks = [
 		progress: 0,
 		parent: 11,
 		type: "task",
+		details: "Collect user feedback to improve the design.",
 	},
 
 	{
@@ -859,6 +907,7 @@ const critTasks = [
 		text: "Approval of strategy",
 		progress: 100,
 		type: "milestone",
+		details: "Sign-off on the agreed project strategy.",
 	},
 	{
 		id: 2,
@@ -869,6 +918,7 @@ const critTasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Coordinate first-phase resources and deliverables.",
 	},
 	{
 		id: 20,
@@ -878,6 +928,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 2,
+		details: "Identify and allocate team resources and budget.",
 	},
 	{
 		id: 21,
@@ -887,6 +938,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 2,
+		details: "Obtain stakeholder sign-off on the project plan.",
 	},
 	{
 		id: 22,
@@ -896,6 +948,7 @@ const critTasks = [
 		progress: 0,
 		type: "task",
 		parent: 2,
+		details: "Onboard team members and align on goals.",
 	},
 	{
 		id: 23,
@@ -905,6 +958,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 2,
+		details: "Monitor and adjust first-phase resource allocation.",
 	},
 	{
 		id: 24,
@@ -913,6 +967,7 @@ const critTasks = [
 		progress: 100,
 		type: "milestone",
 		parent: 2,
+		details: "Mark successful completion of project phase one.",
 	},
 	{
 		id: 3,
@@ -923,6 +978,7 @@ const critTasks = [
 		parent: 0,
 		type: "summary",
 		open: true,
+		details: "Coordinate second-phase resources and deliverables.",
 	},
 	{
 		id: 30,
@@ -932,6 +988,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 3,
+		details: "Identify and allocate team resources and budget.",
 	},
 	{
 		id: 31,
@@ -941,6 +998,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 3,
+		details: "Obtain stakeholder sign-off on the project plan.",
 	},
 	{
 		id: 32,
@@ -950,6 +1008,7 @@ const critTasks = [
 		progress: 0,
 		type: "task",
 		parent: 3,
+		details: "Onboard team members and align on goals.",
 	},
 	{
 		id: 33,
@@ -959,6 +1018,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 3,
+		details: "Monitor and adjust first-phase resource allocation.",
 	},
 	{
 		id: 34,
@@ -968,6 +1028,7 @@ const critTasks = [
 		progress: 10,
 		type: "task",
 		parent: 3,
+		details: "Monitor and adjust second-phase resource allocation.",
 	},
 ];
 
@@ -1096,6 +1157,35 @@ const datasets = {
 	critical: { tasks: critTasks, links: critLinks, scales },
 	calendar: { tasks: calendarTasks, links, scales },
 };
+
+export function getBaselinesData() {
+	const t = tasks.map(t => ({
+		...t,
+		base_start: t.start,
+		base_end: t.end,
+		base_duration: t.duration,
+	}));
+
+	return { tasks: t, links, scales };
+}
+
+export function getRollupsData() {
+	const data = [...tasks];
+
+	const t = data.map(task => {
+		if (!task.base_start) {
+			task.base_start = task.start;
+			task.base_end = task.end;
+			task.base_duration = task.duration;
+		}
+		if (task.id == 10 || task.id == 11 || task.id == 12 || task.id == 110)
+			task.rollup = true;
+		return {
+			...task,
+		};
+	});
+	return { tasks: t, links, scales };
+}
 
 export const taskTypes = [
 	{ id: "task", label: "Task" },

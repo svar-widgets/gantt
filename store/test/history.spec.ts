@@ -1,14 +1,15 @@
 import { describe, test, expect } from "vitest";
 import { getData } from "./stubs/data";
 import { writable } from "./stubs/writable";
-import { DataStore, parseTaskDates } from "../src/index";
+import { DataStore, normalizeLinks, parseTaskDates } from "../src/index";
 import { IParsedTask, TID } from "../src/types";
 
 let store: DataStore;
 
 function resetState(data?: any) {
 	if (!data) data = getData();
-	parseTaskDates(data.tasks, "day");
+	parseTaskDates(data.tasks, { durationUnit: "day" });
+	if (data.links) data.links = normalizeLinks(data.links);
 	store = new DataStore(writable);
 	store.init({ ...data });
 }

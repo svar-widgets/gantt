@@ -1,6 +1,6 @@
 <script>
 	// svelte core
-	import { tick, getContext } from "svelte";
+	import { getContext } from "svelte";
 	import { hotkeys } from "@svar-ui/grid-store";
 
 	// views
@@ -26,7 +26,6 @@
 		_scales: rScales,
 		cellHeight: rCellHeight,
 		columns: rColumns,
-		_scrollTask: rScrollTask,
 		scrollTop: rScrollTop,
 		undo,
 	} = api.getReactiveState();
@@ -87,30 +86,24 @@
 	const fullWidth = $derived($rScales.width);
 	const fullHeight = $derived($rTasks.length * $rCellHeight);
 	const scrollHeight = $derived($rScales.height + fullHeight + scrollSize);
-	const totalWidth = $derived(gridWidth + fullWidth);
 
 	// expand scale
 	$effect(() => {
 		let ro;
 		if (chart) {
-			ro = new ResizeObserver(expandScale);
+			ro = new ResizeObserver(chartResizeHandler);
 			ro.observe(chart);
 		}
 		return () => {
 			if (ro) ro.disconnect();
 		};
 	});
-	$effect(() => {
-		fullWidth;
-		expandScale();
-	});
 
-	function expandScale() {
-		tick().then(() => {
-			if (ganttWidth > totalWidth) {
-				const minWidth = ganttWidth - gridWidth;
-				api.exec("expand-scale", { minWidth });
-			}
+	function chartResizeHandler() {
+		api.exec("resize-chart", {
+			width: ganttWidth - gridWidth,
+			height: ganttHeight - $rScales.height,
+			scrollSize,
 		});
 	}
 
@@ -132,28 +125,6 @@
 		$rScrollTop;
 		syncScroll();
 	});
-
-	// Scroll to task
-	function scrollToTask(value) {
-		if (!value || !ganttDiv) return;
-		const { id } = value;
-		const index = $rTasks.findIndex(t => t.id === id);
-		if (index > -1) {
-			const height = ganttHeight - $rScales.height;
-			const scrollY = index * $rCellHeight;
-			const now = ganttDiv.scrollTop;
-			let top = null;
-			if (scrollY < now) {
-				top = scrollY;
-			} else if (scrollY + $rCellHeight > now + height) {
-				top = scrollY - height + $rCellHeight + scrollSize;
-			}
-			if (top !== null) {
-				api.exec("scroll-chart", { top: Math.max(top, 0) });
-			}
-		}
-	}
-	rScrollTask.subscribe(scrollToTask);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
