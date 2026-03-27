@@ -1327,6 +1327,9 @@ export default class DataStore extends Store<IData> {
 			state.criticalPath = null;
 			state.splitTasks = false;
 			state.summary = {};
+			state.rollups = false;
+			state._rollups = {};
+			state.slack = false;
 		}
 
 		if (!(state.tasks as any)._ready && Array.isArray(state.tasks)) {

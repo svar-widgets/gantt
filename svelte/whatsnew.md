@@ -1,3 +1,11 @@
+## 2.6.1
+
+### Fixes
+
+-   Gantt fails to initialize in SvelteKit with server-side rendering
+-   Incorrect handling of rollups in Datastore
+-   Incorrect height of sidebar Editor
+
 ## 2.6.0
 
 ### New features

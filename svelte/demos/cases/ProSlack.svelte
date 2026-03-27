@@ -1,17 +1,13 @@
 <script>
-	import { getContext } from "svelte";
-	import { dateToString } from "@svar-ui/lib-dom";
 	import { getData } from "../data";
 	import { Gantt, Editor } from "../../src";
+	import { format } from "date-fns";
 
 	let { skinSettings } = $props();
 
 	const { tasks, links, scales } = getData("critical");
 
 	let api = $state();
-
-	const calendar = getContext("wx-i18n").getRaw().calendar;
-	const formatDate = dateToString("%d-%m-%Y", calendar);
 
 	const columns = [
 		{
@@ -25,7 +21,7 @@
 			align: "center",
 			width: 120,
 			getter: t => t.slack.earliestStart,
-			template: v => (v ? formatDate(v) : "-"),
+			template: v => (v ? format(v, "dd-MM-yy") : "-"),
 		},
 		{
 			id: "latestStart",
@@ -33,7 +29,7 @@
 			align: "center",
 			width: 120,
 			getter: t => t.slack.latestStart,
-			template: v => (v ? formatDate(v) : "-"),
+			template: v => (v ? format(v, "dd-MM-yy") : "-"),
 		},
 		{
 			id: "freeSlack",

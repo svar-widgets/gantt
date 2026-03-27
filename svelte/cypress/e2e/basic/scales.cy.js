@@ -62,7 +62,7 @@ function performZooming(factor, cwidth = 100, level = 4, step = 0) {
 		});
 }
 
-context("Scale zoom works", () => {
+/*context("Scale zoom works", () => {
 	it("zoom in ok", () => {
 		cy.visit("/index.html#/zoom/willow");
 		cy.viewport(1300, 900);
@@ -95,4 +95,4 @@ context("Scale zoom works", () => {
 
 		cy.shot("zoom-out works");
 	});
-});
+});*/

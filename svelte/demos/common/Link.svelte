@@ -15,6 +15,9 @@
 	onclick={() => isActive && click?.()}
 >
 	{data[1]}
+	{#if data[4] && data[4].pro}
+		<span class="pro">PRO</span>
+	{/if}
 </a>
 
 <style>
@@ -23,7 +26,7 @@
 		align-items: center;
 		height: 37px;
 		font-weight: 400;
-		padding-left: 16px;
+		padding: 0 16px 0 12px;
 		border-left: 4px solid transparent;
 		color: #595b66;
 		list-style: none;
@@ -40,5 +43,14 @@
 		font-weight: 500;
 		color: #42454d;
 		background-color: #f1f1f1;
+	}
+	.pro {
+		color: var(--demo-framework-color);
+		border: 1px solid var(--demo-framework-color);
+		border-radius: 4px;
+		padding: 0px 8px;
+		font-size: 12px;
+		font-weight: 600;
+		margin-left: auto;
 	}
 </style>

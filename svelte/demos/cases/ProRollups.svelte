@@ -71,10 +71,4 @@
 		border-top: var(--wx-gantt-border);
 		overflow: hidden;
 	}
-
-	:global(.wx-sidearea) {
-		overflow-y: auto !important;
-		height: 100%;
-		max-height: 100%;
-	}
 </style>

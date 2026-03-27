@@ -244,6 +244,45 @@
 		});
 	}
 
+	// COLUMNS
+	// --------
+
+	const cols = $derived.by(() => {
+		let cols = $columns.map(col => {
+			col = { ...col };
+			const header = [...col.header];
+			header.forEach(line => {
+				if (line.text) line.text = _(line.text);
+			});
+			col.header = header;
+			return col;
+		});
+		const ti = cols.findIndex(c => c.id === "text");
+		const ai = cols.findIndex(c => c.id === "add-task");
+
+		if (ti !== -1) {
+			if (cols[ti].cell) cols[ti]._cell = cols[ti].cell;
+			cols[ti].cell = TextCell;
+		}
+		if (ai !== -1) {
+			cols[ai].cell = cols[ai].cell || ActionCell;
+			const header = cols[ai].header[0];
+			cols[ai].header[0].cell = header.cell || ActionCell;
+
+			if (readonly) {
+				cols.splice(ai, 1);
+			} else {
+				if (compactMode) {
+					const [actionCol] = cols.splice(ai, 1);
+					cols.unshift(actionCol);
+				}
+			}
+		}
+
+		if (cols.length > 0) cols[cols.length - 1].resize = false;
+		return cols;
+	});
+
 	// SIZES
 	// --------
 	// --------
@@ -295,9 +334,6 @@
 		return rows.map(t => ({ ...t }));
 	});
 
-	// COLUMNS
-	// --------
-
 	function checkFlex() {
 		return cols.some(c => c.flexgrow && !c.hidden);
 	}
@@ -329,42 +365,6 @@
 				if (c.$width && !c.flexgrow && !c.hidden) c.width = c.$width;
 			});
 	}
-
-	const cols = $derived.by(() => {
-		let cols = $columns.map(col => {
-			col = { ...col };
-			const header = [...col.header];
-			header.forEach(line => {
-				if (line.text) line.text = _(line.text);
-			});
-			col.header = header;
-			return col;
-		});
-		const ti = cols.findIndex(c => c.id === "text");
-		const ai = cols.findIndex(c => c.id === "add-task");
-
-		if (ti !== -1) {
-			if (cols[ti].cell) cols[ti]._cell = cols[ti].cell;
-			cols[ti].cell = TextCell;
-		}
-		if (ai !== -1) {
-			cols[ai].cell = cols[ai].cell || ActionCell;
-			const header = cols[ai].header[0];
-			cols[ai].header[0].cell = header.cell || ActionCell;
-
-			if (readonly) {
-				cols.splice(ai, 1);
-			} else {
-				if (compactMode) {
-					const [actionCol] = cols.splice(ai, 1);
-					cols.unshift(actionCol);
-				}
-			}
-		}
-
-		if (cols.length > 0) cols[cols.length - 1].resize = false;
-		return cols;
-	});
 
 	let sortMarks = $derived.by(() => {
 		if (allTasks && $sort?.length) {

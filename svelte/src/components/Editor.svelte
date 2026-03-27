@@ -37,7 +37,6 @@
 	const i18nData = l.getRaw();
 	const f = i18nData.gantt?.dateFormat || i18nData.formats?.dateFormat;
 	const dateFormat = dateToString(f, i18nData.calendar);
-	let state = $derived(api?.getReactiveState());
 
 	let {
 		api,
@@ -52,6 +51,8 @@
 		focus = false,
 		hotkeys = {},
 	} = $props();
+
+	let state = $derived(api?.getReactiveState());
 
 	let normalizedTopBar = $derived.by(() => {
 		if (topBar === true && !readonly) {

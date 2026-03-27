@@ -267,7 +267,7 @@ export interface IConfig {
 	undo?: boolean;
 	unscheduledTasks?: boolean;
 	baselines?: boolean;
-	rollups?: { type: "all" | "closest" };
+	rollups?: boolean | { type: "all" | "closest" };
 	markers?: IMarker[];
 	criticalPath?: ICriticalPathConfig;
 	projectStart?: Date;
@@ -289,13 +289,18 @@ export interface IDataConfig extends IConfig {
 	_sort?: TSort[];
 	_weekStart?: Day;
 	_markers?: IMarker[];
+	_rollups?: {
+		[key: TID]: Array<ITask>;
+	};
 	_isFiltered?: boolean;
 	_chartWidth?: number;
 	_chartHeight?: number;
 	_scrollSize?: number;
 }
 
-export interface IData extends Omit<IDataConfig, "tasks" | "links"> {
+export interface IData
+	extends Omit<IDataConfig, "tasks" | "links" | "rollups"> {
+	rollups?: false | { type: "all" | "closest" };
 	zoom?: IZoomConfig;
 	tasks: GanttDataTree;
 	links: DataArray<ILink>;
