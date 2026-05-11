@@ -1,5 +1,5 @@
 <script>
-	import { getContext, setContext } from "svelte";
+	import { getContext } from "svelte";
 	import { Field, Combo, Text } from "@svar-ui/svelte-core";
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
@@ -90,10 +90,9 @@
 {#each linksData as links}
 	{#if links.data.length}
 		<div class="wx-links">
-			<Field label={links.title} position="top">
+			<Field label={links.title} position="top" id={false}>
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-				{setContext("wx-input-id", null)}
 				<table>
 					<tbody>
 						{#each links.data as obj}

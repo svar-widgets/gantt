@@ -1,3 +1,13 @@
+## 2.6.2
+
+### Fixes
+
+-   Rollup dimensions don't update if the task is resizing minimally
+-   First cell in Grid row is focused if inline editor opens
+-   Links are reset when Grid columns are updated
+-   Export to XLSX with chart does not work
+-   Editor throws setContext error in latest Svelte
+
 ## 2.6.1
 
 ### Fixes

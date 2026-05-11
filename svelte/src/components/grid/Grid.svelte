@@ -56,6 +56,7 @@
 	}
 
 	function onClick(e) {
+		if (e.detail > 1) return;
 		const id = locateID(e);
 		const action = e.target.dataset.action;
 		if (action) e.preventDefault();
