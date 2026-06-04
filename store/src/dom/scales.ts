@@ -15,7 +15,6 @@ export function grid(
 		const ctx = canvasSize(canvas, width, height, 1, color);
 		renderCell(ctx, mode, 0, width, 0, height);
 	}
-	// #endif
 	return canvas.toDataURL();
 }
 

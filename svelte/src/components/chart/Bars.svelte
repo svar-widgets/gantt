@@ -25,7 +25,7 @@
 		_rollups: rRollups,
 		focusTask,
 		criticalPath,
-		tasks: tree,
+		tree,
 		schedule,
 		splitTasks,
 		summary,
@@ -52,6 +52,12 @@
 		selectedLinkId && {
 			...$rLinks.find(link => link.id === selectedLinkId),
 		}
+	);
+
+	// grouping tasks by "resource" duplicates tasks
+	// to show a task for each assigned resource
+	let hasDuplicatedIds = $derived(
+		tasks.some(task => task.$id && task.$id !== task.id)
 	);
 
 	let touched = $state();
@@ -505,10 +511,10 @@
 				class:wx-split={$splitTasks && task.segments}
 				style={taskStyle(task)}
 				data-id={setID(task.id)}
-				data-tooltip-id={setID(task.id)}
+				data-task-id={setID(task.id)}
 				tabindex={focused === task.id ? "0" : "-1"}
 			>
-				{#if !readonly}
+				{#if !readonly && !hasDuplicatedIds}
 					{#if task.id === selectedLink?.target && selectedLink?.type[2] === "s"}
 						<Button
 							type="danger"
@@ -572,7 +578,7 @@
 					{/if}
 				{/if}
 
-				{#if !readonly}
+				{#if !readonly && !hasDuplicatedIds}
 					{#if task.id === selectedLink?.target && selectedLink?.type[2] === "e"}
 						<Button
 							type="danger"

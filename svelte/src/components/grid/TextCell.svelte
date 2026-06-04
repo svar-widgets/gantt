@@ -1,4 +1,6 @@
 <script>
+	import GroupCellText from "./GroupCellText.svelte";
+
 	let { row, column } = $props();
 
 	function getStyle(row, col) {
@@ -9,7 +11,7 @@
 </script>
 
 <div class="wx-content" style={getStyle(row, column)}>
-	{#if !row.$empty && (row.data || row.lazy)}
+	{#if !row.$empty && (row.data?.length || row.lazy)}
 		<i
 			class="wx-toggle-icon wxi-menu-{row.open ? 'down' : 'right'}"
 			data-action="open-task"
@@ -18,6 +20,8 @@
 	<div class="wx-text">
 		{#if column._cell}
 			<column._cell {row} {column} />
+		{:else if row.$group}
+			<GroupCellText {row} />
 		{:else}
 			{row.text}
 		{/if}
@@ -41,6 +45,7 @@
 		font-size: var(--wx-icon-size);
 		color: var(--wx-gantt-icon-color);
 		cursor: pointer;
+		flex-shrink: 0;
 	}
 	.wx-toggle-placeholder {
 		width: var(--wx-icon-size);

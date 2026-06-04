@@ -21,7 +21,9 @@
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
-	let { _selected, undo, history, splitTasks } = $derived(state || {});
+	let { _selected, undo, history, splitTasks, groupBy } = $derived(
+		state || {}
+	);
 
 	const historyActions = ["undo", "redo"];
 
@@ -32,6 +34,7 @@
 			: getToolbarButtons({
 					undo: $undo,
 					splitTasks: $splitTasks,
+					group: !!$groupBy?.field,
 				});
 		return buttons.map(b => {
 			b = { ...b, disabled: false };
@@ -48,18 +51,25 @@
 		const finalButtons = [];
 		finalItems.forEach(item => {
 			const action = item.id;
-			if (action === "add-task") {
-				finalButtons.push(item);
-			} else if (!historyActions.includes(action)) {
-				if (!$_selected?.length || !api) return;
-				finalButtons.push({
-					...item,
-					disabled:
-						item.isDisabled &&
-						$_selected.some(task =>
-							item.isDisabled(task, api.getState())
-						),
-				});
+
+			if (action === "add-task" || !historyActions.includes(action)) {
+				if (!$_selected?.length || !api) {
+					if (action !== "add-task") return;
+					finalButtons.push(item);
+				} else {
+					finalButtons.push({
+						...item,
+						disabled:
+							item.isDisabled &&
+							$_selected.some(task =>
+								item.isDisabled(
+									task,
+									api.getState(),
+									api.getTaskCalendar(task)
+								)
+							),
+					});
+				}
 			} else if (historyActions.includes(action)) {
 				finalButtons.push({
 					...item,

@@ -33,6 +33,7 @@
 
 	const allLinks = [...localLinks, ...links];
 	allLinks.forEach(a => {
+		if (!Array.isArray(a)) return;
 		const [path, , component] = a;
 		routes[path] = wrap({
 			component,

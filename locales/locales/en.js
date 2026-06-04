@@ -8,6 +8,9 @@ export default {
 		Task: "Task",
 		Milestone: "Milestone",
 		"Summary task": "Summary task",
+		Resources: "Resources",
+		WBS: "WBS",
+		Hours: "Hours",
 
 		// Sidebar
 		Save: "Save",
@@ -27,6 +30,17 @@ export default {
 		"Start-to-start": "Start-to-start",
 		"End-to-end": "End-to-end",
 		"Start-to-end": "Start-to-end",
+		"No links": "No links",
+		"No assignments": "No assignments",
+		"No segments": "No segments",
+		"Add resource": "Add resource",
+		Resource: "Resource",
+		General: "General",
+		Links: "Links",
+		Lag: "Lag",
+		Segments: "Segments",
+		Ungrouped: "Ungrouped",
+		Unassigned: "Unassigned",
 
 		// Context menu / toolbar
 		Add: "Add",

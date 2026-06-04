@@ -13,18 +13,18 @@ const routes = {
 };
 
 function getRoutes(skinSettings, cb) {
-	raw.forEach(
-		a =>
-			(routes[a[0]] = wrap({
-				component: a[2],
-				userData: a,
-				props: { ...skinSettings },
-				conditions: x => {
-					cb(x.location);
-					return true;
-				},
-			}))
-	);
+	raw.forEach(a => {
+		if (!Array.isArray(a)) return;
+		routes[a[0]] = wrap({
+			component: a[2],
+			userData: a,
+			props: { ...skinSettings },
+			conditions: x => {
+				cb(x.location);
+				return true;
+			},
+		});
+	});
 
 	return routes;
 }

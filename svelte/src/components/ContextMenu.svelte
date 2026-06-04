@@ -7,7 +7,7 @@
 		isHandledAction,
 	} from "@svar-ui/gantt-store";
 
-	import { locale, locateID } from "@svar-ui/lib-dom";
+	import { locale, locateID, locate } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
 	import { en as coreEn } from "@svar-ui/core-locales";
 
@@ -23,6 +23,7 @@
 	} = $props();
 
 	let activeId = null;
+	let activeTask = $state(null);
 	// set locale
 	let l = getContext("wx-i18n");
 	if (!l) {
@@ -32,22 +33,34 @@
 	const _ = getContext("wx-i18n").getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
-	let { taskTypes, selected, _selected, splitTasks, summary } = $derived(
-		state || {}
-	);
+	let { taskTypes, selected, _selected, splitTasks, summary, groupBy } =
+		$derived(state || {});
 
 	let config = $derived({
 		splitTasks: $splitTasks,
 		taskTypes: $taskTypes,
 		summary: $summary,
+		group: !!$groupBy?.field,
 	});
+
+	// _selected lags behind single selection from resolver (setAsyncState)
+	const tasks = $derived(
+		$_selected?.length ? $_selected : activeTask ? [activeTask] : []
+	);
 
 	const fullOptions = $derived(getMenuOptions(config));
 
-	function getOptions() {
-		const finalOptions = options.length ? options : getMenuOptions(config);
+	const customOptions = $derived(options.length ? options : null);
+	const localizedOptions = $derived(
+		applyLocale(customOptions ?? fullOptions)
+	);
 
-		return applyLocale(finalOptions);
+	function cloneMenuItems(items) {
+		return items.map(op => {
+			const copy = { ...op };
+			if (op.data) copy.data = cloneMenuItems(op.data);
+			return copy;
+		});
 	}
 
 	function applyLocale(options) {
@@ -60,14 +73,44 @@
 		});
 	}
 
+	function buildOptions() {
+		if (!api) return [];
+		const items = cloneMenuItems(localizedOptions);
+		const setDisabled = data => {
+			data.forEach(item => {
+				if (item.isDisabled) {
+					item.disabled = tasks.some(task =>
+						item.isDisabled(
+							task,
+							api.getState(),
+							api.getTaskCalendar(task),
+							activeId
+						)
+					);
+				}
+				if (item.data) setDisabled(item.data);
+			});
+		};
+		setDisabled(items);
+		return items;
+	}
+
 	function itemResolver(id, ev) {
+		if (
+			locate(ev.target, "data-menu-ignore")?.classList.contains(
+				"wx-resource-load"
+			)
+		)
+			return null;
+
 		let task = id ? api.getTask(id) : null;
 		if (resolver) {
 			const result = resolver(id, ev);
 			task = result === true ? task : result;
 		}
+		activeTask = task;
+
 		if (task) {
-			//resolver runs earlier than $derived for cOptions
 			const segmentIndex = locateID(ev.target, "data-segment");
 			if (segmentIndex !== null) activeId = { id: task.id, segmentIndex };
 			else activeId = task.id;
@@ -75,6 +118,8 @@
 			if (!$selected.includes(task.id)) {
 				api.exec("select-task", { id: task.id });
 			}
+
+			menuOptions = buildOptions();
 		}
 
 		return task;
@@ -89,11 +134,8 @@
 		}
 	}
 
-	function filterMenu(item, task) {
-		// for single selection from resolver _selected are empty
-		// due to setAsyncState causing _selected to lag
-		const tasks = $_selected.length ? $_selected : task ? [task] : [];
-
+	function filterMenu(item) {
+		if (!api) return true;
 		let result = filter ? tasks.every(task => filter(item, task)) : true;
 
 		if (result) {
@@ -101,32 +143,32 @@
 				result = !tasks.some(task =>
 					item.isHidden(task, api.getState(), activeId)
 				);
-			if (item.isDisabled) {
-				const disabled = tasks.some(task =>
-					item.isDisabled(task, api.getState(), activeId)
-				);
-				item.disabled = disabled;
-			}
 		}
 		return result;
 	}
 
-	const cOptions = $derived.by(() => {
-		api.on("scroll-chart", () => menu.show());
-		api.on("drag-task", () => menu.show());
-
-		return getOptions();
+	let subscribed = false;
+	$effect(() => {
+		if (api && !subscribed) {
+			subscribed = true;
+			api.on("scroll-chart", () => menu.show());
+			api.on("drag-task", () => menu.show());
+		}
 	});
+
+	// built imperatively before the menu opens, not derived from the store (avoids rebuild churn on every store tick)
+	let menuOptions = $state([]);
 
 	let menu = $state();
 	export function show(ev, obj) {
+		menuOptions = buildOptions();
 		menu.show(ev, obj);
 	}
 </script>
 
 <ContextMenu
 	filter={filterMenu}
-	options={cOptions}
+	options={menuOptions}
 	dataKey={"id"}
 	resolver={itemResolver}
 	onclick={menuAction}

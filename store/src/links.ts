@@ -1,4 +1,4 @@
-import { tempID } from "@svar-ui/lib-state";
+import { uid } from "@svar-ui/lib-dom";
 import type { IGanttTask, IGanttLink, ILink } from "./types";
 import { heightAdjustment } from "./tasks";
 
@@ -166,8 +166,8 @@ export function placeLink(
 }
 
 export function normalizeLinks(links: ILink[]) {
-	return links.map(link => {
-		const id = link.id || tempID();
+	return links?.map(link => {
+		const id = link.id || uid();
 		return { ...link, id };
 	});
 }

@@ -54,7 +54,10 @@ export const getData = (type?: TDataType): any => {
 		cellHeight,
 		scaleHeight,
 		taskTypes,
+		calendars,
 		columns: defaultColumns,
+		resources: [],
+		assignments: [],
 	};
 };
 
@@ -70,6 +73,35 @@ for (let i = 1; i <= 20; i++) {
 		end: new Date(2024, 3, 5),
 	});
 }
+
+const calendars = [
+	{
+		id: "default",
+		name: "Default",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 8,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "wednesday-off",
+		name: "Wednesday off",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 0,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+];
 
 const summaryTasks = [
 	{
@@ -545,26 +577,26 @@ const autoSchedulingTasks: ITask[] = [
 
 const autoSchedulingLinks: ILink[] = [
 	{
-		id: 1, // invalid - summary to child task
+		id: 1, // invalid - summary links to its own descendant (parent-chain violation)
 		source: 1,
 		target: 11,
 		type: "e2s",
 	},
 	{
-		id: 2, // invalid - cyclical
+		id: 2, // invalid - part of the 11->12->13->11 cycle
 		source: 11,
 		target: 12,
 		type: "e2s",
 	},
 
 	{
-		id: 3, // invalid - cyclical
+		id: 3, // invalid - part of the 11->12->13->11 cycle
 		source: 12,
 		target: 13,
 		type: "e2s",
 	},
 	{
-		id: 4, // invalid - cyclical
+		id: 4, // s2s link - not processed by the scheduler (e2s only), survives
 		source: 13,
 		target: 11,
 		type: "s2s",
@@ -576,25 +608,25 @@ const autoSchedulingLinks: ILink[] = [
 		type: "e2s",
 	},
 	{
-		id: 6,
+		id: 6, // invalid - forms the 2->13->2 cycle once link 7 is expanded
 		source: 2,
 		target: 13,
 		type: "e2s",
 	},
 	{
-		id: 7,
+		id: 7, // invalid - summary link; its 13->2 leaf edge closes the cycle with link 6
 		source: 1,
 		target: 2,
 		type: "e2s",
 	},
 	{
-		id: 8,
+		id: 8, // valid
 		source: 3,
 		target: 4,
 		type: "e2s",
 	},
 	{
-		id: 9,
+		id: 9, // valid
 		source: 4,
 		target: 5,
 		type: "e2s",

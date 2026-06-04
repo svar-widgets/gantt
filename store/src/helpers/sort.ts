@@ -1,5 +1,12 @@
 import { getValue } from "@svar-ui/grid-store";
-import type { IGanttColumn, IParsedTask, TSort, TSortValue } from "../types";
+import {
+	IDataHash,
+	IGanttColumn,
+	IParsedTask,
+	TSort,
+	TSortValue,
+	TSortFunction,
+} from "../types";
 
 function sortAsc(a: TSortValue, b: TSortValue): number {
 	if (typeof a === "string")
@@ -18,6 +25,12 @@ function sortDesc(a: TSortValue, b: TSortValue): number {
 }
 
 function sortBy({ order, key }: TSort, column?: IGanttColumn) {
+	if (typeof column?.sort === "function") {
+		return function (a: IDataHash, b: IDataHash) {
+			const result = (column.sort as TSortFunction)(a, b);
+			return order === "asc" ? result : -result;
+		};
+	}
 	const sortMethod = order === "asc" ? sortAsc : sortDesc;
 	return (a: IParsedTask, b: IParsedTask) =>
 		sortMethod(

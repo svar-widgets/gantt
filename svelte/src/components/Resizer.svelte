@@ -1,16 +1,16 @@
 <script>
 	let {
+		api,
 		position = "after",
 		size = 4,
 		dir = "x",
-		value = $bindable(0),
 		onmove,
-		display = $bindable("all"),
-		compactMode,
 		containerWidth = 0,
-		leftThreshold = 50,
 		rightThreshold = 50,
 	} = $props();
+
+	const { gridWidth, displayMode, _gridCollapseThreshold, _compactMode } =
+		api.getReactiveState();
 
 	function getBox(value) {
 		let offset = 0;
@@ -28,28 +28,23 @@
 	}
 
 	let start = 0,
-		pos,
-		active = $state(false);
-	let initialPosition = $state(null);
-
-	$effect(() => {
-		if (initialPosition === null && value > 0) {
-			initialPosition = value;
-		}
-	});
+		pos;
 
 	function getEventPos(ev) {
 		return dir === "x" ? ev.clientX : ev.clientY;
 	}
 	function down(ev) {
 		// Prevent dragging when in normal mode and only one view is visible
-		if (!compactMode && (display === "grid" || display === "chart")) {
+		if (
+			$_compactMode ||
+			$displayMode === "grid" ||
+			$displayMode === "chart"
+		) {
 			return;
 		}
 
 		start = getEventPos(ev);
-		pos = value;
-		active = true;
+		pos = $gridWidth;
 
 		document.body.style.cursor = cursor;
 		document.body.style.userSelect = "none";
@@ -61,10 +56,12 @@
 	function move(ev) {
 		const newPos = pos + getEventPos(ev) - start;
 
-		value = newPos;
+		api.exec("resize-grid", {
+			width: newPos,
+		});
 		let nextDisplay;
 
-		if (newPos <= leftThreshold) {
+		if (newPos <= $_gridCollapseThreshold) {
 			nextDisplay = "chart";
 		} else if (containerWidth - newPos <= rightThreshold) {
 			nextDisplay = "grid";
@@ -72,40 +69,34 @@
 			nextDisplay = "all";
 		}
 
-		if (display !== nextDisplay) {
-			display = nextDisplay;
+		if ($displayMode !== nextDisplay) {
+			api.exec("set-display-mode", {
+				mode: nextDisplay,
+			});
 		}
 
 		if (timeout) clearTimeout(timeout);
-		timeout = setTimeout(() => onmove && onmove(value), 100);
+		timeout = setTimeout(() => onmove && onmove(newPos), 100);
 	}
 
 	function up() {
 		document.body.style.cursor = "";
 		document.body.style.userSelect = "";
-		active = false;
 		window.removeEventListener("mousemove", move);
 		window.removeEventListener("mouseup", up);
 	}
 
-	function resetToInitial() {
-		display = "all";
-		if (initialPosition !== null) {
-			value = initialPosition;
-			if (onmove) onmove(initialPosition);
-		}
-	}
-
 	function handleExpand(direction) {
-		if (compactMode) {
-			display = display === "chart" ? "grid" : "chart";
+		let mode;
+		if ($_compactMode) {
+			mode = $displayMode === "chart" ? "grid" : "chart";
 		} else {
-			if (display === "grid" || display === "chart") {
-				resetToInitial();
-			} else {
-				display = direction === "left" ? "chart" : "grid";
-			}
+			if ($displayMode === "grid" || $displayMode === "chart") {
+				mode = "all";
+			} else mode = direction === "left" ? "chart" : "grid";
 		}
+
+		api.exec("set-display-mode", { mode });
 	}
 
 	function handleExpandLeft() {
@@ -115,17 +106,21 @@
 	function handleExpandRight() {
 		handleExpand("right");
 	}
-	const b = $derived(getBox(value));
+
+	const b = $derived(getBox($gridWidth));
 	const cursor = $derived(
-		display !== "all" ? "auto" : dir === "x" ? "ew-resize" : "ns-resize"
+		$displayMode !== "all"
+			? "auto"
+			: dir === "x"
+				? "ew-resize"
+				: "ns-resize"
 	);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="wx-resizer wx-resizer-{dir} wx-resizer-display-{display}"
-	class:wx-resizer-active={active}
+	class="wx-resizer wx-resizer-{dir} wx-resizer-display-{$displayMode}"
 	onmousedown={down}
 	style="width:{b.size[0]}; height: {b.size[1]}; cursor:{cursor};"
 >

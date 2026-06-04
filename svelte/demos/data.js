@@ -107,6 +107,7 @@ const tasks = [
 		type: "task",
 		details: "Analyze market trends and competitors.",
 		assigned: 1,
+		priority: 2,
 	},
 	{
 		id: 11,
@@ -118,6 +119,7 @@ const tasks = [
 		type: "task",
 		details: "Team discussions on project strategies.",
 		assigned: "",
+		priority: 3,
 	},
 	{
 		id: 110,
@@ -129,6 +131,7 @@ const tasks = [
 		type: "task",
 		details: "Draft initial design concepts.",
 		assigned: "",
+		priority: 3,
 	},
 	{
 		id: 111,
@@ -139,6 +142,7 @@ const tasks = [
 		type: "milestone",
 		details: "Present initial designs to stakeholders.",
 		assigned: "",
+		priority: 2,
 	},
 	{
 		id: 112,
@@ -150,6 +154,7 @@ const tasks = [
 		type: "task",
 		details: "Build and iterate on early-stage prototypes.",
 		assigned: "",
+		priority: 2,
 	},
 	{
 		id: 113,
@@ -161,6 +166,7 @@ const tasks = [
 		type: "task",
 		details: "Collect user feedback to improve the design.",
 		assigned: "",
+		priority: 1,
 	},
 
 	{
@@ -172,6 +178,7 @@ const tasks = [
 		type: "milestone",
 		details: "Sign-off on the agreed project strategy.",
 		assigned: "",
+		priority: 1,
 	},
 
 	{
@@ -196,6 +203,7 @@ const tasks = [
 		type: "task",
 		details: "Identify and allocate team resources and budget.",
 		assigned: "",
+		priority: 1,
 	},
 	{
 		id: 21,
@@ -207,6 +215,7 @@ const tasks = [
 		type: "task",
 		details: "Obtain stakeholder sign-off on the project plan.",
 		assigned: "",
+		priority: 2,
 	},
 	{
 		id: 22,
@@ -218,6 +227,7 @@ const tasks = [
 		type: "task",
 		details: "Onboard team members and align on goals.",
 		assigned: "",
+		priority: 1,
 	},
 	{
 		id: 23,
@@ -229,6 +239,7 @@ const tasks = [
 		type: "task",
 		details: "Monitor and adjust resource allocation as needed.",
 		assigned: "",
+		priority: 2,
 	},
 
 	{
@@ -253,6 +264,7 @@ const tasks = [
 		type: "task",
 		details: "Build the initial product prototype for review.",
 		assigned: 3,
+		priority: 3,
 	},
 	{
 		id: 31,
@@ -264,6 +276,7 @@ const tasks = [
 		type: "task",
 		details: "Implement the core features and workflows.",
 		assigned: "",
+		priority: 2,
 	},
 	{
 		id: 32,
@@ -275,6 +288,7 @@ const tasks = [
 		type: "task",
 		details: "Polish and finalize the minimum viable artifact.",
 		assigned: "",
+		priority: 1,
 	},
 
 	{
@@ -299,6 +313,7 @@ const tasks = [
 		type: "task",
 		details: "Verify prototype behavior against requirements.",
 		assigned: 4,
+		priority: 2,
 	},
 	{
 		id: 41,
@@ -310,6 +325,7 @@ const tasks = [
 		type: "task",
 		details: "Test core functionality for correctness.",
 		assigned: "",
+		priority: 2,
 	},
 	{
 		id: 42,
@@ -321,6 +337,7 @@ const tasks = [
 		type: "task",
 		details: "Validate the minimum viable artifact before release.",
 		assigned: "",
+		priority: 1,
 	},
 	{
 		id: 43,
@@ -333,6 +350,7 @@ const tasks = [
 		details:
 			"Comprehensive testing of the beta version before the final release.",
 		assigned: "",
+		priority: 1,
 	},
 
 	{
@@ -368,6 +386,7 @@ const calendarTasks = [
 		progress: 100,
 		parent: 1,
 		type: "task",
+		calendar: "wednesday-off",
 		details: "Analyze market trends and competitors.",
 		assigned: 1,
 	},
@@ -379,6 +398,7 @@ const calendarTasks = [
 		progress: 72,
 		parent: 1,
 		type: "task",
+		calendar: "weekends-only",
 		details: "Team discussions on project strategies.",
 		assigned: "",
 	},
@@ -608,6 +628,201 @@ const calendarTasks = [
 		assigned: "",
 	},
 ];
+
+const multiCalendarTasks = [
+	{
+		id: 1,
+		text: "Project planning",
+		progress: 15,
+		parent: 0,
+		type: "summary",
+		open: true,
+		details: "Outline the project's scope and resources.",
+		assigned: "",
+	},
+	{
+		id: 10,
+		start: new Date(2026, 3, 2),
+		duration: 5,
+		text: "Marketing analysis",
+		progress: 35,
+		parent: 1,
+		type: "task",
+		details: "Analyze market trends and competitors.",
+		assigned: "",
+		priority: 2,
+	},
+	{
+		id: 11,
+		start: new Date(2026, 3, 8),
+		duration: 4,
+		text: "Discussions",
+		progress: 20,
+		parent: 1,
+		type: "task",
+		calendar: "part-time",
+		details: "Team discussions on project strategies.",
+		assigned: "",
+		priority: 3,
+	},
+	{
+		id: 12,
+		start: new Date(2026, 3, 9),
+		duration: 3,
+		text: "Initial design",
+		progress: 45,
+		parent: 1,
+		type: "task",
+		calendar: "wednesday-off",
+		details: "Draft initial design concepts.",
+		assigned: "",
+		priority: 2,
+	},
+	{
+		id: 13,
+		start: new Date(2026, 3, 11),
+		duration: 2,
+		text: "Prototyping",
+		progress: 60,
+		parent: 1,
+		type: "task",
+		calendar: "weekends-only",
+		details: "Build and iterate on early-stage prototypes.",
+		assigned: "",
+		priority: 1,
+	},
+	{
+		id: 14,
+		start: new Date(2026, 3, 13),
+		text: "Approval of strategy",
+		progress: 0,
+		parent: 1,
+		type: "milestone",
+		details: "Sign-off on the agreed project strategy.",
+		assigned: "",
+	},
+	{
+		id: 15,
+		start: new Date(2026, 3, 14),
+		text: "Presentation",
+		progress: 0,
+		parent: 1,
+		type: "milestone",
+		calendar: "wednesday-off",
+		details: "Present initial designs to stakeholders.",
+		assigned: "",
+	},
+	{
+		id: 16,
+		start: new Date(2026, 3, 18),
+		text: "Design approval",
+		progress: 0,
+		parent: 1,
+		type: "milestone",
+		calendar: "weekends-only",
+		details: "Final check and approval of design artifacts.",
+		assigned: "",
+	},
+	{
+		id: 2,
+		text: "Project management",
+		progress: 5,
+		parent: 0,
+		type: "summary",
+		open: true,
+		details: "Coordinate resources, schedule, and deliverables.",
+		assigned: "",
+	},
+	{
+		id: 20,
+		start: new Date(2026, 3, 6),
+		duration: 2,
+		text: "Resource planning",
+		progress: 10,
+		parent: 2,
+		type: "task",
+		details: "Identify and allocate team resources and budget.",
+		assigned: "",
+		priority: 1,
+	},
+	{
+		id: 21,
+		start: new Date(2026, 3, 10),
+		duration: 3,
+		text: "Getting approval",
+		progress: 0,
+		parent: 2,
+		type: "task",
+		calendar: "wednesday-off",
+		details: "Obtain stakeholder sign-off on the project plan.",
+		assigned: "",
+		priority: 2,
+	},
+	{
+		id: 22,
+		start: new Date(2026, 3, 13),
+		duration: 4,
+		text: "Team introduction",
+		progress: 0,
+		parent: 2,
+		type: "task",
+		calendar: "part-time",
+		details: "Onboard team members and align on goals.",
+		assigned: "",
+		priority: 2,
+	},
+	{
+		id: 23,
+		start: new Date(2026, 3, 12),
+		duration: 2,
+		text: "Resource management",
+		progress: 0,
+		parent: 2,
+		type: "task",
+		calendar: "weekends-only",
+		details: "Monitor and adjust resource allocation as needed.",
+		assigned: "",
+		priority: 1,
+	},
+	{
+		id: 24,
+		start: new Date(2026, 3, 13),
+		duration: 3,
+		text: "Project status review",
+		progress: 0,
+		parent: 2,
+		type: "task",
+		details:
+			"Review schedule health and project progress with stakeholders.",
+		assigned: "",
+		priority: 3,
+	},
+	{
+		id: 25,
+		start: new Date(2026, 3, 15),
+		text: "Management phase complete",
+		progress: 0,
+		parent: 2,
+		type: "milestone",
+		details: "Milestone that closes the project management phase.",
+		assigned: "",
+	},
+];
+
+const multiCalendarLinks = [
+	{ id: 1, source: 10, target: 20, type: "e2s" },
+	{ id: 2, source: 20, target: 21, type: "e2s" },
+];
+
+const multiCalendarAssignments = [
+	{ id: 1, task: 10, resource: "r1" },
+	{ id: 2, task: 11, resource: "r3" },
+	{ id: 3, task: 12, resource: "r2" },
+	{ id: 4, task: 13, resource: "r4" },
+	{ id: 5, task: 20, resource: "r1" },
+	{ id: 6, task: 21, resource: "r2" },
+];
+
 const links = [
 	{
 		id: 1,
@@ -1108,6 +1323,147 @@ export const users = [
 	{ id: 4, label: "John Doe" },
 ];
 
+export const resources = [
+	{ id: "dev", name: "Development Team", open: true },
+	{
+		id: "r1",
+		name: "Laura Turner",
+		role: "Developer",
+		color: "#4CAF50",
+		parent: "dev",
+	},
+	{
+		id: "r2",
+		name: "Robert Williams",
+		role: "Designer",
+		color: "#2196F3",
+		parent: "dev",
+	},
+	{ id: "qa", name: "QA Team", open: true },
+	{
+		id: "r3",
+		name: "John Doe",
+		role: "QA Engineer",
+		color: "#FF9800",
+		parent: "qa",
+	},
+	{
+		id: "r4",
+		name: "Mary Johnson",
+		role: "QA Lead",
+		color: "#9C27B0",
+		parent: "qa",
+	},
+];
+
+export const assignments = [
+	{ id: 1, task: 10, resource: "r1" },
+	{ id: 2, task: 10, resource: "r2", units: 50 },
+	{ id: 3, task: 11, resource: "r1" },
+	{ id: 4, task: 110, resource: "r2" },
+	{ id: 5, task: 112, resource: "r1" },
+	{ id: 6, task: 20, resource: "r3" },
+	{ id: 7, task: 21, resource: "r3" },
+	{ id: 8, task: 22, resource: "r4" },
+	{ id: 9, task: 30, resource: "r1" },
+	{ id: 10, task: 30, resource: "r2" },
+	{ id: 11, task: 40, resource: "r3" },
+	{ id: 12, task: 41, resource: "r4" },
+];
+
+const calendars = [
+	{
+		id: "default",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 8,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "part-time",
+		css: "part-time",
+		weekHours: {
+			monday: 4,
+			tuesday: 4,
+			wednesday: 4,
+			thursday: 4,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "wednesday-off",
+		css: "wednesday-off",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 0,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "weekends-only",
+		css: "weekends-only",
+		weekHours: {
+			saturday: 8,
+			sunday: 8,
+			monday: 0,
+			tuesday: 0,
+			wednesday: 0,
+			thursday: 0,
+			friday: 0,
+		},
+	},
+	{
+		id: "wednesday-off-resource",
+		css: "wednesday-off-resource",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 0,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "weekends-only-resource",
+		css: "weekends-only-resource",
+		weekHours: {
+			saturday: 8,
+			sunday: 8,
+			monday: 0,
+			tuesday: 0,
+			wednesday: 0,
+			thursday: 0,
+			friday: 0,
+		},
+	},
+	{
+		id: "part-time-resource",
+		css: "part-time-resource",
+		weekHours: {
+			monday: 4,
+			tuesday: 4,
+			wednesday: 4,
+			thursday: 4,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+];
+
 function addDays(d, n) {
 	return new Date(new Date(d).setDate(d.getDate() + n));
 }
@@ -1148,6 +1504,30 @@ export function getData(name, config) {
 		t.end = new Date(2026, 3, 10);
 	}
 
+	if (name === "calendars") {
+		data.calendars = calendars;
+		const resourceCalendars = {
+			r1: "weekends-only-resource",
+			r2: "wednesday-off-resource",
+			r3: "part-time-resource",
+			r4: "default",
+		};
+
+		data.resources = resources.map(resource =>
+			resource.parent
+				? {
+						...resource,
+						id: `${resource.id}-${resourceCalendars[resource.id]}`,
+						calendar: resourceCalendars[resource.id] || "default",
+					}
+				: resource
+		);
+
+		data.assignments = multiCalendarAssignments.map(assignment => ({
+			...assignment,
+			resource: `${assignment.resource}-${resourceCalendars[assignment.resource]}`,
+		}));
+	}
 	return data;
 }
 
@@ -1155,7 +1535,13 @@ const datasets = {
 	day: { tasks, links, scales },
 	hour: { tasks: tasksHour, links: linksHour, scales: scalesHour },
 	critical: { tasks: critTasks, links: critLinks, scales },
-	calendar: { tasks: calendarTasks, links, scales },
+	calendar: { tasks: calendarTasks, links, scales, calendars },
+	calendars: {
+		tasks: multiCalendarTasks,
+		links: multiCalendarLinks,
+		scales,
+		calendars,
+	},
 };
 
 export function getBaselinesData() {

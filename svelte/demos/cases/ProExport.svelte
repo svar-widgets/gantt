@@ -3,7 +3,6 @@
 	import { Gantt, version } from "../../src";
 	import { Toolbar, registerToolbarItem } from "@svar-ui/svelte-toolbar";
 	import { Switch, RichSelect, Segmented } from "@svar-ui/svelte-core";
-	import { Calendar } from "@svar-ui/gantt-store";
 
 	registerToolbarItem("switch", Switch);
 	registerToolbarItem("segmented", Segmented);
@@ -87,7 +86,7 @@
 		},
 	];
 
-	const calendar = new Calendar();
+	const calendar = true;
 
 	let api = $state();
 	let config = $state("basic");

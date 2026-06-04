@@ -94,6 +94,24 @@ Cypress.Commands.add(
 				return subject.get(
 					`.wx-menu .wx-option[data-id="${setID(id)}"]`
 				);
+			case "resource-load":
+				return subject.get(".wx-resource-load");
+			case "resource-grid":
+				return subject.get(".wx-resource-load .wx-resource-grid");
+			case "resource-grid-row":
+				return subject.get(
+					`.wx-resource-load .wx-resource-grid .wx-row[data-id="${setID(id)}"]`
+				);
+			case "resource-chart":
+				return subject.get(".wx-resource-load .wx-chart");
+			case "resource-chart-row":
+				return subject.get(
+					`.wx-resource-load .wx-chart .wx-row[data-id="${setID(id)}"]`
+				);
+			case "resource-chart-cell":
+				return subject.find(".wx-cell").eq(id);
+			case "resource-chart-cell-id":
+				return subject.find(`.wx-cell[data-col-id="${setID(id)}"]`);
 
 			default:
 				throw `not supported arguments for wxG: ${type}, ${id}`;

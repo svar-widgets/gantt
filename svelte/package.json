@@ -1,6 +1,6 @@
 {
 	"name": "@svar-ui/svelte-gantt",
-	"version": "2.6.2",
+	"version": "2.7.0",
 	"description": "Interactive and customizable Svelte Gantt chart component",
 	"productTag": "gantt",
 	"productTrial": true,
@@ -34,20 +34,21 @@
 	},
 	"homepage": "https://svar.dev/svelte/gantt/",
 	"dependencies": {
-		"@svar-ui/gantt-data-provider": "2.6.2",
-		"@svar-ui/gantt-locales": "2.6.2",
-		"@svar-ui/gantt-store": "2.6.2",
-		"@svar-ui/lib-dom": "0.12.1",
-		"@svar-ui/lib-state": "1.9.6",
+		"@svar-ui/gantt-data-provider": "2.7.0",
+		"@svar-ui/gantt-locales": "2.7.0",
+		"@svar-ui/gantt-store": "2.7.0",
+		"@svar-ui/lib-dom": "0.13.1",
+		"@svar-ui/lib-state": "1.9.7",
 		"@svar-ui/lib-svelte": "0.5.2",
-		"@svar-ui/svelte-core": "2.5.1",
-		"@svar-ui/svelte-editor": "2.5.1",
-		"@svar-ui/svelte-grid": "2.6.1",
-		"@svar-ui/svelte-menu": "2.5.1",
-		"@svar-ui/svelte-toolbar": "2.5.1"
+		"@svar-ui/svelte-core": "2.6.0",
+		"@svar-ui/svelte-editor": "2.6.0",
+		"@svar-ui/svelte-grid": "2.7.0",
+		"@svar-ui/svelte-menu": "2.6.0",
+		"@svar-ui/svelte-toolbar": "2.6.0"
 	},
 	"devDependencies": {
-		"@svar-ui/svelte-filter": "2.5.0"
+		"@svar-ui/svelte-excel-import": "2.6.1",
+		"@svar-ui/svelte-filter": "2.6.0"
 	},
 	"files": [
 		"src",

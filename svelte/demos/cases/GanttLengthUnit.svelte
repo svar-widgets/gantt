@@ -85,8 +85,7 @@
 
 	.bar {
 		padding: 20px;
-		background-color: var(--wx-background);
-		border: var(--wx-border);
+		border-bottom: var(--wx-gantt-border);
 
 		--wx-input-width: 100px;
 	}

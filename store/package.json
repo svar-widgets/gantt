@@ -1,6 +1,6 @@
 {
   "name": "@svar-ui/gantt-store",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "Internal state management used by SVAR Gantt component",
   "type": "module",
   "main": "dist/index.js",
@@ -21,6 +21,6 @@
   ],
   "dependencies": {
     "date-fns": "3.6.0",
-    "@svar-ui/lib-state": "1.9.6"
+    "@svar-ui/lib-state": "1.9.7"
   }
 }

@@ -1,5 +1,6 @@
 // vite.config.ts
 import { resolve } from "path";
+import { existsSync, writeFileSync } from "fs";
 import { defineConfig, loadEnv } from "vite";
 import dts from "vite-plugin-dts";
 import conditionalCompile from "vite-plugin-conditional-compile";
@@ -23,7 +24,20 @@ export default function ({ mode }) {
 	const open = process.env.WX_PACKAGE_TYPE == "open";
 	const isProduction = mode !== "development" && mode !== "test";
 
+	const proSchedule = resolve(__dirname, "src/pro/schedule-types.ts");
+	const usePro = !open && existsSync(proSchedule);
+
 	const config = {
+		resolve: {
+			alias: usePro
+				? [
+						{
+							find: /^(.*\/)?schedule-types$/,
+							replacement: proSchedule,
+						},
+					]
+				: [],
+		},
 		build: {
 			lib: {
 				entry: resolve(__dirname, "src/index.ts"),
@@ -47,19 +61,27 @@ export default function ({ mode }) {
 		config.plugins.push(conditionalCompile({}));
 	}
 
-	if (open) {
+	if (usePro) {
 		config.plugins.push(
 			dts({
 				outDir: resolve(__dirname, "dist/types"),
-				exclude:
-					process.env.WX_PACKAGE_TYPE === "open"
-						? ["src/pro/**"]
-						: [],
+				afterBuild: () => {
+					writeFileSync(
+						resolve(__dirname, "dist/types/schedule-types.d.ts"),
+						'export * from "./pro/schedule-types";\n'
+					);
+				},
 			})
 		);
 	} else {
-		config.plugins.push(dts({ outDir: resolve(__dirname, "dist/types") }));
+		config.plugins.push(
+			dts({
+				outDir: resolve(__dirname, "dist/types"),
+				exclude: ["src/pro/**"],
+			})
+		);
 	}
+
 	if (isProduction) {
 		config.plugins.push(minify);
 	}

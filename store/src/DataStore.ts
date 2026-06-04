@@ -1,4 +1,12 @@
-import { Store, EventBus, DataArray, DataRouter, tempID } from "@svar-ui/lib-state";
+import {
+	Store,
+	EventBus,
+	DataArray,
+	DataTree,
+	DataRouter,
+	tempID,
+	isSame,
+} from "@svar-ui/lib-state";
 import type { TDataConfig, TWritableCreator, TID } from "@svar-ui/lib-state";
 import { createFilter, IFilterColumn } from "@svar-ui/grid-store";
 
@@ -9,6 +17,7 @@ import {
 	getMinUnit,
 	zoomScale,
 	expandScale,
+	calcScaleDate,
 } from "./scales";
 import {
 	updateTask,
@@ -17,7 +26,7 @@ import {
 	setSummaryDates,
 } from "./tasks";
 import { normalizeLinks, updateLink } from "./links";
-import { normalizeColumns } from "./columns";
+import { ADD_TASK_COLUMN_WIDTH, normalizeColumns } from "./columns";
 import {
 	getAdder,
 	getDiffer,
@@ -28,18 +37,22 @@ import {
 } from "./time";
 import { isCommunity } from "./package";
 import { handleAction } from "./helpers/actionHandlers";
+import { calculateArea } from "./helpers/area";
 import { postToNewWindow } from "./dom/formPost";
 
 
+import { Calendar } from "./schedule-types";
 import type {
 	IData,
 	IDataConfig,
 	ITask,
 	TMethodsConfig,
 	IGanttColumn,
+	IResourceColumn,
 	IGanttTask,
 	IGanttLink,
 	ILink,
+	IResource,
 	IVisibleArea,
 	IZoomConfig,
 	IParsedTask,
@@ -48,6 +61,16 @@ import type {
 	IExportConfig,
 	TFilterHandler,
 	TScrollMode,
+	IAssignment,
+	IDataAssignment,
+	IComputedResource,
+	IGroupByConfig,
+	TDataName,
+	TResourceAssignment,
+	ICalendar,
+	TDurationUnit,
+	TDisplayMode,
+	TLengthUnit,
 } from "./types";
 
 import { isEqual } from "date-fns";
@@ -57,6 +80,8 @@ export default class DataStore extends Store<IData> {
 	public in: EventBus<TMethodsConfig, keyof TMethodsConfig>;
 	private _router: DataRouter<IData, IDataConfig, TMethodsConfig>;
 	private _modules = new Map<string, any>();
+	private _prevScaleMinUnit?: TLengthUnit;
+	private _prevConfig: Partial<IDataConfig> = {};
 
 	constructor(w: TWritableCreator) {
 		super({ writable: w, async: false });
@@ -92,7 +117,11 @@ export default class DataStore extends Store<IData> {
 							projectStart,
 							projectEnd,
 							baselines,
+							_tasksPatch,
 						} = this.getState();
+
+						if (_tasksPatch) return;
+
 						if (!start || !end || autoScale) {
 							const minUnit = getMinUnit(scales).unit;
 							const bounds = calcScales(
@@ -119,12 +148,15 @@ export default class DataStore extends Store<IData> {
 				// prepare scale structure for rendering
 				{
 					in: ["columns"],
-					out: ["_headerLength"],
+					out: ["_headerLength", "_gridCollapseThreshold"],
 					exec: (ctx: TDataConfig) => {
 						const columns = this.getState().columns;
 						let count = 1;
+						let threshold = ADD_TASK_COLUMN_WIDTH;
 						if (columns.length) {
 							columns.forEach(col => {
+								if (col.id === "add-task" && col.width)
+									threshold = col.width;
 								count = Math.max(
 									(col.header as IFilterColumn["header"])
 										.length,
@@ -132,7 +164,83 @@ export default class DataStore extends Store<IData> {
 								);
 							});
 						}
-						this.setState({ _headerLength: count }, ctx);
+						this.setState(
+							{
+								_headerLength: count,
+								_gridCollapseThreshold: threshold,
+							},
+							ctx
+						);
+					},
+				},
+				{
+					in: ["_compactMode"],
+					out: ["displayMode"],
+					exec: (ctx: TDataConfig) => {
+						const { displayMode, _compactMode } = this.getState();
+						let mode = displayMode;
+						if (_compactMode) {
+							mode = displayMode === "all" ? "grid" : mode;
+						} else {
+							mode = "all";
+						}
+
+						this.setState({ displayMode: mode }, ctx);
+					},
+				},
+				{
+					in: ["displayMode", "columns"],
+					out: ["gridWidth", "_columnsWidth"],
+					exec: (ctx: TDataConfig) => {
+						const {
+							columns,
+							displayMode,
+							gridWidth,
+							_columnsWidth,
+						} = this.getState();
+						if (!columns?.length) {
+							this.setState(
+								{ gridWidth: 0, _columnsWidth: 0 },
+								ctx
+							);
+							return;
+						}
+						let width = 0;
+						if (displayMode === "chart") {
+							const addCol = columns?.find(
+								c => c.id === "add-task"
+							);
+							width = addCol?.width || ADD_TASK_COLUMN_WIDTH;
+						}
+						if (displayMode === "all") {
+							if (!columns?.length) width = 440;
+							else {
+								width = !_columnsWidth ? gridWidth : 440;
+								if (
+									columns.every(c => c.width && !c.flexgrow)
+								) {
+									width = columns.reduce(
+										(acc, c) => acc + c.width,
+										0
+									);
+								}
+							}
+						}
+						if (width)
+							this.setState(
+								{ gridWidth: width, _columnsWidth: width },
+								ctx
+							);
+					},
+				},
+				// restore config cellWidth on scale change
+				{
+					in: ["start", "end"],
+					out: ["cellWidth"],
+					exec: (ctx: TDataConfig) => {
+						const { _cellWidth, cellWidth } = this.getState();
+						if (_cellWidth !== cellWidth)
+							this.setState({ cellWidth: _cellWidth }, ctx);
 					},
 				},
 				{
@@ -174,15 +282,91 @@ export default class DataStore extends Store<IData> {
 							scales,
 							_headerLength
 						);
-						this.setState({ _scales }, ctx);
+						this.setState({ _scales, _scaleMinUnit: minUnit }, ctx);
+					},
+				},
+				// index assignments by task and resource
+				{
+					in: ["assignments"],
+					out: ["_assignments"],
+					exec: (ctx: TDataConfig) => {
+						const { assignments } = this.getState();
+						const _assignments: IDataAssignment = {
+							byTask: {},
+							byResource: {},
+						};
+
+						if (assignments) {
+							assignments.forEach((a: IAssignment) => {
+								const taskId = a.task;
+								const resourceId = a.resource;
+
+								if (!_assignments.byTask[taskId]) {
+									_assignments.byTask[taskId] = [];
+								}
+								_assignments.byTask[taskId].push(a);
+
+								if (!_assignments.byResource[resourceId]) {
+									_assignments.byResource[resourceId] = [];
+								}
+								_assignments.byResource[resourceId].push(a);
+							});
+						}
+
+						this.setState({ _assignments }, ctx);
+					},
+				},
+				// horizontal visible window over the lowest scale row's cells
+				{
+					in: ["_scales", "scrollLeft", "_chartWidth"],
+					out: ["xArea"],
+					exec: (ctx: TDataConfig) => {
+						const { _scales, scrollLeft, _chartWidth } =
+							this.getState();
+						if (!_scales || !_chartWidth) {
+							this.setState(
+								{ xArea: { from: 0, to: 0, start: 0, end: 0 } },
+								ctx
+							);
+							return;
+						}
+						const cells =
+							_scales.rows[_scales.rows.length - 1].cells;
+						this.setState(
+							{
+								xArea: calculateArea(
+									scrollLeft || 0,
+									_chartWidth,
+									cells
+								),
+							},
+							ctx
+						);
+					},
+				},
+				{
+					in: ["tasks", "_assignments", "groupBy", "_scales"],
+					out: ["tree"],
+					exec: (ctx: TDataConfig) => {
+						const state = this.getState();
+						const { tasks, _scales } = this.getState();
+						const grouping = this.getGrouping();
+
+						if (grouping) {
+							if (!_scales) return;
+							const groupedTree = grouping.buildTree();
+							this.setState({ tree: groupedTree });
+							return;
+						}
+						this.setState({ tree: tasks }, ctx);
 					},
 				},
 				// prepare tasks positions
 				{
 					in: [
+						"tree",
 						"_scales",
-						"rollups",
-						"tasks",
+						"_rollups",
 						"cellHeight",
 						"baselines",
 						"unscheduledTasks",
@@ -192,15 +376,26 @@ export default class DataStore extends Store<IData> {
 						const {
 							cellWidth,
 							cellHeight,
-							tasks,
+							tree,
 							_scales,
 							baselines,
 							splitTasks,
 							unscheduledTasks,
 							_rollups,
+							groupBy,
+							_tasksPatch,
 						} = this.getState();
-
-						const _tasks = tasks.toArray().map((task, i) =>
+						if (_tasksPatch) {
+							this.setState(
+								{
+									_tasks: tree.toArray(),
+									_tasksPatch: null,
+								},
+								ctx
+							);
+							return;
+						}
+						const _tasks = tree.toArray().map((task, i) =>
 							updateTask(task as IGanttTask, i, {
 								cellWidth,
 								cellHeight,
@@ -209,6 +404,7 @@ export default class DataStore extends Store<IData> {
 								splitTasks,
 								unscheduledTasks,
 								_rollups,
+								groupBy,
 							})
 						);
 						this.setState({ _tasks }, ctx);
@@ -220,7 +416,7 @@ export default class DataStore extends Store<IData> {
 					out: ["_links"],
 					exec: (ctx: TDataConfig) => {
 						const {
-							tasks,
+							tree,
 							links,
 							cellHeight,
 							criticalPath,
@@ -229,8 +425,10 @@ export default class DataStore extends Store<IData> {
 
 						const _links = links
 							.map<IGanttLink>(link => {
-								const startTask = tasks.byId(link.source);
-								const endTask = tasks.byId(link.target);
+								const startTask = tree.byId(link.source);
+								const endTask = tree.byId(link.target);
+
+								if (!startTask || !endTask) return null;
 
 								return updateLink(
 									link as IGanttLink,
@@ -240,6 +438,7 @@ export default class DataStore extends Store<IData> {
 								);
 							})
 							.toSorted((a: IGanttLink, b: IGanttLink) => {
+								if (!a || !b) return 0;
 								if (criticalPath) {
 									// sort by length (shortest first) when critical status is the same
 									if (!!a.critical === !!b.critical) {
@@ -253,8 +452,8 @@ export default class DataStore extends Store<IData> {
 							.filter(a => {
 								if (a && _isFiltered)
 									return (
-										tasks.isFilteredId(a.source) &&
-										tasks.isFilteredId(a.target)
+										tree.isFilteredId(a.source) &&
+										tree.isFilteredId(a.target)
 									);
 								return a !== null;
 							});
@@ -266,49 +465,34 @@ export default class DataStore extends Store<IData> {
 					in: ["tasks", "activeTask"],
 					out: ["_activeTask"],
 					exec: (ctx: TDataConfig) => {
-						const state = this.getState();
-						let { activeTask } = state;
-						if (activeTask && typeof activeTask === "object")
-							activeTask = activeTask.id;
-						const task = state.tasks.byId(activeTask as TID);
+						const { activeTask, tasks } = this.getState();
+						const task = tasks.byId(activeTask as TID);
 						this.setState({ _activeTask: task || null }, ctx);
 					},
 				},
 				// selection
 				{
-					in: ["tasks", "selected"],
+					in: ["tree", "selected"],
 					out: ["_selected"],
 					exec: (ctx: TDataConfig) => {
-						const { tasks, selected, _isFiltered } =
-							this.getState();
+						const { tree, selected, _isFiltered } = this.getState();
 						const _selected = selected
-							.map(id => tasks.byId(id))
+							.map(id => tree.byId(id))
 							.filter((task: ITask) => {
 								if (!task) return false;
 								return (
-									!_isFiltered || tasks.isFilteredId(task.id)
+									!_isFiltered || tree.isFilteredId(task.id)
 								);
 							});
 
 						this.setState({ _selected }, ctx);
 					},
 				},
-				// restore config cellWidth on scale change
-				{
-					in: ["start", "end"],
-					out: ["cellWidth"],
-					exec: (ctx: TDataConfig) => {
-						const { _cellWidth, cellWidth } = this.getState();
-						if (_cellWidth !== cellWidth)
-							this.setState({ cellWidth: _cellWidth }, ctx);
-					},
-				},
-
 			],
 			// data initializers
 			{
 				tasks: (v: ITask[]) => new GanttDataTree(v),
-				links: (v: ILink[]) => new DataArray(v),
+				links: (v: ILink[]) => new DataArray(normalizeLinks(v)),
 				columns: (v: IGanttColumn[]) => normalizeColumns(v),
 			}
 		);
@@ -317,14 +501,6 @@ export default class DataStore extends Store<IData> {
 
 		/* before data modifications */
 		inBus.on("show-editor", (ev: TMethodsConfig["show-editor"]) => {
-			const { splitTasks } = this.getState();
-			if (splitTasks) {
-				const { id, segmentIndex } = ev;
-				if (id && (segmentIndex || segmentIndex === 0)) {
-					this.setStateAsync({ activeTask: { id, segmentIndex } });
-					return;
-				}
-			}
 			this.setStateAsync({ activeTask: ev.id });
 		});
 		inBus.on(
@@ -334,14 +510,11 @@ export default class DataStore extends Store<IData> {
 				toggle,
 				range,
 				show = true,
-				segmentIndex,
 				focus,
 				eventSource,
 			}: TMethodsConfig["select-task"]) => {
-				const { selected, _tasks, activeTask, splitTasks } =
-					this.getState();
+				const { selected, _tasks, activeTask } = this.getState();
 				let unselect = false;
-
 				let ids;
 				if (selected.length && (toggle || range)) {
 					const result = [...selected];
@@ -391,31 +564,24 @@ export default class DataStore extends Store<IData> {
 				if (ids.length) {
 					if (focus) show = focus === "chart" ? "xy" : show || "y";
 					if (show) {
-						this.scrollToTask(
-							ids[0],
-							show,
-							eventSource || "select-task"
-						);
-						if (focus) {
-							this.setStateAsync({
-								focusTask: {
-									id: ids[0],
-									column: focus === "grid",
-								},
-							});
-						}
+						const showTask = () => {
+							this.scrollToTask(ids[0], show);
+							if (focus) {
+								this.setStateAsync({
+									focusTask: {
+										id: ids[0],
+										column: focus === "grid",
+									},
+								});
+							}
+						};
+						if (eventSource === "add-task") setTimeout(showTask, 1);
+						else showTask();
 					}
 				}
 
-				if (
-					!unselect &&
-					activeTask &&
-					(activeTask !== id || splitTasks)
-				) {
-					inBus.exec("show-editor", {
-						id,
-						...(splitTasks && { segmentIndex }),
-					});
+				if (!unselect && activeTask && activeTask !== id) {
+					inBus.exec("show-editor", { id });
 				}
 			}
 		);
@@ -627,8 +793,8 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on("drag-task", (ev: TMethodsConfig["drag-task"]) => {
 			const state = this.getState();
-			const { tasks, _tasks, _selected, rollups, slack } = state;
-			const task = tasks.byId(ev.id);
+			const { tree, _tasks, _selected, rollups, slack } = state;
+			const task = tree.byId(ev.id);
 			const { left, top, width, inProgress } = ev;
 
 			const update: Partial<IData> = {
@@ -638,7 +804,7 @@ export default class DataStore extends Store<IData> {
 
 			if (typeof width !== "undefined") {
 				task.$w = width;
-				dragSummary(tasks, task);
+				dragSummary(tree, task);
 			}
 
 			if (typeof left !== "undefined") {
@@ -647,7 +813,7 @@ export default class DataStore extends Store<IData> {
 					dragSummaryKids(task, dx, !!rollups);
 				}
 				task.$x = left;
-				dragSummary(tasks, task);
+				dragSummary(tree, task);
 			}
 			if (typeof top !== "undefined") {
 				task.$y = top + 4;
@@ -659,17 +825,34 @@ export default class DataStore extends Store<IData> {
 			this.setState(update);
 		});
 
+		const DATE_FIELDS = new Set([
+			"start",
+			"end",
+			"duration",
+			"type",
+			"unscheduled",
+			"base_start",
+			"base_end",
+			"base_duration",
+			"segments",
+			"rollup",
+		]);
+
 		inBus.on("update-task", (ev: TMethodsConfig["update-task"]) => {
 			const { id, segmentIndex, diff, eventSource } = ev;
 			let { task } = ev;
-			const { tasks, _scales, durationUnit, splitTasks, calendar } =
-				this.getState();
+
+			const state = this.getState();
+			const { tasks, _scales, durationUnit, splitTasks, _calendars } =
+				state;
+			const update: Partial<IData> = { tasks, _tasksPatch: false };
 
 			const t = tasks.byId(id);
+
+			const calendar = this.getTaskCalendar({ ...t, ...task });
 			const stateOptions: Partial<IData> = {
 				_scales,
 				durationUnit,
-				calendar,
 				splitTasks,
 			};
 
@@ -679,13 +862,38 @@ export default class DataStore extends Store<IData> {
 				eventSource === "move-task" ||
 				eventSource === "update-task" ||
 				eventSource === "delete-task" ||
-				eventSource === "provide-data"
+				eventSource === "provide-data" ||
+				eventSource === "schedule-tasks"
 			) {
-
-				normalizeDates(task, stateOptions);
-				tasks.update(id, task);
+				if (eventSource === "schedule-tasks") {
+					tasks.update(id, task);
+					this.setState({ tasks });
+				} else {
+					normalizeDates(task, stateOptions, calendar);
+					tasks.update(id, task);
+				}
 				return;
 			}
+
+			//identify updates that do not take part in dependency calculations
+			const hasDateChange =
+				!!diff ||
+				segmentIndex >= 0 ||
+				("type" in task && task.type !== t.type) ||
+				Object.keys(task).some(k => {
+					if (!DATE_FIELDS.has(k) || k === "type") return false;
+					const nv = task[k];
+					const ov = t[k];
+					return !isSame(nv, ov);
+				});
+
+			if (!hasDateChange) {
+				tasks.update(id, task);
+				this.setStateAsync({ tasks, _tasksPatch: !this.getGrouping() });
+				ev.task = tasks.byId(id);
+				return;
+			}
+
 			const minUnit = _scales.lengthUnit;
 
 			let adder = getAdder(minUnit);
@@ -739,11 +947,17 @@ export default class DataStore extends Store<IData> {
 
 						this.moveSummaryKids(
 							t,
-							date => {
+							(date, kid) => {
 								date = adder(date, shift);
-								return calendar
-									? adjustToWorkingDay(date, diff, calendar)
-									: date;
+								if (!calendar) return date;
+								const snapCalendar = _calendars
+									? this.getTaskCalendar(kid)
+									: calendar;
+								return adjustToWorkingDay(
+									date,
+									diff,
+									snapCalendar
+								);
 							},
 							"update-task"
 						);
@@ -755,7 +969,7 @@ export default class DataStore extends Store<IData> {
 			if (!task.start) task.start = t.start;
 			if (!task.end && !task.duration) task.duration = t.duration;
 
-			normalizeDates(task, stateOptions);
+			normalizeDates(task, stateOptions, calendar);
 			tasks.update(id, task);
 
 			if (
@@ -771,7 +985,7 @@ export default class DataStore extends Store<IData> {
 				this.resetSummaryDates(summary, "update-task");
 			}
 
-			this.setStateAsync({ tasks });
+			this.setStateAsync(update);
 
 			ev.task = tasks.byId(id);
 		});
@@ -783,11 +997,13 @@ export default class DataStore extends Store<IData> {
 				unscheduledTasks,
 				durationUnit,
 				splitTasks,
-				calendar,
+				tree,
 			} = this.getState();
 
-			const { target, mode, task, show, select = true, focus } = ev;
+			const { target, mode, task, show, select = true } = ev;
 			if (!ev.eventSource && unscheduledTasks) task.unscheduled = true;
+			const calendar = this.getTaskCalendar(task);
+
 			let ind = -1;
 			let parent;
 			let targetObj;
@@ -826,7 +1042,7 @@ export default class DataStore extends Store<IData> {
 						start ||
 						getAdder(durationUnit, calendar)(_scales.start, 1);
 				}
-				task.duration = 1;
+				task.duration = task.duration || 1;
 			}
 
 			if (calendar)
@@ -837,7 +1053,7 @@ export default class DataStore extends Store<IData> {
 				task.base_duration = task.duration;
 			}
 
-			normalizeDates(task, { durationUnit, splitTasks, calendar });
+			normalizeDates(task, { durationUnit, splitTasks }, calendar);
 			const newTask = tasks.add(task, ind);
 
 			const update: Partial<IData> = {
@@ -850,7 +1066,7 @@ export default class DataStore extends Store<IData> {
 						id: parent.id,
 						mode: true,
 					});
-					parent = tasks.byId(parent.parent);
+					parent = tree.byId(parent.parent);
 				}
 			}
 
@@ -865,28 +1081,27 @@ export default class DataStore extends Store<IData> {
 
 			ev.id = newTask.id;
 			ev.task = newTask;
-
 			if (select) {
 				inBus.exec("select-task", {
 					id: newTask.id,
 					show,
-					focus,
 					eventSource: "add-task",
 				});
 			} else if (show) {
-				this.scrollToTask(newTask.id, show, "add-task");
+				this.scrollToTask(newTask.id, show);
 			}
 		});
 
 		inBus.on("delete-task", (ev: TMethodsConfig["delete-task"]) => {
 			const { id } = ev;
-			const { tasks, links, selected } = this.getState();
+			const state = this.getState();
+			const { tasks, links, selected } = state;
 			const task = tasks.byId(id);
 			ev.source = task.parent;
 
 			const summary = tasks.getSummaryId(id);
 
-			const toRemove = [id];
+			const toRemove: TID[] = [id];
 			tasks.eachChild(t => toRemove.push(t.id), id);
 			links.filter(a => {
 				return !(
@@ -895,8 +1110,15 @@ export default class DataStore extends Store<IData> {
 			});
 
 			const update: Partial<IData> = { tasks, links };
-			if (selected.includes(id)) {
-				update.selected = selected.filter(sel => sel !== id);
+
+
+			const checkGroup = state.groupBy?.field === "resource";
+			if (selected.includes(id) || checkGroup) {
+				update.selected = selected.filter(
+					sel =>
+						sel !== id &&
+						(!checkGroup || state.tree.byId(sel)?.$id !== id)
+				);
 			}
 
 			tasks.remove(id);
@@ -1028,25 +1250,20 @@ export default class DataStore extends Store<IData> {
 		});
 
 		inBus.on("open-task", ({ id, mode }: TMethodsConfig["open-task"]) => {
-			const { tasks } = this.getState();
-			const task = tasks.byId(id);
+			const { tree } = this.getState();
+			const task = tree.byId(id);
 
 			if (task.lazy) inBus.exec("request-data", { id: task.id });
 			else {
-				tasks.toArray().forEach(t => (t.$y = 0));
-				tasks.update(id, { open: mode });
-				this.setState({ tasks });
+				tree.toArray().forEach(t => (t.$y = 0));
+				tree.update(id, { open: mode });
+				this.setState({ tree });
 			}
 		});
 
 		inBus.on(
 			"scroll-chart",
-			({
-				left,
-				top,
-				date,
-				eventSource,
-			}: TMethodsConfig["scroll-chart"]) => {
+			({ left, top, date }: TMethodsConfig["scroll-chart"]) => {
 				const {
 					_chartWidth,
 					_chartHeight,
@@ -1055,6 +1272,7 @@ export default class DataStore extends Store<IData> {
 					_scales,
 					cellWidth,
 					_start,
+					_weekStart,
 				} = this.getState();
 				let update: Partial<IData> = {};
 				if (date) {
@@ -1071,7 +1289,11 @@ export default class DataStore extends Store<IData> {
 					}
 					update = {
 						scrollLeft: left,
-						_scaleDate: this.calcScaleDate(left),
+						_scaleDate: calcScaleDate(left, {
+							_scales,
+							_start,
+							_weekStart,
+						}),
 						_zoomOffset: null,
 					};
 				}
@@ -1085,8 +1307,7 @@ export default class DataStore extends Store<IData> {
 					}
 					update.scrollTop = top;
 				}
-				if (eventSource === "add-task") this.setStateAsync(update);
-				else this.setState(update);
+				this.setState(update);
 			}
 		);
 
@@ -1095,7 +1316,7 @@ export default class DataStore extends Store<IData> {
 		});
 
 		inBus.on("provide-data", (ev: TMethodsConfig["provide-data"]) => {
-			const { tasks, links, durationUnit, calendar, splitTasks } =
+			const { tasks, links, assignments, durationUnit, splitTasks } =
 				this.getState();
 			const parent = tasks.byId(ev.id);
 
@@ -1104,34 +1325,53 @@ export default class DataStore extends Store<IData> {
 				parent.open = true;
 			} else parent.data = [];
 
-			parseTaskDates(ev.data.tasks, {
-				durationUnit,
-				splitTasks,
-				calendar,
-			});
+			parseTaskDates(
+				ev.data.tasks,
+				{
+					durationUnit,
+					splitTasks,
+				},
+				this.getTaskCalendar.bind(this)
+			);
 			tasks.parse(ev.data.tasks, ev.id);
 			if (parent.type === "summary")
 				this.resetSummaryDates(parent.id, "provide-data");
 			// fixme: DataArray needs the parse() method
-			this.setStateAsync({
+			const update: Partial<IData> = {
 				tasks,
 				links: new DataArray(
 					links.map(l => l).concat(normalizeLinks(ev.data.links))
 				),
-			});
+			};
+			if (ev.data.assignments && assignments) {
+				update.assignments = new DataArray(
+					assignments
+						.map(a => a)
+						.concat(normalizeAssignments(ev.data.assignments))
+				);
+			}
+			this.setStateAsync(update);
 		});
 
 		inBus.on(
 			"zoom-scale",
 			({ dir, ratio, offset }: TMethodsConfig["zoom-scale"]) => {
-				const { zoom, cellWidth, _cellWidth, scrollLeft } =
-					this.getState();
+				const state = this.getState();
+				const { zoom, cellWidth, _cellWidth, scrollLeft } = state;
 				const pointerX = (offset || 0) + scrollLeft;
-				const date = this.calcScaleDate(pointerX);
+				const date = calcScaleDate(pointerX, state);
 				const w = (dir < 0 && _cellWidth) || cellWidth;
-				let width = Math.round(w * (1 + dir * (ratio || 0.15)));
+				let width = Math.round(w * (1 + dir * (ratio ?? 0.15)));
 				const { maxCellWidth, minCellWidth } = zoom.levels[zoom.level];
 				const isExpanded = dir < 0 && cellWidth > maxCellWidth;
+
+				if (this.shouldExpandScale(width)) {
+					if (this.changeScale(zoom, dir)) {
+						this.setState({ cellWidth: width, _cellWidth: width });
+					}
+					return;
+				}
+
 				if (
 					width < minCellWidth ||
 					width > maxCellWidth ||
@@ -1159,6 +1399,7 @@ export default class DataStore extends Store<IData> {
 					cellWidth: cw,
 					_weekStart,
 				} = this.getState();
+
 				const start = getUnitStart(_scales.minUnit, _start, _weekStart);
 				const num = _scales.diff(date, start, "hour");
 				if (typeof offset === "undefined") offset = cw;
@@ -1179,7 +1420,7 @@ export default class DataStore extends Store<IData> {
 			"sort-tasks",
 			({ key, order, add }: TMethodsConfig["sort-tasks"]) => {
 				const state = this.getState();
-				const { tasks, columns } = state;
+				const { tasks, tree, columns } = state;
 				let sort = state._sort;
 				const sortBy: TSort = { key, order };
 
@@ -1191,8 +1432,8 @@ export default class DataStore extends Store<IData> {
 					sort[index] = sortBy;
 				} else sort = [sortBy];
 
-				tasks.sort(sort, columns);
-				this.setState({ _sort: sort, tasks });
+				tree.sort(sort, columns);
+				this.setState({ _sort: sort, tree });
 			}
 		);
 
@@ -1301,6 +1542,55 @@ export default class DataStore extends Store<IData> {
 				});
 			}
 		);
+		inBus.on("resize-grid", ({ width }: TMethodsConfig["resize-grid"]) => {
+			this.setState({
+				gridWidth: width,
+			});
+		});
+		inBus.on(
+			"set-display-mode",
+			({ mode }: TMethodsConfig["set-display-mode"]) => {
+				const compactMode = this.getState()._compactMode;
+				if (compactMode && mode === "all") return;
+				this.setState({
+					displayMode: mode,
+				});
+			}
+		);
+		inBus.on(
+			"open-resource-row",
+			({ id, mode }: TMethodsConfig["open-resource-row"]) => {
+				const { resources } = this.getState();
+
+				resources.update(id, { open: mode });
+				this.setState({ resources });
+			}
+		);
+		inBus.on(
+			"sort-resources",
+			({
+				key,
+				order,
+				add,
+				_columns,
+			}: TMethodsConfig["sort-resources"]) => {
+				const state = this.getState();
+				const { resources } = state;
+				let resourceSort = state._resourceSort;
+				const sortBy: TSort = { key, order };
+
+				let index = resourceSort?.length || 0;
+				if (index && add) {
+					resourceSort.forEach((a, i) => {
+						if (a.key === key) index = i;
+					});
+					resourceSort[index] = sortBy;
+				} else resourceSort = [sortBy];
+
+				resources.sort(resourceSort, _columns);
+				this.setState({ _resourceSort: resourceSort, resources });
+			}
+		);
 	}
 
 	init(state: Partial<IDataConfig>) {
@@ -1310,13 +1600,22 @@ export default class DataStore extends Store<IData> {
 					scrollLeft: 0,
 					scrollTop: 0,
 					area: { from: 0, start: 0, end: 0 },
+					xArea: { from: 0, to: 0, start: 0, end: 0 },
 					_isFiltered: false,
 					filterValues: {},
+					groupBy: { field: null },
+					tree: [],
 				};
 
 		if (state.cellWidth) state._cellWidth = state.cellWidth;
-		state._sort = null;
-
+		// normalize displayMode for compact mode when displayMode changed
+		if (
+			state._compactMode &&
+			state.displayMode !== this.getState().displayMode
+		) {
+			state.displayMode =
+				state.displayMode === "all" ? "grid" : state.displayMode;
+		}
 		if (isCommunity()) {
 			state.unscheduledTasks = false;
 			state.baselines = false;
@@ -1330,17 +1629,115 @@ export default class DataStore extends Store<IData> {
 			state.rollups = false;
 			state._rollups = {};
 			state.slack = false;
+			state.resources = null;
+			state._resources = [];
+			state.assignments = [];
+			state.calendar = null;
+			state.calendars = [];
+			state._calendar = null;
+			state._calendars = {};
+			state.groupBy = null;
+			state.wbs = null;
 		}
 
-		if (!(state.tasks as any)._ready && Array.isArray(state.tasks)) {
-			(state.tasks as any)._ready = true;
-			// reset filtering and history on tasks update
+		const prev = this.getState();
+
+		if (Array.isArray(state.calendars) && state.calendars.length > 0) {
+			if (prev.calendars === state.calendars) {
+				state._calendars = prev._calendars;
+			} else {
+				state._calendars = {};
+				state.calendars.forEach(({ id, ...config }) => {
+					state._calendars[id] = new Calendar(config);
+					state._calendars[id].css = config.css;
+				});
+			}
+		} else if (!prev._calendars) {
+			state._calendars = {};
+		}
+
+		// preserve the instance while the config prop ref is unchanged
+		// so external mutations (e.g. cal.addRule) survive reinits
+		if (prev.calendar === state.calendar && prev._calendar) {
+			state._calendar = prev._calendar;
+		} else if (typeof state.calendar === "string") {
+			const fromRegistry = state._calendars?.[state.calendar];
+			if (fromRegistry) state._calendar = fromRegistry;
+		} else if (state.calendar && typeof state.calendar === "object") {
+			state._calendar = new Calendar(state.calendar);
+		} else if (state.calendar === true) {
+			state._calendar = new Calendar();
+		}
+
+		if (state._calendar && state.tasks) {
+			state.highlightTime = (day: Date, unit: TDurationUnit) => {
+				const cal = this.getCalendar();
+				if (!cal) return "";
+				if (
+					(unit === "day" || unit === "hour") &&
+					!cal.isWorkingDay(day)
+				)
+					return "wx-weekend";
+				return "";
+			};
+		}
+
+		// track changed state properties
+		const tasksChanged = this.changed(state, "tasks");
+		const linksChanged = this.changed(state, "links");
+		const resourcesChanged = this.changed(state, "resources");
+		const projectStartChanged = this.changed(state, "projectStart");
+		const criticalPathChanged =
+			tasksChanged ||
+			linksChanged ||
+			this.changed(state, "criticalPath", "slack", "unscheduledTasks");
+		const scheduleChanged =
+			tasksChanged || linksChanged || projectStartChanged;
+
+		for (const k in state)
+			if (k[0] !== "_")
+				(this._prevConfig as Record<string, unknown>)[k] =
+					state[k as keyof IDataConfig];
+
+		if (state.tasks) {
+			if (tasksChanged) {
+				const tasksCopy = state.tasks.map(task => {
+					const copy = { ...task };
+					if (task.segments)
+						copy.segments = task.segments.map(s => ({ ...s }));
+					return copy;
+				});
+				// read calendars from local state — not yet committed to the router
+				parseTaskDates(
+					tasksCopy,
+					{
+						durationUnit: state.durationUnit,
+						splitTasks: state.splitTasks,
+					},
+					task => {
+						const id = task?.calendar;
+						if (id != null && state._calendars?.[id])
+							return state._calendars[id];
+						return state._calendar;
+					}
+				);
+				state.tasks = tasksCopy;
+			} else {
+				// unchanged - omit so the router keeps the existing tree
+				delete state.tasks;
+			}
+		}
+		if (tasksChanged) {
+			// reset filtering, sort and history on tasks update
 			this.getHistory()?.resetHistory();
 			const currentState = this.getState();
-			if (currentState.tasks && currentState._isFiltered) {
+			if (currentState._isFiltered) {
 				this.setState({ _isFiltered: false, filterValues: {} });
-				currentState.tasks.filterTree();
 			}
+			if (currentState._sort) this.setState({ _sort: null });
+		}
+		if (resourcesChanged && this.getState()._resourceSort) {
+			this.setState({ _resourceSort: null });
 		}
 
 		this._router.init({
@@ -1348,14 +1745,28 @@ export default class DataStore extends Store<IData> {
 			markers: [],
 			autoScale: true,
 			durationUnit: "day",
+			highlightTime: null,
 			focusTask: null,
+			gridWidth: 440,
+			_compactMode: false,
+			_sort: null,
+			_resourceSort: null,
 			...update,
 			...state,
 		});
 
-		// [FIXME] reacts to any external changes to props
-		// must compare prev. and current state (+use the initOnce logic?)
+	}
 
+	private changed(
+		state: Partial<IDataConfig>,
+		...keys: (keyof IDataConfig)[]
+	): boolean {
+		return keys.some(k => {
+			if (!(k in state)) return false; // not part of this update
+			const a = this._prevConfig[k];
+			const b = state[k];
+			return a !== b && !isSame(a, b);
+		});
 	}
 
 	setState(state: Partial<IData>, ctx?: TDataConfig) {
@@ -1367,8 +1778,13 @@ export default class DataStore extends Store<IData> {
 	}
 
 	getTask(id: TID) {
-		const { tasks } = this.getState();
-		return tasks.byId(id);
+		const { tree } = this.getState();
+		return tree.byId(id);
+	}
+
+	getResource(id: TID) {
+		const { resources } = this.getState();
+		return resources.byId(id);
 	}
 
 	getHistory() {
@@ -1377,9 +1793,96 @@ export default class DataStore extends Store<IData> {
 			| HistoryManager
 			| undefined;
 	}
+	getCalendar(id?: TID): ICalendar | undefined {
+		const { _calendar, _calendars } = this.getState();
+		return _calendars?.[id] ?? _calendar ?? undefined;
+	}
 
-	serialize() {
-		return this.getState().tasks.serialize();
+	getTaskCalendar(task: Partial<ITask>): ICalendar | undefined {
+		return this.getCalendar(task?.calendar);
+	}
+
+	getResourceCalendar(resource: Partial<IResource>): ICalendar | undefined {
+		return this.getCalendar(resource?.calendar);
+	}
+
+	private getLoadHours(
+		day: Date,
+		task: Partial<ITask>,
+		resource: Partial<IResource>
+	) {
+		const taskCalendar = this.getTaskCalendar(task);
+		const resourceCalendar = this.getResourceCalendar(resource);
+
+		if (taskCalendar && resourceCalendar) {
+			return Math.min(
+				taskCalendar.getWorkingHours(day),
+				resourceCalendar.getWorkingHours(day)
+			);
+		}
+
+		return (
+			resourceCalendar?.getWorkingHours(day) ??
+			taskCalendar?.getWorkingHours(day)
+		);
+	}
+
+	getGrouping() {
+		if (!this.getState().groupBy?.field) return null;
+		return this._modules.get("groupManager") as GroupManager | undefined;
+	}
+
+	serialize(config?: { data: TDataName }) {
+		const name = config?.data || "tasks";
+		if (name === "calendars") {
+			const { _calendars } = this.getState();
+			if (!_calendars) return null;
+			return Object.entries(_calendars).map(
+				([id, instance]: [string, ICalendar]) => ({
+					...(instance?.serialize?.() || {}),
+					...(instance?.css ? { css: instance.css } : {}),
+					id,
+				})
+			);
+		}
+
+		const collection = this.getState()[name];
+		if (collection) {
+			if (collection instanceof GanttDataTree)
+				return collection.serialize();
+			if (collection instanceof DataArray)
+				return collection.map(obj => obj);
+			if (collection instanceof DataTree) return collection.toArray();
+		}
+		return null;
+	}
+
+	getTaskResources(id: TID): Array<TResourceAssignment> {
+		const { _assignments, resources } = this.getState();
+		if (!resources || !_assignments) return [];
+		const arr = _assignments.byTask[id];
+		if (!arr) return [];
+		return arr
+			.map(obj => {
+				const res = resources.byId(obj.resource);
+				const item = { ...obj };
+				delete item.resource;
+				delete item.task;
+				return res ? { ...item, ...res, assignmentId: obj.id } : null;
+			})
+			.filter(Boolean);
+	}
+
+	getResourceTasks(id: TID) {
+		const { _assignments, tasks } = this.getState();
+		if (!_assignments) return [];
+		const arr = _assignments.byResource[id];
+		if (!arr) return [];
+		return arr
+			.map(obj => {
+				return tasks.byId(obj.task) || null;
+			})
+			.filter(Boolean);
 	}
 
 	private changeScale(zoom: IZoomConfig, step: number) {
@@ -1403,6 +1906,17 @@ export default class DataStore extends Store<IData> {
 		return false;
 	}
 
+	private shouldExpandScale(width: number): boolean {
+		const { start, end, _chartWidth, _scales, cellWidth } = this.getState();
+		if (start && end && _chartWidth && _scales?.width && cellWidth) {
+			const units = _scales.width / cellWidth;
+			const scaleWidth = units * width;
+			return scaleWidth < _chartWidth;
+		}
+
+		return false;
+	}
+
 	private isScheduled(data: ITask[]) {
 		if (!this.getState().unscheduledTasks) return true;
 
@@ -1413,7 +1927,7 @@ export default class DataStore extends Store<IData> {
 	}
 
 	private resetSummaryDates(id: TID, eventSource: string, silent?: boolean) {
-		const { tasks, durationUnit, splitTasks, calendar } = this.getState();
+		const { tasks, durationUnit, splitTasks } = this.getState();
 		const obj = tasks.byId(id);
 		const kids = obj.data;
 
@@ -1431,11 +1945,14 @@ export default class DataStore extends Store<IData> {
 				!isEqual(obj.end, task.end)
 			) {
 				if (silent) {
-					normalizeDates(task, {
-						durationUnit,
-						splitTasks,
-						calendar,
-					});
+					normalizeDates(
+						task,
+						{
+							durationUnit,
+							splitTasks,
+						},
+						this.getTaskCalendar(task)
+					);
 					tasks.update(id, task);
 				} else
 					this.in.exec("update-task", {
@@ -1453,7 +1970,7 @@ export default class DataStore extends Store<IData> {
 
 	private moveSummaryKids(
 		task: Partial<ITask>,
-		move: (date: Date) => Date,
+		move: (date: Date, kid: IParsedTask) => Date,
 		eventSource: string
 	) {
 		const { tasks } = this.getState();
@@ -1461,7 +1978,7 @@ export default class DataStore extends Store<IData> {
 		task.data.forEach((kid: IParsedTask) => {
 			const task = {
 				...tasks.byId(kid.id),
-				start: move(kid.start),
+				start: move(kid.start, kid),
 			};
 			delete task.end;
 			delete task.id;
@@ -1476,17 +1993,6 @@ export default class DataStore extends Store<IData> {
 		});
 	}
 
-	private calcScaleDate(x: number) {
-		const { _scales, _start, _weekStart } = this.getState();
-		const width =
-			_scales.lengthUnit === "day"
-				? _scales.lengthUnitWidth / 24
-				: _scales.lengthUnitWidth;
-		return getAdder("hour")(
-			getUnitStart(_scales.minUnit, _start, _weekStart),
-			Math.floor(x / width)
-		);
-	}
 	getNextRow(id: TID): IParsedTask {
 		const data = this.getState()._tasks;
 		const index = data.findIndex((t: IParsedTask) => t.id === id);
@@ -1498,11 +2004,8 @@ export default class DataStore extends Store<IData> {
 		const index = data.findIndex((t: IParsedTask) => t.id === id);
 		return data[index - 1];
 	}
-	scrollToTask(
-		id: TID,
-		mode: TScrollMode,
-		eventSource?: keyof IDataMethodsConfig
-	) {
+
+	scrollToTask(id: TID, mode: TScrollMode) {
 		const {
 			_chartWidth,
 			_chartHeight,
@@ -1510,13 +2013,15 @@ export default class DataStore extends Store<IData> {
 			scrollTop,
 			cellWidth,
 			cellHeight,
-			tasks,
 			_tasks,
 			_scrollSize,
 		} = this.getState();
 
-		const task = this.getTask(id);
-		const ev: IDataMethodsConfig["scroll-chart"] = { eventSource };
+		const index = _tasks.findIndex(t => t.id === id || t.$id === id);
+		if (index < 0) return;
+
+		const task = this.getTask(_tasks[index].id);
+		const ev: IDataMethodsConfig["scroll-chart"] = {};
 		if (mode?.toString().indexOf("x") !== -1) {
 			if (task.$x + task.$w / 2 < scrollLeft) {
 				ev.left = Math.max(task.$x - (cellWidth || 0), 0);
@@ -1525,21 +2030,18 @@ export default class DataStore extends Store<IData> {
 				ev.left = task.$x - _chartWidth + width;
 			}
 		}
-		const rows = eventSource === "add-task" ? tasks.toArray() : _tasks;
-		const index = rows.findIndex(t => t.id === id);
-		if (index > -1) {
-			const scrollY = index * cellHeight;
-			let top = null;
-			if (scrollY < scrollTop) {
-				top = scrollY;
-			} else if (scrollY + cellHeight > scrollTop + _chartHeight) {
-				top = scrollY - _chartHeight + cellHeight + _scrollSize;
-			}
-			if (top !== null) {
-				ev.top = Math.max(top, 0);
-			}
-			this.in.exec("scroll-chart", ev);
+
+		const scrollY = index * cellHeight;
+		let top = null;
+		if (scrollY < scrollTop) {
+			top = scrollY;
+		} else if (scrollY + cellHeight > scrollTop + _chartHeight) {
+			top = scrollY - _chartHeight + cellHeight + _scrollSize;
 		}
+		if (top !== null) {
+			ev.top = Math.max(top, 0);
+		}
+		this.in.exec("scroll-chart", ev);
 	}
 }
 
@@ -1573,9 +2075,9 @@ export type IDataMethodsConfig = CombineTypes<
 			id: TID;
 			toggle?: boolean;
 			range?: boolean;
-			column?: string | boolean;
 			show?: TScrollMode;
 			focus?: "grid" | "chart";
+			eventSource?: string;
 		};
 		["drag-task"]: {
 			id: TID;
@@ -1601,7 +2103,6 @@ export type IDataMethodsConfig = CombineTypes<
 			inProgress?: boolean;
 			source?: TID;
 		};
-
 		["indent-task"]: { id: TID; mode: boolean };
 
 		["show-editor"]: { id: TID };
@@ -1609,7 +2110,6 @@ export type IDataMethodsConfig = CombineTypes<
 			id?: TID;
 			link: Partial<ILink>;
 			eventSource?: string;
-			skipUndo: boolean;
 		};
 		["update-link"]: { id: TID; link: Partial<ILink> };
 		["delete-link"]: { id: TID };
@@ -1618,7 +2118,6 @@ export type IDataMethodsConfig = CombineTypes<
 			left?: number;
 			top?: number;
 			date?: Date;
-			eventSource?: string;
 		};
 		["render-data"]: IVisibleArea;
 		["request-data"]: {
@@ -1629,6 +2128,7 @@ export type IDataMethodsConfig = CombineTypes<
 			data: {
 				tasks?: Array<ITask>;
 				links?: Array<ILink>;
+				assignments?: Array<IAssignment>;
 			};
 		};
 
@@ -1644,6 +2144,7 @@ export type IDataMethodsConfig = CombineTypes<
 			value?: any;
 			open?: boolean;
 		};
+		["group-tasks"]: IGroupByConfig;
 		["hotkey"]: {
 			key: string;
 			event: any;
@@ -1653,16 +2154,32 @@ export type IDataMethodsConfig = CombineTypes<
 		["schedule-tasks"]: {
 			id?: TID;
 			task?: Partial<ITask>;
+			link?: TID;
 		};
 		["undo"]: void;
 		["redo"]: void;
 		["split-task"]: { id: TID; segmentIndex?: number };
 		["export-data"]: IExportConfig;
 		["import-data"]: { data: string; format?: "mspx" };
+		["add-assignment"]: {
+			id?: TID;
+			assignment: Partial<IAssignment>;
+		};
+		["delete-assignment"]: { id: TID };
+		["update-assignment"]: { id: TID; assignment: Partial<IAssignment> };
+		["resize-grid"]: { width: number };
+		["set-display-mode"]: { mode: TDisplayMode };
+		["open-resource-row"]: { id: TID; mode: boolean };
+		["sort-resources"]: {
+			key: string;
+			order: "asc" | "desc";
+			add?: boolean;
+			_columns: IResourceColumn[];
+		};
 	},
 	{
 		skipProvider?: boolean;
-		spipUndo?: boolean;
+		skipUndo?: boolean;
 		[key: string]: any;
 	}
 >;

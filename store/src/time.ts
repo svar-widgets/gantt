@@ -38,7 +38,7 @@ import {
 } from "date-fns";
 
 import { units } from "./scales";
-import type { GanttScaleUnit, Calendar } from "./types";
+import type { GanttScaleUnit, ICalendar } from "./types";
 
 const diff: { [name: string]: { (start: Date, end: Date): number } } = {
 	year: differenceInYears,
@@ -160,7 +160,7 @@ const add: { [name: string]: { (start: number | Date, step: number): Date } } =
 
 export function getDiffer(
 	unit: string,
-	calendar?: Calendar,
+	calendar?: ICalendar,
 	_weekStart?: Day
 ): {
 	(start: Date, end: Date, lengthUnit?: string, unitSize?: boolean): number;
@@ -285,7 +285,7 @@ function getLengthUnitDiff(
 
 export function getAdder(
 	unit: string,
-	calendar?: Calendar
+	calendar?: ICalendar
 ): {
 	(start: number | Date, step: number): Date;
 } {
@@ -395,7 +395,7 @@ export function registerScaleUnit(unit: string, config: GanttScaleUnit) {
 export function adjustToWorkingDay(
 	start: Date,
 	diff: number = 1,
-	calendar: Calendar
+	calendar: ICalendar
 ): Date {
 	if (!calendar.isWorkingDay(start))
 		start =
@@ -405,7 +405,7 @@ export function adjustToWorkingDay(
 	return start;
 }
 
-export function shiftByWorkingDays(calendar: Calendar) {
+export function shiftByWorkingDays(calendar: ICalendar) {
 	return (date: Date, diff: number) => {
 		if (diff > 0) {
 			for (let i = 0; i < diff; i++) {
@@ -419,6 +419,10 @@ export function shiftByWorkingDays(calendar: Calendar) {
 		}
 		return date;
 	};
+}
+
+export function formatDay(date: Date): string {
+	return format(date, "yyyy-MM-dd");
 }
 
 export { format };

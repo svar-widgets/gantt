@@ -5,6 +5,7 @@ import Toolbar from "./components/Toolbar.svelte";
 import ContextMenu from "./components/ContextMenu.svelte";
 import Editor from "./components/Editor.svelte";
 import HeaderMenu from "./components/grid/HeaderMenu.svelte";
+import ResourceLoad from "./components/resource/ResourceLoad.svelte";
 
 import Tooltip from "./widgets/Tooltip.svelte";
 
@@ -17,8 +18,11 @@ export {
 	defaultToolbarButtons,
 	defaultMenuOptions,
 	defaultColumns,
+	getDefaultColumns,
+	getResourceColumns,
 	defaultTaskTypes,
 	getEditorItems,
+	getEditorButtons,
 	getToolbarButtons,
 	getMenuOptions,
 	registerScaleUnit,
@@ -35,6 +39,7 @@ export {
 	Toolbar,
 	Tooltip,
 	Editor,
+	ResourceLoad,
 	Material,
 	Willow,
 	WillowDark,

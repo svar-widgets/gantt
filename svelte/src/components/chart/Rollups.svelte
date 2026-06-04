@@ -1,9 +1,10 @@
 <script>
+	import { setID } from "@svar-ui/lib-dom";
 	let { rollup, parent } = $props();
 </script>
 
 <div
-	data-tooltip-id={rollup.id}
+	data-rollup-id={setID(rollup.id)}
 	class={`wx-rollup wx-${rollup.type}-rollup`}
 	style={`left:${rollup.$x_rollup}px;top:${parent.$y + parent.$h + rollup.$y_rollup_relative}px;width:${rollup.$w_rollup}px;height:${rollup.$h_rollup}px;`}
 ></div>

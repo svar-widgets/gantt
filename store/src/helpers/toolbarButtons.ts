@@ -8,7 +8,15 @@ import type {
 } from "../types";
 import type { TID } from "@svar-ui/lib-state";
 
-export function getToolbarButtons(config?: IDataConfig) {
+const groupedToolbarButtons = new Set<TID>([
+	"add-task",
+	"delete-task",
+	"edit-task",
+	"undo",
+	"redo",
+]);
+
+export function getToolbarButtons(config?: IDataConfig & { group?: boolean }) {
 	let buttons = [...defaultToolbarButtons];
 
 	return buttons;

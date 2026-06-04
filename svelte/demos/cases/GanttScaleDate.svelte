@@ -10,7 +10,7 @@
 	let api = $state();
 
 	function scrollToStart() {
-		api.exec("scroll-chart", { date: new Date() });
+		api.exec("scroll-chart", { date: new Date(2026, 3, 1) });
 	}
 	function scrollToEnd() {
 		api.exec("scroll-chart", { date: new Date(2026, 5, 1) });
@@ -55,8 +55,5 @@
 		position: relative;
 		height: 100%;
 		overflow: hidden;
-	}
-	.input {
-		margin: 4px;
 	}
 </style>

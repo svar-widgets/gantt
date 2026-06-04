@@ -28,6 +28,7 @@
 	}
 	function reload() {
 		tasks = [...data.tasks];
+		if (api.serialize().length === data.tasks.length) tasks.pop();
 		text = "";
 	}
 </script>

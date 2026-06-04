@@ -11,7 +11,7 @@
 
 	function reload() {
 		tasks = [...data.tasks];
-		tasks.pop();
+		if (api.serialize().length === data.tasks.length) tasks.pop();
 	}
 	function clear() {
 		api.exec("filter-tasks", {});

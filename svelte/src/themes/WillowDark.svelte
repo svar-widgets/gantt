@@ -1,11 +1,15 @@
 <script>
 	import { WillowDark } from "@svar-ui/svelte-core";
+	import { WillowDark as GridWillowDark } from "@svar-ui/svelte-grid";
 	let { fonts = true, children } = $props();
 </script>
 
 {#if children}
-	<WillowDark {fonts}>{@render children()}</WillowDark>
+	<WillowDark {fonts}
+		><GridWillowDark>{@render children()}</GridWillowDark></WillowDark
+	>
 {:else}
+	<GridWillowDark {fonts} />
 	<WillowDark {fonts} />
 {/if}
 
@@ -92,13 +96,11 @@
 		--wx-gantt-marker-font-color: #fff;
 		--wx-gantt-marker-color: rgba(6, 189, 248, 0.77);
 
-		/* tooltips */
-		--wx-tooltip-font: var(--wx-font-weight) var(--wx-font-size)
-			var(--wx-font-family);
-		--wx-tooltip-font-color: #e6e6e6;
-		--wx-tooltip-background: #4f525a;
-
 		/* sidebar */
 		--wx-sidebar-close-icon: #384047;
+
+		/* resources */
+		--wx-gantt-load-normal-color: #283433;
+		--wx-gantt-load-danger-color: #3c2a2c;
 	}
 </style>

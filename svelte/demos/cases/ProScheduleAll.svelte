@@ -2,7 +2,7 @@
 	import { getData } from "../data";
 	import { Gantt, Editor, ContextMenu } from "../../src";
 	import { DatePicker, Field, Checkbox } from "@svar-ui/svelte-core";
-	import { Calendar, defaultColumns } from "@svar-ui/gantt-store";
+	import { defaultColumns } from "@svar-ui/gantt-store";
 
 	const data = getData("calendar", {
 		splitTasks: true,
@@ -11,9 +11,17 @@
 
 	let { skinSettings } = $props();
 	let api = $state();
-	let tasks = $state(data.tasks);
+	let tasks = $state(
+		data.tasks.map(t => {
+			const copy = { ...t };
+			delete copy.calendar;
+			return copy;
+		})
+	);
 
-	const calendar = new Calendar();
+	const calendar = true;
+	let taskCalendars = $state(false);
+	let calendarsList = $state([]);
 	let projectStart = $state(new Date(2026, 3, 2));
 	let projectEnd = $state(new Date(2026, 4, 20));
 
@@ -48,7 +56,7 @@
 		{
 			id: "add-task",
 			header: "Add task",
-			width: 50,
+			width: 37,
 			align: "center",
 		},
 	];
@@ -74,6 +82,21 @@
 	function onBaselinesChange(ev) {
 		baselines = ev.value;
 		cellHeight = baselines ? 44 : 38;
+	}
+
+	function onTaskCalendarsChange(ev) {
+		taskCalendars = ev.value;
+		calendarsList = taskCalendars ? data.calendars : [];
+		tasks = (api ? api.serialize() : tasks).map(t => {
+			if (!taskCalendars) {
+				const copy = { ...t };
+				delete copy.calendar;
+				return copy;
+			}
+			if (t.id === 10 || t.id === 23)
+				return { ...t, calendar: "wednesday-off" };
+			return t;
+		});
 	}
 
 	function onSplitChange() {
@@ -135,6 +158,11 @@
 			onchange={onSplitChange}
 		/>
 		<Checkbox bind:value={slack} label="Slack" />
+		<Checkbox
+			value={taskCalendars}
+			label="Task calendars"
+			onchange={onTaskCalendarsChange}
+		/>
 	</div>
 	<div class="gantt">
 		<Editor {api} />
@@ -149,6 +177,7 @@
 				links={data.links}
 				scales={data.scales}
 				{calendar}
+				calendars={calendarsList}
 				schedule={{ auto: true }}
 				{criticalPath}
 				{projectStart}
@@ -186,5 +215,12 @@
 	}
 	:global(.bar .wx-field.wx-left) {
 		margin-bottom: 0px;
+	}
+	.demo :global(.wednesday-off) {
+		background-color: lavender;
+	}
+
+	:global(.wx-willow-dark-theme) .demo :global(.wednesday-off) {
+		background-color: #383650;
 	}
 </style>

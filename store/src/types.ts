@@ -10,7 +10,15 @@ import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 import type DataStore from "./DataStore";
 import type { IApi as ITableApi, IColumn, IFilterValues } from "@svar-ui/grid-store";
-import { TaskSlackInfo } from "@svar-ui/lib-schedule";
+
+import type {
+	TaskSlackInfo,
+	ICalendarRule,
+	CalendarConfig,
+	ICalendar,
+} from "./schedule-types";
+export type { TaskSlackInfo, ICalendarRule, CalendarConfig, ICalendar };
+import ResourceDataTree from "./pro/ResourceDataTree";
 
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };
@@ -80,12 +88,92 @@ export type TLengthUnit =
 	| string;
 export type TDurationUnit = "day" | "hour";
 
+export type TSerializeData = {
+	tasks: Partial<ITask>[];
+	links: ILink[];
+	assignments: IAssignment[];
+	resources: IParsedResource[];
+	tree: GanttDataTree;
+	calendars: GanttCalendarConfig[];
+};
+export type TDataName = keyof TSerializeData;
+
+export type TSortFunction = (a: IDataHash, b: IDataHash) => 1 | -1 | 0;
+export type TDisplayMode = "all" | "grid" | "chart";
+export type TCellBorders = "column" | "full";
+
+export type TCalendarGetter = (task: Partial<ITask>) => ICalendar | undefined;
 export interface ILink {
 	id?: TID;
 	type: TLinkType;
 	source: TID;
 	target: TID;
 	lag?: number;
+}
+
+export interface IResource {
+	id?: TID;
+	name?: string;
+	avatar?: string;
+	color?: string;
+	role?: string;
+	calendar?: TID;
+	parent?: TID;
+	data?: IResource[];
+	open?: boolean;
+	[key: string]: any;
+}
+
+export interface IAssignment {
+	id?: TID;
+	task: TID;
+	resource: TID;
+	units?: number;
+	[key: string]: any;
+}
+
+export type TResourceAssignment = IAssignment &
+	IResource & {
+		assignmentId: TID;
+	};
+
+export interface IDataAssignment {
+	byTask: Record<TID, IAssignment[]>;
+	byResource: Record<TID, IAssignment[]>;
+}
+
+export interface IResourceLoad {
+	percent: number;
+	hours: number;
+}
+
+export interface IParsedResource extends IResource {
+	id: TID;
+	parent: TID;
+	$level: number;
+	data?: IParsedResource[];
+}
+
+export interface IComputedResource extends IParsedResource {
+	data?: IComputedResource[];
+	$load: Record<string, IResourceLoad>;
+	$total: number;
+	$overloaded: boolean;
+	$unitLoad?: Record<string, IResourceLoad>;
+}
+
+export interface IResourceColumn {
+	id: string;
+	header?: string;
+	width?: number;
+	flexgrow?: number;
+	align?: "left" | "right" | "center";
+	resize?: boolean;
+	sort?: boolean | TSortFunction;
+	cell?: any;
+	getter?: (obj: IComputedResource) => any;
+	template?: IColumn["template"];
+	[key: string]: any;
 }
 
 export interface IGanttLink extends ILink {
@@ -113,6 +201,7 @@ export interface ITask {
 	progress?: number;
 	type?: TTaskType;
 	parent?: TID;
+	calendar?: TID;
 	unscheduled?: boolean;
 	segments?: Partial<ITask>[];
 
@@ -124,6 +213,7 @@ export interface IParsedTask extends ITask {
 	parent: TID;
 	data?: IParsedTask[];
 	$level: number;
+	$wbs?: string;
 }
 
 export interface IGanttTask extends IParsedTask {
@@ -167,6 +257,7 @@ export interface IVisibleArea {
 	from: number;
 	start: number;
 	end: number;
+	to?: number;
 }
 
 export interface IZoomConfig {
@@ -216,39 +307,25 @@ export interface ISummaryConfig {
 	autoConvert?: boolean;
 }
 
-export interface ICalendarConfig {
-	name?: string;
-	weekHours?: {
-		sunday?: number;
-		monday?: number;
-		tuesday?: number;
-		wednesday?: number;
-		thursday?: number;
-		friday?: number;
-		saturday?: number;
-	};
+export interface IGroupByConfig {
+	field: string;
+	taskHierarchy?: boolean;
+	resourceHierarchy?: boolean;
+	multipleResources?: boolean;
+	ungrouped?: false | "top" | "bottom";
+	resolver?: (task: ITask) => any;
 }
 
-export interface Calendar {
-	isWorkingDay(date: Date): boolean;
-	addRule(rule: (date: Date) => number): void;
-	clone(config?: ICalendarConfig): Calendar;
-	addWorkingDays(
-		start: Date,
-		days: number,
-		excludeEndDate?: boolean
-	): Date | null;
-	addWorkingHours(start: Date, hours: number): Date | null;
-	getNextWorkingDay(date: Date): Date | null;
-	getPreviousWorkingDay(date: Date): Date | null;
-	getWorkingDays(start: Date, end: Date, excludeEndDate?: boolean): number;
-	getWorkingHours(start: Date, end?: Date, excludeEndDate?: boolean): number;
-	setDayHours(date: Date, hours: number): void;
-	setRangeHours(start: Date, end: Date, hours: number): void;
+export interface GanttCalendarConfig extends CalendarConfig {
+	id: TID;
+	css?: string;
 }
+
 export interface IConfig {
 	tasks?: ITask[];
 	links?: any[];
+	resources?: IResource[];
+	assignments?: IAssignment[];
 	taskTypes?: ITaskType[];
 	selected?: TID[];
 	activeTask?: TID | { id: TID; segmentIndex: number };
@@ -269,52 +346,75 @@ export interface IConfig {
 	baselines?: boolean;
 	rollups?: boolean | { type: "all" | "closest" };
 	markers?: IMarker[];
-	criticalPath?: ICriticalPathConfig;
+	criticalPath?: ICriticalPathConfig | null;
 	projectStart?: Date;
 	projectEnd?: Date;
-	calendar?: Calendar;
+	calendars?: GanttCalendarConfig[];
+	calendar?: true | CalendarConfig | TID;
 	splitTasks?: boolean;
 	summary?: ISummaryConfig;
 	slack?: boolean;
+	groupBy?: string | IGroupByConfig | null;
+	wbs?: boolean;
+	highlightTime?: (date: Date, unit: TDurationUnit) => string;
+	displayMode?: TDisplayMode;
+	gridWidth?: number;
+	cellBorders?: TCellBorders;
 }
 
 export interface IDataConfig extends IConfig {
 	scrollLeft: number;
 	scrollTop: number;
 	area: IVisibleArea;
+	xArea: IVisibleArea;
 	history?: IHistory;
 	filterValues?: IFilterValues;
 	focusTask?: TFocusTask;
 	_cellWidth?: number;
 	_sort?: TSort[];
+	_resourceSort?: TSort[];
 	_weekStart?: Day;
 	_markers?: IMarker[];
 	_rollups?: {
 		[key: TID]: Array<ITask>;
 	};
+	_resources?: IComputedResource[];
 	_isFiltered?: boolean;
+	tree?: [];
 	_chartWidth?: number;
 	_chartHeight?: number;
 	_scrollSize?: number;
+	_calendar?: ICalendar;
+	_calendars?: Record<TID, ICalendar>;
+	_compactMode: boolean;
+	_columnsWidth?: number;
+	_gridCollapseThreshold?: number;
 }
 
 export interface IData
-	extends Omit<IDataConfig, "tasks" | "links" | "rollups"> {
+	extends Omit<IDataConfig, TDataName | "rollups" | "groupBy"> {
 	rollups?: false | { type: "all" | "closest" };
 	zoom?: IZoomConfig;
 	tasks: GanttDataTree;
 	links: DataArray<ILink>;
+	resources?: ResourceDataTree;
+	assignments?: DataArray<IAssignment>;
+	calendars?: GanttCalendarConfig[];
 
+	tree: GanttDataTree;
 	_tasks: IParsedTask[];
+	_tasksPatch?: boolean | null;
 	_rollups: {
 		[key: TID]: Array<ITask>;
 	};
 	_links: IGanttLink[];
+	_assignments?: IDataAssignment;
 	_selected?: ITask[];
 	_activeTask?: ITask;
 	_start?: Date;
 	_end?: Date;
 	_scales?: GanttScaleData;
+	_scaleMinUnit?: TLengthUnit;
 	_scaleDate?: Date;
 	_zoomOffset?: number;
 	_weekStart?: Day;
@@ -323,6 +423,9 @@ export interface IData
 	_chartWidth?: number;
 	_chartHeight?: number;
 	_scrollSize?: number;
+	_columnsWidth?: number;
+	groupBy?: IGroupByConfig;
+	_gridCollapseThreshold?: number;
 }
 
 export interface IDataHash<T = any> {
@@ -392,7 +495,7 @@ export type IGanttColumn = {
 	id?: string;
 	template?: IColumn["template"];
 	_template?: IColumn["template"];
-	sort?: boolean;
+	sort?: boolean | TSortFunction;
 	cell?: any;
 	editor?: IColumn["editor"];
 	options?: IColumn["options"];
@@ -406,7 +509,7 @@ export type TCommonShape = {
 	labelTemplate?: (value: any) => string;
 	config?: Record<string, any>;
 	[key: string]: any;
-	isHidden?: (task: Partial<ITask>) => boolean;
+	isHidden?: (task: Partial<ITask>, state: IData) => boolean;
 	isDisabled?: (task: Partial<ITask>, state: IData) => boolean;
 };
 
@@ -448,6 +551,15 @@ export type ILinksShape = TCommonShape & {
 export type ITwoStateShape = TCommonShape & {
 	comp: "twostate";
 };
+export type IResources = TCommonShape & {
+	comp: "resources";
+};
+export type ITabs = TCommonShape & {
+	comp: "tabs";
+};
+export type ISegments = TCommonShape & {
+	comp: "segments";
+};
 
 export type TEditorItem =
 	| TTextFieldShape
@@ -458,7 +570,10 @@ export type TEditorItem =
 	| TRadioShape
 	| ILinksShape
 	| ITwoStateShape
-	| TCheckboxShape;
+	| TCheckboxShape
+	| IResources
+	| ISegments
+	| ITabs;
 
 export type ITaskType = {
 	id: TID;
@@ -506,5 +621,11 @@ export interface IApi {
 	getStores: () => { data: DataStore };
 	getTable: (waitRender?: boolean) => Promise<ITableApi> | ITableApi;
 	getTask: (id: TID) => ITask;
-	serialize: () => ITask[];
+	getResource: (id: TID) => IResource;
+	serialize: (config?: {
+		data?: keyof TSerializeData;
+	}) => TSerializeData[keyof TSerializeData] | null;
+	getCalendar: (id?: TID) => ICalendar | undefined;
+	getTaskResources: (id: TID) => TResourceAssignment[];
+	getResourceTasks: (id: TID) => ITask[];
 }

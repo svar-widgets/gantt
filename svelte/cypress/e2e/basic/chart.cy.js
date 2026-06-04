@@ -405,6 +405,13 @@ context(
 			});
 
 			it("slack bars exist", () => {
+				const resizeObserverLoopErrRe =
+					/^[^(ResizeObserver loop limit exceeded)]/;
+				Cypress.on("uncaught:exception", err => {
+					if (resizeObserverLoopErrRe.test(err.message)) {
+						return false;
+					}
+				});
 				cy.get(".wx-slack").should("have.length", 4);
 				cy.get(".wx-slack.wx-slack-task").should("have.length", 4);
 

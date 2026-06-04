@@ -1,5 +1,5 @@
 import type { TID } from "@svar-ui/lib-state";
-import type { GanttDataTree, ILink, IDataHash, ITask } from "../types";
+import type { ILink, IDataHash, ITask, IData } from "../types";
 import { IOptionConfig } from "./menuOptions";
 import { IButtonConfig } from "./toolbarButtons";
 
@@ -11,15 +11,11 @@ export function handleAction(
 	target: TTarget,
 	_: any
 ): void {
-	const { selected, tasks } = api.getState();
+	const state = api.getState();
+	const { selected } = state;
 	const hasSelection = selected.length;
 	// single-target ops
-	const single = [
-		"edit-task",
-		"paste-task",
-		"edit-task:task",
-		"edit-task:segment",
-	];
+	const single = ["edit-task", "paste-task", "undo", "redo"];
 	// do not sort index-/level-wise
 	const avoidMap = ["copy-task", "cut-task"];
 	// apply in reverse to maintain relative positions
@@ -53,7 +49,7 @@ export function handleAction(
 	} else if (hasSelection) {
 		const order = avoidMap.includes(action)
 			? selected
-			: mapOrder(selected, tasks, limit);
+			: mapOrder(selected, limit, state);
 		if (reversed.includes(action)) {
 			order.reverse();
 		}
@@ -72,10 +68,13 @@ export function handleAction(
 
 function mapOrder(
 	selected: TID[],
-	tasks: GanttDataTree,
-	limit: { parent: boolean; level: number }
+	limit: { parent: boolean; level: number },
+	state: IData
 ): TID[] {
-	let order = selected.map(id => {
+	const { tasks, tree, groupBy } = state;
+	let order = selected.map(treeTaskId => {
+		let id = treeTaskId;
+		if (groupBy?.field) id = tree.byId(id)?.$id || id;
 		const tobj = tasks.byId(id);
 		return {
 			id,
@@ -184,9 +183,6 @@ function runSingleAction(
 		select = true;
 	} else if (op === "edit-task") {
 		op = "show-editor";
-		if (mode === "segment" && typeof target === "object") {
-			extraData = target;
-		}
 	} else if (op === "convert-task") {
 		op = "update-task";
 		extraData = { task: { type: mode } };
@@ -217,7 +213,8 @@ function runSingleAction(
 
 	exec(op, data);
 
-	if (select) exec("select-task", { id: data.id, toggle: !!order });
+	if (select)
+		exec("select-task", { id: data.id, toggle: !!order, eventSource: op });
 }
 
 export function isHandledAction(

@@ -8,6 +8,9 @@ export default {
 		Task: "任务",
 		Milestone: "里程碑",
 		"Summary task": "总结任务",
+		Resources: "资源",
+		WBS: "WBS",
+		Hours: "小时",
 
 		// Sidebar
 		Save: "保存",
@@ -27,6 +30,17 @@ export default {
 		"Start-to-start": "开始开始",
 		"End-to-end": "端到端",
 		"Start-to-end": "开始到结束",
+		"No links": "无链接",
+		"No assignments": "无分配",
+		"No segments": "无分段",
+		"Add resource": "添加资源",
+		Resource: "资源",
+		General: "常规",
+		Links: "链接",
+		Lag: "滞后",
+		Segments: "任务段",
+		Ungrouped: "未分组",
+		Unassigned: "未分配",
 
 		// Context menu / toolbar
 		Add: "添加",

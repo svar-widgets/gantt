@@ -2,6 +2,7 @@ import type { Component, ComponentProps } from "svelte";
 import { ContextMenu as BaseContextMenu } from "@svar-ui/svelte-menu";
 import { Toolbar as BaseToolbar } from "@svar-ui/svelte-toolbar";
 import { Editor as BaseEditor } from "@svar-ui/svelte-editor";
+import { Tooltip as BaseTooltip } from "@svar-ui/svelte-core";
 import {
 	HeaderMenu as BaseHeaderMenu,
 	IColumnConfig as ITableColumn,
@@ -12,7 +13,11 @@ import type {
 	IApi,
 	IConfig,
 	ITask,
+	ILink,
+	IResource,
 	IGanttColumn,
+	IResourceColumn,
+	IResourceLoad,
 } from "@svar-ui/gantt-store";
 
 export * from "@svar-ui/gantt-store";
@@ -36,8 +41,6 @@ export declare const Gantt: Component<
 			}) => void;
 		}>;
 		readonly?: boolean;
-		cellBorders?: "column" | "full";
-		highlightTime?: (date: Date, unit: "day" | "hour") => string;
 		init?: (api: IApi) => void;
 	} & IConfig &
 		GanttActions<TMethodsConfig>
@@ -67,17 +70,28 @@ export declare const Editor: Component<
 	}
 >;
 
-export declare const Tooltip: Component<{
-	content?: Component<{
-		data: ITask;
-	}>;
-	api?: IApi;
-	children?: () => any;
-}>;
+type TooltipContentData =
+	| { task: ITask; segmentIndex: number | null }
+	| { link: ILink }
+	| { rollup: ITask }
+	| { resource: IResource };
 
-export declare const Fullscreen: Component<{
-	hotkey?: string;
-	children?: () => any;
+export declare const Tooltip: Component<
+	Omit<ComponentProps<typeof BaseTooltip>, "content"> & {
+		content?: Component<{
+			api: IApi;
+			data: TooltipContentData;
+		}>;
+		api?: IApi;
+		children?: () => any;
+	}
+>;
+
+export declare const ResourceLoad: Component<{
+	api?: IApi;
+	columns?: IResourceColumn[];
+	mode?: "grid" | "chart";
+	template?: (load: IResourceLoad) => string;
 }>;
 
 export declare const Material: Component<{

@@ -8,7 +8,13 @@ import type {
 	IMarker,
 	IData,
 } from "./types";
-import { getUnitStart, getAdder, getDiffer, getSmallerUnitCount } from "./time";
+import {
+	getUnitStart,
+	getAdder,
+	getDiffer,
+	getSmallerUnitCount,
+	formatDay,
+} from "./time";
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 
@@ -122,6 +128,7 @@ export function resetScales(
 				width: cellWidth,
 				value,
 				date: cellStart,
+				key: formatDay(cellStart),
 				css,
 				unit: line.unit,
 			});
@@ -129,7 +136,11 @@ export function resetScales(
 			date = next;
 		}
 
-		return { cells, add, height: fullHeight / scales.length };
+		return {
+			cells,
+			add,
+			height: fullHeight / scales.length,
+		};
 	});
 
 	let lengthUnitWidth = width;
@@ -371,4 +382,16 @@ function setLengthUnit(unit: string, lengthUnit: string): string {
 
 function getCellWidth(width: number | undefined, fallback: number) {
 	return width ?? fallback;
+}
+
+export function calcScaleDate(x: number, state: Partial<IData>) {
+	const { _scales, _start, _weekStart } = state;
+	const width =
+		_scales.lengthUnit === "day"
+			? _scales.lengthUnitWidth / 24
+			: _scales.lengthUnitWidth;
+	return getAdder("hour")(
+		getUnitStart(_scales.minUnit, _start, _weekStart),
+		Math.floor(x / width)
+	);
 }

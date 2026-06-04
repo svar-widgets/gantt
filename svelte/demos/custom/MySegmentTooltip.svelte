@@ -1,19 +1,25 @@
 <script>
 	import { format } from "date-fns";
-	let { data, segmentIndex } = $props();
-	const mask = "yyyy.MM.dd";
+
+	let { api, data } = $props();
 
 	const isSegment = $derived(
-		data?.segments && typeof segmentIndex === "number"
+		data?.task?.segments && typeof data.segmentIndex === "number"
 	);
-	const values = $derived(isSegment ? data.segments[segmentIndex] : data);
+
+	const values = $derived(
+		isSegment ? data.task.segments[data.segmentIndex] : data.task
+	);
+
+	const mask = "yyyy.MM.dd";
 </script>
 
-{#if data}
+{#if data?.task}
+	{@const task = data.task}
 	<div class="data">
 		<div class="text">
-			<span class="caption">{data.type}:</span>
-			{data.text}
+			<span class="caption">{task.type}:</span>
+			{task.text}
 		</div>
 		{#if isSegment}
 			<div class="text">
@@ -31,6 +37,18 @@
 				{format(values.end, mask)}
 			</div>
 		{/if}
+	</div>
+{:else if data?.link}
+	{@const link = data.link}
+	<div class="data">
+		<div class="text">
+			<span class="caption">predecessor:</span>
+			{api.getTask(link.source).text}
+		</div>
+		<div class="text">
+			<span class="caption">successor:</span>
+			{api.getTask(link.target).text}
+		</div>
 	</div>
 {/if}
 

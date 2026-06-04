@@ -185,7 +185,10 @@ function calculateTaskDimensions(
 	}
 
 
-	if (state.unscheduledTasks && t.unscheduled && !isBaseline)
+	if (
+		(state.unscheduledTasks && t.unscheduled && !isBaseline) ||
+		(state.groupBy && t.$group)
+	)
 		t["$skip"] = true;
 	else t[skip] = isEqual(startDate, endDate);
 }

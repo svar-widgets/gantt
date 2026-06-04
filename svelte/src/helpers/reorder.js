@@ -35,6 +35,7 @@ export function reorder(node, config) {
 	}
 
 	function handleTouchstart(event) {
+		if (config.isDisabled?.()) return;
 		source = locate(event);
 		if (!checkSource(source)) return;
 
@@ -59,7 +60,7 @@ export function reorder(node, config) {
 	}
 
 	function handleMousedown(event) {
-		if (event.which !== 1) return;
+		if (config.isDisabled?.() || event.which !== 1) return;
 
 		source = locate(event);
 		if (!checkSource(source)) return;

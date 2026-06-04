@@ -18,7 +18,9 @@
 
 </div>
 
-**SVAR Svelte Gantt** is a customizable, interactive Gantt chart component written in Svelte and designed for visualizing project timelines. The component provides an intuitive interface for managing tasks and dependencies directly on the timeline via drag-and-drop or a customizable task edit form. Comes with full Typescript support, developer-friendly API, and flexible CSS styling.
+**SVAR Svelte Gantt** is a customizable, interactive Gantt chart component written in Svelte and designed for visualizing project timelines. It provides an intuitive interface for managing tasks and dependencies directly on the timeline through drag-and-drop scheduling or a customizable task edit form. Comes with full TypeScript support, developer-friendly API, and flexible CSS styling.
+
+The component can be easily integrated with SvelteKit apps - [check the demo](https://github.com/svar-widgets/gantt-demo-sveltekit) and [integration guide](https://docs.svar.dev/svelte/gantt/category/sveltekit/).
 
 <div align="center">
 <img src="https://svar.dev/images/github/basic-gantt-react.gif" alt="SVAR Svelte Gantt UI">
@@ -27,32 +29,34 @@
 ### Key Features
 
 -   Interactive drag-and-drop interface
+-   Tasks and dependencies visualization
 -   Intuitive and customizable task edit form
--   Task dependencies
--   Task progress shown on a taskbar
--   Hierarchical view of sub tasks
+-   Task progress shown on taskbars
 -   Configurable timeline with flexible time units
 -   Custom time scales: define custom periods like sprints or stages
 -   Weekends/holidays highlights
--   Custom HTML in grid cells
 -   Toolbar and context menu
--   Tooltips for taskbars
--   Sorting tasks in grid
+-   Tooltips for taskbars and links
+-   Sorting tasks in the grid
 -   Filtering (including natural language search)
+-   Custom HTML in grid cells
 -   Zooming with scroll
 -   Hotkeys support for common actions
--   Fast performance with large data sets
+-   Virtualization for large data sets
 -   Localization
 -   Light and dark skins
 -   Full TypeScript support
 
 ### 🚀 PRO Edition
 
-SVAR Svelte Gantt is available in open-source and [PRO Editions](https://svar.dev/svelte/gantt/#pro). The PRO Edition offers additional features and automation logic:
+SVAR Svelte Gantt is available in open-source and [PRO editions](https://svar.dev/svelte/gantt/#pro). The PRO edition offers additional features and automation logic:
 
--   Work days calendar
+-   Work day calendars (including individual tasks and resources)
+-   Resource planning
+-   Resource workload visualization
 -   Auto-scheduling (forward mode and Finish-to-Start dependencies)
 -   Summary tasks automation
+-   Task grouping
 -   Critical path
 -   Slack visualization
 -   Baselines
@@ -60,17 +64,19 @@ SVAR Svelte Gantt is available in open-source and [PRO Editions](https://svar.de
 -   Split tasks
 -   Vertical markers
 -   Unscheduled tasks
+-   WBS codes support
 -   Undo/redo
 -   Export to PDF, PNG, Excel
 -   MS Project import/export
 
 Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for full feature comparison, licensing details, and **free trial**.
 
-Or [see the live demo](https://svar.dev/demos/gantt/).
+👉 [Check the live demo](https://svar.dev/demos/gantt/) to see SVAR Svelte Gantt chart in action.
+
 
 ### 🔧 Svelte 4 and Svelte 5 versions
 
-There are two versions of the library: the 1.x version – designed to work with Svelte 4, and the 2.x version – created for Svelte 5.
+There are two versions of the library: the 1.x version – designed to work with Svelte 4, and the 2.x version – created for Svelte 5 and is actively maintained.
 
 To use the SVAR Gantt for Svelte 5, install it as follows:
 
@@ -86,7 +92,7 @@ npm install wx-svelte-gantt@1.2.0
 
 ### 🛠️ How to Use
 
-To use the widget, simply import the package and include the component in your Svelte file:
+To use SVAR Svelte Gantt, simply import the package and include the component in your Svelte file:
 
 ```svelte
 <script>

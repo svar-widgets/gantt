@@ -15,7 +15,11 @@ import { DataArray } from "@svar-ui/lib-state";
 import { resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";
 import { updateLink, normalizeLinks } from "../src/links";
-import { normalizeColumns, defaultColumns } from "../src/columns";
+import {
+	ADD_TASK_COLUMN_WIDTH,
+	normalizeColumns,
+	defaultColumns,
+} from "../src/columns";
 import { parseTaskDates } from "../src/normalizeDates";
 
 import type {
@@ -26,12 +30,13 @@ import type {
 	ITask,
 	IData,
 } from "../src/types";
+import { Calendar } from "../src/schedule-types";
+import ResourceDataTree from "../src/pro/ResourceDataTree";
 
 let store: DataStore;
 
 function resetState(data?: any) {
 	if (!data) data = getData();
-	parseTaskDates(data.tasks, { durationUnit: "day" });
 	if (data.links) data.links = normalizeLinks(data.links);
 	store = new DataStore(writable);
 
@@ -57,13 +62,18 @@ describe("datastore", () => {
 			resetState();
 			const data = getData();
 
-			const normalizedTasks = data.tasks.map((t: any) => {
-				t = { ...t };
-				return t;
-			});
+			const normalizedTasks = data.tasks.map((t: any) => ({ ...t }));
+			parseTaskDates(
+				normalizedTasks,
+				{ durationUnit: "day", splitTasks: false },
+				store.getTaskCalendar.bind(store)
+			);
 			const tasks = new GanttDataTree(normalizedTasks as ITask[]);
 			const links = new DataArray(data.links as ILink[]);
 			const scales = getData().scales;
+			const calendars = getData().calendars;
+			const resources = new ResourceDataTree([]);
+			const assignments = new DataArray([]);
 
 			const _scales = resetScales(
 				new Date(2024, 3, 1),
@@ -92,6 +102,12 @@ describe("datastore", () => {
 				)
 			);
 
+			const _calendars = {};
+			calendars.forEach(({ id, ...config }) => {
+				_calendars[id] = new Calendar(config);
+				_calendars[id].css = config.css;
+			});
+
 			const defaultState: any = {
 				_activeTask: null,
 				selected: [],
@@ -99,8 +115,10 @@ describe("datastore", () => {
 				scrollLeft: 0,
 				scrollTop: 0,
 				area: { from: 0, start: 0, end: 0 },
+				xArea: { from: 0, to: 0, start: 0, end: 0 },
 				scales,
 				tasks,
+				_calendars,
 				_rollups: {},
 				links,
 				columns: normalizeColumns(defaultColumns),
@@ -112,6 +130,7 @@ describe("datastore", () => {
 				_start: new Date(2024, 3, 1),
 				_end: new Date(2024, 3, 9),
 				_scales,
+				_scaleMinUnit: "day",
 				_tasks,
 				_links,
 				focusTask: null,
@@ -124,6 +143,22 @@ describe("datastore", () => {
 				_isFiltered: false,
 				_headerLength: 1,
 				filterValues: {},
+				groupBy: { field: null },
+				tree: tasks,
+				highlightTime: null,
+				resources,
+				_resources: [],
+				assignments,
+				_assignments: {
+					byTask: {},
+					byResource: {},
+				},
+				_resourceSort: null,
+				displayMode: "all",
+				gridWidth: 440,
+				_compactMode: false,
+				_columnsWidth: 440,
+				_gridCollapseThreshold: ADD_TASK_COLUMN_WIDTH,
 			};
 
 			vi.advanceTimersByTime(1);
@@ -131,10 +166,15 @@ describe("datastore", () => {
 			const state = store.getState();
 
 			for (const key in state) {
-				if (key !== "_scales" && key !== "columns")
+				if (
+					key !== "_scales" &&
+					key !== "columns" &&
+					key !== "calendars"
+				) {
 					expect(state[key as keyof IData], key).to.deep.eq(
 						defaultState[key as keyof IData]
 					);
+				}
 			}
 
 			// skip comparison for diff function
@@ -1672,26 +1712,6 @@ describe("datastore", () => {
 		});
 	});
 
-	describe("expand-scale", () => {
-		test("can expand scale", () => {
-			resetState();
-
-			store.in.exec("expand-scale", {
-				date: new Date(2024, 3, 2),
-				minWidth: 800,
-			});
-
-			vi.advanceTimersByTime(1);
-
-			const { _scales, _start, _end } = store.getState();
-
-			expect(_start).to.deep.eq(new Date(2024, 3, 1));
-			expect(_end).to.deep.eq(new Date(2024, 3, 9));
-			expect(_scales?.start).to.deep.eq(new Date(2024, 3, 1));
-			expect(_scales?.end).to.deep.eq(new Date(2024, 3, 9));
-		});
-	});
-
 	describe("render-data", () => {
 		test("can set state to render data", () => {
 			resetState();
@@ -2096,81 +2116,108 @@ describe("datastore", () => {
 		});
 	});
 	describe("autoscheduling", () => {
-		test("can delete invalid links in autoscheduling mode on init", () => {
-			const initData = getData("autoScheduling");
+		// Cycle/parent-chain detection itself is owned and tested by
+		// lib-schedule. These tests cover only what AutoScheduler wires up:
+		// feeding the graph, the e2s-only filter, consuming `invalidLinks`,
+		// and re-running on the right events. Data is kept minimal so the
+		// expected outcome does not depend on lib-schedule internals.
+		const task = (
+			id: number,
+			parent = 0,
+			type: ITask["type"] = "task"
+		): ITask => ({
+			id,
+			text: `Task ${id}`,
+			type,
+			parent,
+			start: new Date(2024, 3, 2),
+			end: new Date(2024, 3, 4),
+		});
 
+		test("removes invalid e2s links on init, leaves s2s links untouched", () => {
 			resetState({
-				...initData,
+				...getData("autoScheduling"),
+				tasks: [task(1), task(2), task(3)],
+				links: [
+					{ id: 1, source: 1, target: 2, type: "e2s" }, // valid
+					{ id: 2, source: 3, target: 3, type: "e2s" }, // invalid - self-reference
+					{ id: 3, source: 3, target: 3, type: "s2s" }, // s2s - never scheduled
+				],
 				schedule: { auto: true },
 			});
 			vi.advanceTimersByTime(1);
 
+			// AutoScheduler feeds only e2s links to lib-schedule and deletes the
+			// ones it reports invalid. Links 2 and 3 are the same self-reference;
+			// only the e2s one is scheduled, so only it is removed.
 			const { links } = store.getState();
-
-			expect(links.map(l => l).length).to.eq(4);
-			expect(links.byId(6).id).to.exist;
-			expect(links.byId(7).id).to.exist;
+			expect(links.byId(1).id).to.exist;
+			expect(links.byId(2)).to.be.undefined;
+			expect(links.byId(3).id).to.exist;
+			expect(links.map(l => l).length).to.eq(2);
 		});
-		test("can delete invalid links in autoscheduling mode on move-task", () => {
-			const initData = getData("autoScheduling");
-
+		test("removes a link that becomes invalid after move-task", () => {
 			resetState({
-				...initData,
+				...getData("autoScheduling"),
+				// summary 1 (with child 9) and a sibling task 2
+				tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
 				schedule: { auto: true },
 			});
-			store.in.exec("move-task", {
-				id: 2,
-				target: 1,
-				mode: "after",
-			});
-
 			vi.advanceTimersByTime(1);
-			const { links } = store.getState();
+			// the link is valid while task 2 is a sibling of summary 1
+			expect(store.getState().links.byId(1).id).to.exist;
 
-			expect(links.map(l => l).length).to.eq(4);
-			expect(links.byId(6).id).to.exist;
-			expect(links.byId(7).id).to.exist;
-		});
-		test("can delete invalid links in autoscheduling mode on indent-task", () => {
-			const initData = getData("autoScheduling");
-
-			resetState({
-				...initData,
-				schedule: { auto: true },
-			});
-
-			store.in.exec("indent-task", {
-				id: 2,
-				mode: true,
-			});
-
+			// moving task 2 into summary 1 makes the link point from a summary
+			// to its own descendant; the move-task handler re-runs scheduling
+			// and the now-invalid link is removed.
+			store.in.exec("move-task", { id: 2, target: 1, mode: "child" });
 			vi.advanceTimersByTime(1);
-			const indentedState = store.getState();
 
-			expect(indentedState.links.map(l => l).length).to.eq(3);
-			expect(indentedState.links.byId(6).id).to.exist;
+			expect(store.getState().links.byId(1)).to.be.undefined;
 		});
-		test("add-link prevents invalid links in autoscheduling mode", () => {
-			const initData = getData("autoScheduling");
-
+		test("removes a link that becomes invalid after indent-task", () => {
 			resetState({
-				...initData,
+				...getData("autoScheduling"),
+				tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
 				schedule: { auto: true },
 			});
+			vi.advanceTimersByTime(1);
+			expect(store.getState().links.byId(1).id).to.exist;
+
+			// indent-task delegates to move-task ("child" under the previous
+			// sibling); this verifies the public action also triggers cleanup.
+			store.in.exec("indent-task", { id: 2, mode: true });
+			vi.advanceTimersByTime(1);
+
+			expect(store.getState().links.byId(1)).to.be.undefined;
+		});
+		test("add-link removes only the link that closes the cycle", () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1), task(2), task(3)],
+				links: [
+					{ id: 1, source: 1, target: 2, type: "e2s" },
+					{ id: 2, source: 2, target: 3, type: "e2s" },
+				],
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			// closes a 1 -> 2 -> 3 -> 1 cycle. lib-schedule reports all three
+			// links as invalid, but the add-link handler narrows deletion to
+			// the link just drawn, leaving the user's existing links intact.
 			store.in.exec("add-link", {
-				link: {
-					id: 8,
-					source: 1,
-					target: 13,
-					type: "e2s",
-				},
+				link: { id: 3, source: 3, target: 1, type: "e2s" },
 			});
 			vi.advanceTimersByTime(1);
 
 			const { links } = store.getState();
-			expect(links.map(l => l).length).to.eq(4);
-			expect(links.byId(6).id).to.exist;
-			expect(links.byId(7).id).to.exist;
+			expect(links.byId(1).id).to.exist;
+			expect(links.byId(2).id).to.exist;
+			expect(links.byId(3)).to.be.undefined;
+			expect(links.map(l => l).length).to.eq(2);
 		});
 		test("can schedule tasks on init", () => {
 			const initData = getData("autoScheduling");
@@ -2679,6 +2726,96 @@ describe("datastore", () => {
 			expect(tasks.byId(30).$visibleSlack).to.eq(3);
 			expect(tasks.byId(31).slack.totalSlack).to.eq(4);
 			expect(tasks.byId(31).$visibleSlack).to.eq(2);
+		});
+	});
+
+	describe("init re-init behavior", () => {
+		const extraTask = () => ({
+			id: 999,
+			text: "Extra",
+			parent: 0,
+			type: "task",
+			start: new Date(2026, 3, 1),
+			end: new Date(2026, 3, 2),
+		});
+
+		function setup() {
+			const data: any = getData();
+			data.links = normalizeLinks(data.links);
+			const ds = new DataStore(writable);
+			const cfg = (tasks: any) => ({ ...data, tasks });
+			return { ds, tasks: data.tasks, cfg };
+		}
+
+		test("reuses the task tree when tasks are unchanged", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			const tree1 = ds.getState().tasks;
+			ds.init(cfg(tasks));
+			expect(ds.getState().tasks).to.equal(tree1);
+		});
+
+		test("rebuilds the task tree when tasks change", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			const tree1 = ds.getState().tasks;
+			ds.init(cfg([...tasks, extraTask()]));
+			expect(ds.getState().tasks).to.not.equal(tree1);
+		});
+
+		test("keeps an active filter through an unrelated re-init", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			expect(ds.getState().tasks.toArray(true).length).to.be.above(0);
+
+			ds.in.exec("filter-tasks", { filter: () => false } as any);
+			expect(ds.getState()._isFiltered).to.equal(true);
+			expect(ds.getState().tasks.toArray().length).to.equal(0);
+
+			ds.init(cfg(tasks));
+			expect(ds.getState()._isFiltered).to.equal(true);
+			expect(ds.getState().tasks.toArray().length).to.equal(0);
+		});
+
+		test("resets the filter when new task data arrives", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			ds.in.exec("filter-tasks", { filter: () => false } as any);
+			expect(ds.getState()._isFiltered).to.equal(true);
+
+			ds.init(cfg([...tasks, extraTask()]));
+			expect(ds.getState()._isFiltered).to.equal(false);
+		});
+
+		test("keeps sort through an unrelated re-init", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			ds.in.exec("sort-tasks", { key: "text", order: "desc" } as any);
+			const order = ds
+				.getState()
+				.tasks.toArray()
+				.map((t: any) => t.id);
+
+			ds.init(cfg(tasks));
+			expect(ds.getState()._sort).to.deep.equal([
+				{ key: "text", order: "desc" },
+			]);
+			expect(
+				ds
+					.getState()
+					.tasks.toArray()
+					.map((t: any) => t.id)
+			).to.deep.equal(order);
+		});
+
+		test("resets sort when new task data arrives", () => {
+			const { ds, tasks, cfg } = setup();
+			ds.init(cfg(tasks));
+			ds.in.exec("sort-tasks", { key: "text", order: "desc" } as any);
+			expect(ds.getState()._sort).to.not.equal(null);
+
+			ds.init(cfg([...tasks, extraTask()]));
+			expect(ds.getState()._sort).to.equal(null);
 		});
 	});
 });

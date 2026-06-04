@@ -1,14 +1,25 @@
 <script>
 	import { getContext } from "svelte";
-	import { Field, Combo, Text } from "@svar-ui/svelte-core";
+
+	import ActionCell from "../grid/ActionCell.svelte";
+	import GridSection from "./GridSection.svelte";
+	import LinkTypeCell from "./LinkTypeCell.svelte";
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
-	let { api, autoSave, onlinkschange: onchange } = $props();
+	let {
+		api,
+		autoSave,
+		onextchange: onchange,
+		predecessors = null,
+		successors = null,
+		batch = "links",
+	} = $props();
 
 	const {
 		activeTask,
 		_activeTask,
-		_links: links,
+		links,
+		tasks,
 		schedule,
 		unscheduledTasks,
 	} = api.getReactiveState();
@@ -18,15 +29,95 @@
 		linksData = getLinksData();
 	});
 
+	const list = [
+		{ id: "e2s", label: _("End-to-start") },
+		{ id: "s2s", label: _("Start-to-start") },
+		{ id: "e2e", label: _("End-to-end") },
+		{ id: "s2e", label: _("Start-to-end") },
+	];
+
+	function lagEditorHandler(row) {
+		return row.type === "e2s"
+			? { type: "text", config: { type: "number" } }
+			: null;
+	}
+
+	const isLagHidden = $derived(
+		!$schedule?.auto || ($unscheduledTasks && $_activeTask.unscheduled)
+	);
+
+	function getColumns() {
+		return [
+			{
+				id: "taskText",
+				header: _("Task name"),
+				flexgrow: 2,
+			},
+			{
+				id: "lag",
+				header: _("Lag"),
+				editor: lagEditorHandler,
+				flexgrow: 1,
+				hidden: isLagHidden,
+			},
+			{
+				id: "type",
+				header: _("Type"),
+				width: 124,
+				options: list,
+				editor: {
+					type: "richselect",
+					config: {
+						cell: LinkTypeCell,
+					},
+				},
+				cell: LinkTypeCell,
+			},
+			{
+				id: "delete",
+				header: "",
+				cell: ActionCell,
+				width: 50,
+				align: "center",
+			},
+		];
+	}
+
 	function getLinksData() {
 		if ($activeTask) {
-			const inLinks = $links
-				.filter(a => a.target === $activeTask)
-				.map(link => ({ link, task: api.getTask(link.source) }));
+			const il = [];
+			const ol = [];
 
-			const outLinks = $links
-				.filter(a => a.source === $activeTask)
-				.map(link => ({ link, task: api.getTask(link.target) }));
+			if (!predecessors || !successors) {
+				$links.forEach(l => {
+					if (!predecessors && l.target === $activeTask) il.push(l);
+					if (!successors && l.source === $activeTask) ol.push(l);
+				});
+			}
+
+			const inLinks =
+				predecessors ||
+				il.map(link => {
+					const { id, lag, type, source } = link;
+					return {
+						id,
+						type,
+						lag,
+						taskText: $tasks.byId(source).text,
+					};
+				});
+
+			const outLinks =
+				successors ||
+				ol.map(link => {
+					const { id, lag, type, target } = link;
+					return {
+						id,
+						type,
+						lag,
+						taskText: $tasks.byId(target).text,
+					};
+				});
 
 			return [
 				{ title: _("Predecessors"), data: inLinks },
@@ -35,31 +126,42 @@
 		}
 	}
 
-	const list = [
-		{ id: "e2s", label: _("End-to-start") },
-		{ id: "s2s", label: _("Start-to-start") },
-		{ id: "e2e", label: _("End-to-end") },
-		{ id: "s2e", label: _("Start-to-end") },
-	];
+	function getActionData(evData) {
+		return {
+			view: "links",
+			event: evData,
+			values: {
+				predecessors: linksData[0].data,
+				successors: linksData[1].data,
+			},
+		};
+	}
 
-	function deleteLink(id) {
+	function onDeleteAction(id) {
 		if (autoSave) {
 			api.exec("delete-link", { id });
 		} else {
 			linksData = linksData.map(group => ({
 				...group,
-				data: group.data.filter(item => item.link.id !== id),
+				data: group.data.filter(item => item.id !== id),
 			}));
 			onchange &&
-				onchange({
-					id,
-					action: "delete-link",
-					data: { id },
-				});
+				onchange(
+					getActionData({
+						id,
+						action: "delete-link",
+						data: { id },
+					})
+				);
 		}
 	}
 
-	function handleChange(id, update) {
+	function onEdit(id, column, value) {
+		const update = { [column]: value };
+		if (column === "type" && $schedule?.auto) {
+			if (value !== "e2s") update.lag = "";
+		}
+
 		if (autoSave) {
 			api.exec("update-link", {
 				id,
@@ -69,131 +171,65 @@
 			linksData = linksData.map(group => ({
 				...group,
 				data: group.data.map(item =>
-					item.link.id === id
-						? { ...item, link: { ...item.link, ...update } }
-						: item
+					item.id === id ? { ...item, ...update } : item
 				),
 			}));
+
 			onchange &&
-				onchange({
-					id,
-					action: "update-link",
-					data: {
+				onchange(
+					getActionData({
 						id,
-						link: update,
-					},
-				});
+						action: "update-link",
+						data: {
+							id,
+							link: update,
+						},
+					})
+				);
 		}
 	}
+
+	const isMessage = $derived.by(() => {
+		return (
+			linksData && !linksData[0].data.length && !linksData[1].data.length
+		);
+	});
 </script>
 
-{#each linksData as links}
-	{#if links.data.length}
-		<div class="wx-links">
-			<Field label={links.title} position="top" id={false}>
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-				<table>
-					<tbody>
-						{#each links.data as obj}
-							<tr>
-								<td class="wx-cell">
-									<div class="wx-task-name">
-										{obj.task.text || ""}
-									</div>
-								</td>
-								{#if $schedule?.auto && obj.link.type === "e2s"}
-									<td class="wx-cell wx-link-lag">
-										<Text
-											type="number"
-											placeholder={_("Lag")}
-											value={obj.link.lag}
-											disabled={$unscheduledTasks &&
-												$_activeTask.unscheduled}
-											onchange={ev => {
-												if (!ev.input)
-													handleChange(obj.link.id, {
-														lag: ev.value,
-													});
-											}}
-										/>
-									</td>
-								{/if}
-								<td class="wx-cell">
-									<div class="wx-wrapper">
-										<Combo
-											value={obj.link.type}
-											placeholder={_("Select link type")}
-											options={list}
-											onchange={ev =>
-												handleChange(obj.link.id, {
-													type: ev.value,
-												})}
-										>
-											{#snippet children({ option })}
-												{option.label}
-											{/snippet}
-										</Combo>
-									</div>
-								</td>
-
-								<td class="wx-cell">
-									<!-- svelte-ignore a11y_interactive_supports_focus -->
-									<i
-										class="wxi-delete wx-delete-icon"
-										onclick={() => deleteLink(obj.link.id)}
-										role="button"
-									></i>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</Field>
-		</div>
+<div class="wx-wrapper" class:wx-nobatch={batch !== "links"}>
+	{#each linksData as links}
+		{#if links.data.length}
+			<div class="wx-title">{links.title}</div>
+			<GridSection
+				columns={getColumns()}
+				onaction={onDeleteAction}
+				onedit={onEdit}
+				data={links.data}
+				sizes={{
+					rowHeight: 44,
+				}}
+			/>
+		{/if}
+	{/each}
+	{#if isMessage}
+		<div class="wx-nodata">{_("No links")}</div>
 	{/if}
-{/each}
+</div>
 
 <style>
-	.wx-links {
-		margin-bottom: 10px;
-	}
-
-	.wx-cell {
-		text-align: center;
-	}
-
-	.wx-task-name {
-		font-family: var(--wx-input-font-family);
-		font-size: var(--wx-input-font-size);
-		font-weight: var(--wx-input-font-weigth);
-		color: var(--wx-input-font-color);
-		width: 170px;
-		text-align: left;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-	.wx-link-lag {
-		width: 60px;
-	}
-
 	.wx-wrapper {
-		position: relative;
 		display: flex;
+		flex-direction: column;
+		gap: 8px;
 	}
-
-	.wx-delete-icon {
-		margin-left: 12px;
-		position: relative;
-		top: 2px;
-
-		font-size: var(--wx-icon-size);
-		cursor: pointer;
+	.wx-nobatch {
+		gap: 4px;
+	}
+	.wx-title {
+		font-weight: var(--wx-header-font-weight);
+	}
+	.wx-nodata {
 		color: var(--wx-gantt-icon-color);
-	}
-
-	.wx-delete-icon:hover {
-		color: var(--wx-color-primary);
+		margin-top: 8px;
 	}
 </style>

@@ -1,41 +1,58 @@
-import type { ITask, TDurationUnit, IData, Calendar } from "./types";
+import type {
+	ITask,
+	TDurationUnit,
+	IData,
+	ICalendar,
+	TCalendarGetter,
+} from "./types";
 import { getDiffer, getAdder } from "./time";
 import { setSummaryDates } from "./tasks";
 
-const unitAdd = (unit: TDurationUnit, calendar?: Calendar) =>
+const unitAdd = (unit: TDurationUnit, calendar?: ICalendar) =>
 	getAdder(unit, calendar);
-const unitDiff = (unit: TDurationUnit, calendar?: Calendar) =>
+const unitDiff = (unit: TDurationUnit, calendar?: ICalendar) =>
 	getDiffer(unit, calendar);
 
-export function parseTaskDates(tasks: ITask[], state: Partial<IData>) {
+export function parseTaskDates(
+	tasks: ITask[],
+	state: Partial<IData>,
+	calendarGetter: TCalendarGetter
+) {
 	if (Array.isArray(tasks)) {
 		//calc dates for single task
-		tasks.forEach(task => normalizeDates(task, state));
+		tasks.forEach(task =>
+			normalizeDates(task, state, calendarGetter(task))
+		);
 		//calc summary dates
 		tasks.forEach(task => {
 			if (task.type === "summary" && !(task.start && task.end)) {
 				const { start, end } = setSummaryDates(task, tasks);
 				task.start = start;
 				task.end = end;
-				normalizeDates(task, state);
+				normalizeDates(task, state, calendarGetter(task));
 			}
 		});
 	}
 }
 
-export function normalizeDates(task: Partial<ITask>, state: Partial<IData>) {
+export function normalizeDates(
+	task: Partial<ITask>,
+	state: Partial<IData>,
+	calendar: ICalendar | undefined
+) {
 	if (!task.unscheduled) {
-		calcDates(task, state, false);
+		calcDates(task, state, calendar, false);
 	}
-	if (task.base_start) calcDates(task, state, true);
+	if (task.base_start) calcDates(task, state, calendar, true);
 }
 
 export function calcDates(
 	task: Partial<ITask>,
 	state: Partial<IData>,
+	calendar: ICalendar | undefined,
 	isBaseline?: boolean
 ) {
-	const { calendar, durationUnit } = state;
+	const { durationUnit } = state;
 	const unit = durationUnit || "day";
 	const [start, end, duration] = getFields(isBaseline);
 	if (task.type === "milestone") {
@@ -81,10 +98,11 @@ function prepareDates(task: Partial<ITask>, key: string, isBaseline: boolean) {
 export function prepareEditTask(
 	task: Partial<ITask>,
 	state: Partial<IData>,
+	calendar: ICalendar,
 	key: string
 ) {
 	prepareDates(task, key, false);
 	if (task.base_start) prepareDates(task, key, true);
 
-	normalizeDates(task, state);
+	normalizeDates(task, state, calendar);
 }

@@ -1,10 +1,24 @@
 import { Rest } from "@svar-ui/lib-data-provider";
 import { format } from "date-fns";
 import type { ActionMap } from "@svar-ui/lib-data-provider";
-import type { TMethodsConfig, ITask, ILink, TID } from "@svar-ui/gantt-store";
+import type {
+	TMethodsConfig,
+	ITask,
+	ILink,
+	TID,
+	IResource,
+	IAssignment,
+} from "@svar-ui/gantt-store";
 
 type TProviderConfig = {
 	batchURL: string;
+};
+
+type TProviderData = {
+	tasks: ITask[];
+	links: ILink[];
+	resources?: IResource[];
+	assignments?: IAssignment[];
 };
 
 export default class RestDataProvider extends Rest<TMethodsConfig> {
@@ -86,22 +100,65 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 				handler: async (ev: TMethodsConfig["delete-link"]) =>
 					this.sendBatch(`links/${ev.id}`, "DELETE"),
 			},
+
+			"add-assignment": {
+				ignoreID: true,
+				handler: async (ev: TMethodsConfig["add-assignment"]) => {
+					ev.assignment.task = this.correctID(ev.assignment.task);
+					return this.sendBatch(`assignments`, "POST", ev.assignment);
+				},
+			},
+			"delete-assignment": {
+				handler: async (ev: TMethodsConfig["delete-assignment"]) => {
+					this.sendBatch(`assignments/${ev.id}`, "DELETE");
+				},
+			},
+			"update-assignment": {
+				handler: async (ev: TMethodsConfig["update-assignment"]) => {
+					const { task } = ev.assignment;
+					if (task) ev.assignment.task = this.correctID(task);
+					this.sendBatch(
+						`assignments/${ev.id}`,
+						"PUT",
+						ev.assignment
+					);
+				},
+			},
 		};
 	}
 
-	async getData(id?: TID): Promise<{ tasks: ITask[]; links: ILink[] }> {
+	async getData(
+		id?: TID,
+		options?: {
+			resources?: boolean;
+			assignments?: boolean;
+		}
+	): Promise<TProviderData> {
 		const tempId = id;
 		id = this.getQueue().getId(id);
 
-		const [tasksResponse, links] = await Promise.all([
-			this.send<ITask[]>(id ? `tasks/${id}` : "tasks", "GET"),
-			this.send<ILink[]>(id ? `links/${id}` : "links", "GET"),
-		]);
+		const [tasksResponse, links, resources, assignments] =
+			await Promise.all([
+				this.send<ITask[]>(id ? `tasks/${id}` : "tasks", "GET"),
+				this.send<ILink[]>(id ? `links/${id}` : "links", "GET"),
+				!id && options?.resources
+					? this.send<IResource[]>("resources", "GET")
+					: undefined,
+				options?.assignments
+					? this.send<IAssignment[]>(
+							id ? `assignments/${id}` : "assignments",
+							"GET"
+						)
+					: undefined,
+			]);
 		const tasks = this.parseDates(tasksResponse).map(t => {
 			if (t.parent == id) t.parent = tempId;
 			return t;
 		});
-		return { tasks, links };
+		const result: TProviderData = { tasks, links };
+		if (resources) result.resources = resources;
+		if (assignments) result.assignments = assignments;
+		return result;
 	}
 
 	parseDates(data: ITask[]) {

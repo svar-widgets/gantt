@@ -2,10 +2,8 @@
 	import { getContext } from "svelte";
 	import { grid } from "@svar-ui/gantt-store";
 
-	const { borders = "" } = $props();
-
 	const api = getContext("gantt-store");
-	const { cellWidth, cellHeight } = api.getReactiveState();
+	const { cellWidth, cellHeight, cellBorders } = api.getReactiveState();
 
 	let node;
 	let color = $state("#e4e4e4");
@@ -26,6 +24,6 @@
 		$cellWidth,
 		$cellHeight,
 		color,
-		borders
+		$cellBorders
 	)}); position: absolute;"
 ></div>

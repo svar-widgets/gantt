@@ -73,14 +73,11 @@ context("String Ids", () => {
 	it("tooltip are visible by hovering on bar", () => {
 		cy.wxG("chart-item", "0").trigger("mousemove");
 		cy.get(".wx-tooltip-area").should("be.visible");
-		cy.get(".wx-gantt-tooltip-text").should("have.text", "Start");
+		cy.get(".wx-tooltip-text").should("have.text", "Start");
 
 		cy.wxG("chart-item", "1").trigger("mousemove");
 		cy.get(".wx-tooltip-area").should("be.visible");
-		cy.get(".wx-gantt-tooltip-text").should(
-			"have.text",
-			"Project planning"
-		);
+		cy.get(".wx-tooltip-text").should("have.text", "Project planning");
 	});
 
 	it("can delete link by clicking on delete button", () => {

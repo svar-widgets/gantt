@@ -7,15 +7,22 @@
 	import { Grid } from "@svar-ui/svelte-grid";
 	import TextCell from "./TextCell.svelte";
 	import ActionCell from "./ActionCell.svelte";
+	import ResourcesCell from "./ResourcesCell.svelte";
+	import EditorResourcesCell from "./EditorResourcesCell.svelte";
+	import { setTaskResources } from "../../helpers/setTaskResources.js";
 
-	let {
-		readonly,
-		compactMode,
-		width = 0,
-		columnWidth,
-		display = $bindable("all"),
-		tableAPI = $bindable(),
-	} = $props();
+	import {
+		getGridMinHeight,
+		getGridStyle,
+		getFlexBasis,
+		getScrollX,
+		getFitColumns,
+		getSortMarks,
+		adjustColumns,
+		checkFlex,
+	} from "../../helpers/grid";
+
+	let { readonly, columnWidth, tableAPI = $bindable() } = $props();
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -31,10 +38,14 @@
 		_headerLength,
 		columns,
 		_sort: sort,
-		calendar,
 		durationUnit,
 		splitTasks,
 		filterValues,
+		groupBy,
+		gridWidth,
+		displayMode,
+		_compactMode,
+		_gridCollapseThreshold,
 	} = api.getReactiveState();
 
 	let dragTask = $state(null);
@@ -151,10 +162,9 @@
 		});
 	}
 
-	let gridWidth = $state(0); // clientWidth
-	let gridHeight = $state(0);
+	let gridClientWidth = $state(0);
+	let gridClientHeight = $state(0);
 
-	let table = $state();
 	let tableContainer = $state();
 	let updateFlex = $state(false);
 
@@ -180,8 +190,8 @@
 	function init(tapi) {
 		tableAPI = tapi;
 		tapi.intercept("hotkey", handleHotkey);
-		tapi.intercept("scroll", () => false);
 		tapi.intercept("select-row", () => false);
+		tapi.intercept("scroll", () => false);
 		tapi.intercept("sort-rows", ev => {
 			const { key, add } = ev;
 			let keySort = $sort ? $sort.find(s => s.key === key) : null;
@@ -212,27 +222,30 @@
 		});
 
 		tapi.on("hide-column", ev => {
-			if (!ev.mode) adjustColumns();
+			if (!ev.mode) adjustColumns(cols);
 			setColumnWidth();
 		});
 
 		tapi.intercept("update-cell", e => {
 			const { id, column, value } = e;
 			const task = tasks.find(t => t.id === id);
-
 			if (task) {
+				if (column === "resources") {
+					setTaskResources(id, value, api);
+					return;
+				}
+
 				const update = { ...task };
 				let v = value;
 				if (v && !isNaN(v) && !(v instanceof Date)) v *= 1;
 				update[column] = v;
-
 				prepareEditTask(
 					update,
 					{
-						calendar: $calendar,
 						durationUnit: $durationUnit,
 						splitTasks: $splitTasks,
 					},
+					api.getTaskCalendar(update),
 					column
 				);
 
@@ -258,12 +271,28 @@
 			col.header = header;
 			return col;
 		});
+
 		const ti = cols.findIndex(c => c.id === "text");
 		const ai = cols.findIndex(c => c.id === "add-task");
+		const ri = cols.findIndex(c => c.id === "resources");
 
 		if (ti !== -1) {
 			if (cols[ti].cell) cols[ti]._cell = cols[ti].cell;
 			cols[ti].cell = TextCell;
+		}
+		if (ri !== -1) {
+			const resCol = cols[ri];
+			if (!resCol.cell) resCol.cell = ResourcesCell;
+			if (resCol.editor && typeof resCol.editor !== "function") {
+				const editor = resCol.editor;
+				const config = editor.config;
+				if (!config.cell) config.cell = EditorResourcesCell;
+				config.cell = EditorResourcesCell;
+				if (!config.dropdown) config.dropdown = { width: "auto" };
+				resCol.editor = row => {
+					if (row.type !== "summary") return editor;
+				};
+			}
 		}
 		if (ai !== -1) {
 			cols[ai].cell = cols[ai].cell || ActionCell;
@@ -273,7 +302,7 @@
 			if (readonly) {
 				cols.splice(ai, 1);
 			} else {
-				if (compactMode) {
+				if ($_compactMode) {
 					const [actionCol] = cols.splice(ai, 1);
 					cols.unshift(actionCol);
 				}
@@ -284,37 +313,37 @@
 		return cols;
 	});
 
+	function getColumnStyle(col) {
+		let style = `wx-text-${col.align} `;
+
+		if (col.id === "add-task") style += "wx-action ";
+		else if (col.id === "wbs") style += "wx-wbs ";
+
+		return style.trim();
+	}
+
 	// SIZES
 	// --------
 	// --------
 	const scrollDelta = $derived($area.from);
 	const headerHeight = $derived($scales.height);
-	const scrollX = $derived(
-		!compactMode && display !== "grid"
-			? columnWidth > width
-			: columnWidth > gridWidth
+	const flexBasis = $derived(
+		getFlexBasis($columns, $displayMode, $gridWidth)
 	);
-	const basis = $derived(
-		display === "all"
-			? `${width}px`
-			: display === "grid"
-				? "calc(100% - 4px)"
-				: cols.find(c => c.id === "add-task")
-					? "50px"
-					: "0"
+	const scrollX = $derived(
+		getScrollX(
+			$_compactMode,
+			$displayMode,
+			columnWidth,
+			gridClientWidth,
+			$gridWidth
+		)
 	);
 	const tableHeight = $derived(
-		`min-height:${gridHeight + $cellHeight * 4}px;`
+		getGridMinHeight(gridClientHeight, $cellHeight)
 	);
 	const tableStyle = $derived(
-		tableHeight +
-			(scrollX && display === "all"
-				? `width:${columnWidth}px;`
-				: display === "grid"
-					? scrollX
-						? `width:${columnWidth}px;`
-						: `width:100%;`
-					: ``)
+		tableHeight + getGridStyle($displayMode, columnWidth, scrollX)
 	);
 
 	// --------
@@ -335,17 +364,13 @@
 		return rows.map(t => ({ ...t }));
 	});
 
-	function checkFlex() {
-		return cols.some(c => c.flexgrow && !c.hidden);
-	}
-
 	const hasFlexCol = $derived.by(() => {
 		updateFlex;
-		return checkFlex();
+		return checkFlex(cols);
 	});
 
 	function setColumnWidth(resized) {
-		if (!checkFlex()) {
+		if (!checkFlex(cols)) {
 			const newColumnWidth = fitColumns.reduce((acc, col) => {
 				if (resized && col.$width) col.$width = col.width;
 				return acc + (col.hidden ? 0 : col.width);
@@ -357,114 +382,26 @@
 		updateFlex = false;
 	}
 
-	// reset widths of columns
-	// after a column has been shown
-	function adjustColumns() {
-		const flexCols = cols.filter(c => c.flexgrow && !c.hidden);
-		if (flexCols.length === 1)
-			cols.forEach(c => {
-				if (c.$width && !c.flexgrow && !c.hidden) c.width = c.$width;
-			});
-	}
-
-	let sortMarks = $derived.by(() => {
-		if (allTasks && $sort?.length) {
-			const marks = {};
-			$sort.forEach(({ key, order }, index) => {
-				marks[key] = {
-					order,
-					...($sort.length > 1 && { index }),
-				};
-			});
-			return marks;
-		}
-		return {};
-	});
+	let sortMarks = $derived(getSortMarks(allTasks, $sort));
 
 	// preserve filters while sorting
 	let filters = $derived.by(() => {
 		return sortMarks ? { ...$filterValues } : $filterValues;
 	});
 
-	const fitColumns = $derived.by(() => {
-		let filteredColumns =
-			display === "chart" ? cols.filter(c => c.id === "add-task") : cols;
+	const fitColumns = $derived(
+		getFitColumns(
+			cols,
+			columnWidth,
+			$displayMode,
+			gridClientWidth,
+			$gridWidth,
+			hasFlexCol,
+			$_gridCollapseThreshold
+		)
+	);
 
-		// Adjust widths if needed
-		const containerWidth = display === "all" ? width : gridWidth;
-		if (!hasFlexCol) {
-			let baseColumnWidth = columnWidth;
-			let forceReset = false;
-			if (cols.some(c => c.$width)) {
-				let actualWidth = 0;
-				baseColumnWidth = cols.reduce((acc, col) => {
-					if (!col.hidden) {
-						actualWidth += col.width;
-						acc += col.$width || col.width;
-					}
-					return acc;
-				}, 0);
-
-				// Force widths reset when "display" "grid" changed to "all"
-				if (
-					actualWidth > baseColumnWidth &&
-					baseColumnWidth >= containerWidth
-				)
-					forceReset = true;
-			}
-
-			if (forceReset || baseColumnWidth < containerWidth) {
-				let k = 1;
-				if (!forceReset)
-					k = (containerWidth - 50) / (baseColumnWidth - 50 || 1);
-				return filteredColumns.map(c => {
-					if (c.id !== "add-task" && !c.hidden) {
-						if (!c.$width) c.$width = c.width;
-						c.width = c.$width * k;
-					}
-					return c;
-				});
-			}
-		}
-		return filteredColumns;
-	});
-
-	// --------
-	// SCROLLS AND TOP ROW OFFSET
-	// --------
-
-	$effect(() => {
-		if (table) {
-			$scrollTop;
-			scrollDelta;
-			setScrollOffset();
-		}
-	});
-
-	function setScrollOffset() {
-		// hack to align scroll
-		if (table && allTasks !== null)
-			table.querySelector(".wx-body").style.top =
-				-($scrollTop - scrollDelta) + "px";
-	}
-
-	// Observe grid inner container and set offset on size change
-	$effect(() => {
-		if (table) {
-			fitColumns;
-			tableStyle;
-			display;
-			basis;
-			allTasks;
-			const ro = new ResizeObserver(() => {
-				setScrollOffset();
-			});
-			ro.observe(table.querySelector(".wx-table-box .wx-body"));
-			return () => {
-				ro.disconnect();
-			};
-		}
-	});
+	const bodyOffset = $derived(scrollDelta - $scrollTop);
 
 	let pending = false;
 	focusTask.subscribe(value => {
@@ -475,12 +412,14 @@
 			if (!pending) {
 				pending = true;
 				requestAnimationFrame(() => {
-					const focusCell = tableAPI.getState().focusCell;
-					tableAPI.exec("focus-cell", {
-						row: id,
-						column: focusCell?.column || cols[0]?.id,
-					});
-					pending = false;
+					const { focusCell, editor } = tableAPI.getState();
+					if (!editor) {
+						tableAPI.exec("focus-cell", {
+							row: id,
+							column: focusCell?.column || cols[0]?.id,
+						});
+						pending = false;
+					}
 				});
 			}
 		}
@@ -491,16 +430,16 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="wx-table-container"
-	style="flex: 0 0 {basis};"
-	bind:clientWidth={gridWidth}
-	bind:clientHeight={gridHeight}
+	style="flex: 0 0 {flexBasis};"
+	bind:clientWidth={gridClientWidth}
+	bind:clientHeight={gridClientHeight}
 	bind:this={tableContainer}
 >
 	<div
-		bind:this={table}
-		style={tableStyle}
+		style="{tableStyle}--wx-body-offset:{bodyOffset}px;"
 		class="wx-table"
 		use:reorder={{
+			isDisabled: () => !!$groupBy?.field,
 			start: startReorder,
 			end: endReorder,
 			move: moveReorder,
@@ -516,8 +455,7 @@
 				headerHeight: headerHeight / $_headerLength,
 			}}
 			rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
-			columnStyle={col =>
-				`wx-text-${col.align} ${col.id === "add-task" ? "wx-action" : ""}`}
+			columnStyle={getColumnStyle}
 			data={allTasks}
 			columns={fitColumns}
 			selectedRows={[...sel]}
@@ -555,13 +493,12 @@
 	.wx-table :global(.wx-grid .wx-scroll) {
 		overflow: visible !important;
 	}
+	.wx-table :global(.wx-grid .wx-scroll .wx-body) {
+		top: var(--wx-body-offset, 0);
+	}
 	.wx-table :global(.wx-grid .wx-scroll .wx-body),
 	.wx-table :global(.wx-grid .wx-scroll .wx-header) {
 		width: 100% !important;
-	}
-	.wx-table :global(.wx-grid) {
-		font: var(--wx-grid-body-font);
-		color: var(--wx-grid-body-font-color);
 	}
 	/*body*/
 	.wx-table :global(.wx-grid .wx-cell) {
@@ -569,6 +506,7 @@
 		height: 100%;
 		display: flex;
 		align-items: center;
+		outline: none;
 	}
 	.wx-table :global(.wx-grid .wx-row) {
 		display: flex;
@@ -588,14 +526,9 @@
 		padding: 0;
 	}
 	/*header*/
-	.wx-table :global(.wx-grid .wx-header) {
-		box-shadow: var(--wx-grid-header-shadow);
-		z-index: 1;
-	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell) {
 		font: var(--wx-grid-header-font);
 		text-transform: var(--wx-grid-header-text-transform);
-		color: var(--wx-grid-header-font-color);
 		padding: 0 5px;
 		border-bottom-color: transparent;
 	}
@@ -621,15 +554,8 @@
 	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-text-right.wx-action) {
 		justify-content: right;
 	}
-	.wx-table :global(.wx-grid .wx-header .wx-action i) {
-		font-size: var(--wx-icon-size);
-		color: var(--wx-gantt-icon-color);
-	}
-	.wx-table :global(.wx-grid .wx-header .wx-action .wx-text) {
-		display: none;
-	}
-	.wx-table :global(.wx-grid .wx-header .wx-action i:hover) {
-		color: var(--wx-color-link);
+	.wx-table :global(.wx-grid .wx-row .wx-cell.wx-wbs) {
+		padding: 0 14px;
 	}
 	/*drag element*/
 	.wx-table :global(.wx-grid .wx-reorder-task.wx-row) {

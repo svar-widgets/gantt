@@ -1,24 +1,56 @@
 <script>
 	import { format } from "date-fns";
-	let { data } = $props();
+
+	let { api, data } = $props();
 
 	const mask = "yyyy.MM.dd";
 </script>
 
-{#if data}
+{#if data?.task}
+	{@const task = data.task}
 	<div class="data">
 		<div class="text">
-			<span class="caption">{data.type}:</span>
-			{data.text}
+			<span class="caption">{task.type}:</span>
+			{task.text}
 		</div>
 		<div class="text">
 			<span class="caption">start:</span>
-			{format(data.start, mask)}
+			{format(task.start, mask)}
 		</div>
-		{#if data.end}
+		{#if task.end}
 			<div class="text">
 				<span class="caption">end:</span>
-				{format(data.end, mask)}
+				{format(task.end, mask)}
+			</div>
+		{/if}
+	</div>
+{:else if data?.link}
+	{@const link = data.link}
+	<div class="data">
+		<div class="text">
+			<span class="caption">predecessor:</span>
+			{api.getTask(link.source).text}
+		</div>
+		<div class="text">
+			<span class="caption">successor:</span>
+			{api.getTask(link.target).text}
+		</div>
+	</div>
+{:else if data?.rollup}
+	{@const rollup = data.rollup}
+	<div class="data">
+		<div class="text">
+			<span class="caption">{rollup.type}:</span>
+			{rollup.text}
+		</div>
+		<div class="text">
+			<span class="caption">start:</span>
+			{format(rollup.start, mask)}
+		</div>
+		{#if rollup.end}
+			<div class="text">
+				<span class="caption">end:</span>
+				{format(rollup.end, mask)}
 			</div>
 		{/if}
 	</div>

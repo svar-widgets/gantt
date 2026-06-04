@@ -39,3 +39,10 @@ export function deleteFromFiltered(
 		branch.forEach(t => deleteFromFiltered(ids, t.id, t.data));
 	}
 }
+
+export function resetEmptyState(task: IParsedTask) {
+	if (task.id !== 0) delete task.$empty;
+	if (Array.isArray(task.data)) {
+		task.data.forEach(child => resetEmptyState(child));
+	}
+}

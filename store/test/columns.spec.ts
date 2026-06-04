@@ -8,7 +8,7 @@ describe("columns", () => {
 		expect(columns.length).to.eq(4);
 
 		for (const col of columns) {
-			expect(col.width).to.not.be.undefined;
+			if (!col.flexgrow) expect(col.width).to.not.be.undefined;
 			expect(col.align).to.not.be.undefined;
 		}
 

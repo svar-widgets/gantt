@@ -7,7 +7,11 @@ import {
 	IGanttColumn,
 } from "./types";
 import { sort } from "./helpers/sort";
-import { deleteFromFiltered, filterTask } from "./helpers/filter";
+import {
+	deleteFromFiltered,
+	filterTask,
+	resetEmptyState,
+} from "./helpers/filter";
 
 export default class GanttDataTree extends DataTree<IParsedTask> {
 	private _filteredIds: Set<string | number>;
@@ -79,7 +83,7 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 	normalizeTask(task: Partial<ITask>): ITask {
 		const id = task.id || tempID();
 		const parentId = task.parent || 0;
-		const text = task.text || "";
+		const text = task.text ?? "";
 		const type = task.type || "task";
 		const progress = task.progress || 0;
 		const details = task.details || "";
@@ -152,6 +156,8 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			filterTask(root, filter, ids, open);
 			this._filteredIds = ids;
 		} else {
+			const root = this._pool.get(0);
+			resetEmptyState(root);
 			this._filteredIds = null;
 		}
 	}

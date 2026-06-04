@@ -6,11 +6,30 @@ import type {
 	IData,
 	IDataConfig,
 	IDataHash,
+	ICalendar,
 } from "../types";
 import { defaultTaskTypes } from "../taskTypes";
 
-export function getMenuOptions(config?: IDataConfig) {
-	let options = [...defaultMenuOptions];
+function isGrouped(task: IParsedTask) {
+	return !task.$group && typeof task.$groupValue !== "undefined";
+}
+function isGroup(task: IParsedTask) {
+	return task.$group;
+}
+
+function isGroupParent(task: IParsedTask) {
+	return isGroup(task) && typeof task.$groupValue === "undefined";
+}
+
+const groupedMenuOptions = new Set<TID>([
+	"add-task",
+	"delete-task",
+	"edit-task",
+	"convert-task",
+]);
+
+export function getMenuOptions(config?: IDataConfig & { group?: boolean }) {
+	let options = defaultMenuOptions.map(item => ({ ...item }));
 
 	const taskTypes = config?.taskTypes || defaultTaskTypes;
 	const convertOption = options.find(o => o.id === "convert-task");
@@ -30,11 +49,12 @@ export interface IOptionConfig {
 	text?: string;
 	icon?: string;
 	data?: IOptionConfig[];
-	type?: string;
+	comp?: string;
 	isDisabled?:
 		| ((
 				task: IParsedTask,
-				state: IData,
+				state?: IData,
+				calendar?: ICalendar,
 				target?: TID | IDataHash
 		  ) => boolean)
 		| ((history: IHistory) => boolean);
@@ -50,11 +70,13 @@ export interface IOptionConfig {
 export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
 	return items.map(item => {
 		if (item.data) assignChecks(item.data);
-
 		switch (item.id) {
 			case "add-task:before":
 			case "move-task:up":
-				item.isDisabled = (task, state) => isFirstTask(task, state);
+				item.isDisabled = (task, state) =>
+					isFirstTask(task, state) ||
+					isGrouped(task) ||
+					isGroup(task);
 				break;
 			case "move-task:down":
 				item.isDisabled = (task, state) => isLastTask(task, state);
@@ -67,6 +89,7 @@ export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
 				item.isDisabled = (task: IParsedTask) => isRootTask(task);
 				break;
 		}
+
 		return item;
 	});
 }
@@ -96,7 +119,8 @@ function isSingle(s: IData): boolean {
 	return !s.selected || s.selected.length < 2;
 }
 
-const exclude = (v: any) => (task: ITask) => task.type === v;
+const exclude = (v: any) => (task: IParsedTask) =>
+	task.type === v || (v === "summary" && isGrouped(task));
 
 export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 	{
@@ -104,12 +128,21 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		text: "Add",
 		icon: "wxi-plus",
 		data: [
-			{ id: "add-task:child", text: "Child task" },
-			{ id: "add-task:before", text: "Task above" },
-			{ id: "add-task:after", text: "Task below" },
+			{
+				id: "add-task:child",
+				text: "Child task",
+			},
+			{
+				id: "add-task:before",
+				text: "Task above",
+			},
+			{
+				id: "add-task:after",
+				text: "Task below",
+			},
 		],
 	},
-	{ type: "separator" },
+	{ comp: "separator" },
 	{
 		id: "convert-task",
 		text: "Convert to",
@@ -124,9 +157,8 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 		id: "edit-task",
 		text: "Edit",
 		icon: "wxi-edit",
-		isHidden: (t, s, target) => isSegment(target),
 	},
-	{ type: "separator" },
+	{ comp: "separator" },
 	{ id: "cut-task", text: "Cut", icon: "wxi-content-cut", subtext: "Ctrl+X" },
 	{
 		id: "copy-task",
@@ -149,10 +181,10 @@ export const defaultMenuOptions: IOptionConfig[] = assignChecks<IOptionConfig>([
 			{ id: "move-task:down", text: "Down" },
 		],
 	},
-	{ type: "separator" },
+	{ comp: "separator" },
 	{ id: "indent-task:add", text: "Indent", icon: "wxi-indent" },
 	{ id: "indent-task:remove", text: "Outdent", icon: "wxi-unindent" },
-	{ type: "separator" },
+	{ comp: "separator" },
 	{
 		id: "delete-task",
 		icon: "wxi-delete",

@@ -1,6 +1,6 @@
 <script>
 	// svelte core
-	import { setContext, untrack } from "svelte";
+	import { setContext } from "svelte";
 	import { writable } from "svelte/store";
 
 	// locales
@@ -12,11 +12,9 @@
 	import { EventBusRouter } from "@svar-ui/lib-state";
 	import {
 		DataStore,
-		defaultColumns,
+		getDefaultColumns,
 		defaultTaskTypes,
-		parseTaskDates,
 		normalizeZoom,
-		normalizeLinks,
 	} from "@svar-ui/gantt-store";
 	import { getContext } from "svelte";
 
@@ -39,11 +37,13 @@
 		selected = [],
 		activeTask = null,
 		links = [],
+		resources = null,
+		assignments = [],
 		scales = [
 			{ unit: "month", step: 1, format: "%F %Y" },
 			{ unit: "day", step: 1, format: "%j" },
 		],
-		columns = defaultColumns,
+		columns = null,
 		start = null,
 		end = null,
 		lengthUnit = "day",
@@ -51,6 +51,8 @@
 		cellWidth = 100,
 		cellHeight = 38,
 		scaleHeight = 36,
+		gridWidth = 440,
+		displayMode = "all",
 		readonly = false,
 		cellBorders = "full",
 		zoom = false,
@@ -65,11 +67,13 @@
 		projectStart = null,
 		projectEnd = null,
 		calendar = null,
+		calendars = [],
 		undo = false,
 		splitTasks = false,
 		summary = null,
 		slack = false,
-		_export = false,
+		groupBy = null,
+		wbs = false,
 		...restProps
 	} = $props();
 
@@ -91,8 +95,11 @@
 		let config = {
 			zoom: prepareZoom(zoom, lCalendar),
 			scales: prepareScales(scales, lCalendar),
-			columns: prepareColumns(columns, lCalendar),
-			links: normalizeLinks(links),
+			columns: prepareColumns(
+				columns ?? getDefaultColumns({ resources: !!resources, wbs }),
+				lCalendar
+			),
+			links,
 			cellWidth,
 		};
 		if (config.zoom) {
@@ -109,14 +116,6 @@
 		return config;
 	});
 
-	$effect.pre(() => {
-		tasks, durationUnit, calendar;
-		untrack(() => {
-			if (!_export)
-				parseTaskDates(tasks, { durationUnit, splitTasks, calendar });
-		});
-	});
-
 	// define event route
 	let firstInRoute = dataStore.in;
 
@@ -130,6 +129,9 @@
 	firstInRoute.setNext(lastInRoute);
 
 	let tableAPI = $state();
+	let ganttWidth = $state();
+	const COMPACT_WIDTH = 650;
+	let compactMode = $derived(ganttWidth <= COMPACT_WIDTH);
 
 	// public API
 	export const // state
@@ -144,12 +146,19 @@
 		detach = firstInRoute.detach.bind(firstInRoute),
 		//specific
 		getTask = id => dataStore.getTask(id),
-		serialize = () => dataStore.serialize(),
+		getResource = id => dataStore.getResource(id),
+		serialize = config => dataStore.serialize(config),
 		getTable = waitRender =>
 			waitRender
 				? new Promise(res => setTimeout(() => res(tableAPI), 1))
 				: tableAPI,
-		getHistory = () => dataStore.getHistory();
+		getHistory = () => dataStore.getHistory(),
+		getCalendar = id => dataStore.getCalendar(id),
+		getTaskCalendar = task => dataStore.getTaskCalendar(task),
+		getResourceCalendar = resource =>
+			dataStore.getResourceCalendar(resource),
+		getTaskResources = id => dataStore.getTaskResources(id),
+		getResourceTasks = id => dataStore.getResourceTasks(id);
 
 	const api = {
 		getState,
@@ -162,15 +171,26 @@
 		detach,
 		getTable,
 		getTask,
+		getResource,
 		serialize,
 		getHistory,
+		getCalendar,
+		getTaskResources,
+		getResourceTasks,
+		getTaskCalendar,
 	};
 
 	// common API available in components
 	setContext("gantt-store", {
 		getReactiveState: dataStore.getReactive.bind(dataStore),
+		getState: dataStore.getState.bind(dataStore),
 		exec: firstInRoute.exec.bind(firstInRoute),
 		getTask: dataStore.getTask.bind(dataStore),
+		getTaskCalendar: dataStore.getTaskCalendar.bind(dataStore),
+		getResourceCalendar: dataStore.getResourceCalendar.bind(dataStore),
+		getCalendar: dataStore.getCalendar.bind(dataStore),
+		getTaskResources: dataStore.getTaskResources.bind(dataStore),
+		getHistory: dataStore.getHistory.bind(dataStore),
 	});
 
 	let init_once = true;
@@ -178,6 +198,8 @@
 		dataStore.init({
 			tasks,
 			links: normalizedConfig.links,
+			resources,
+			assignments,
 			start,
 			columns: normalizedConfig.columns,
 			end,
@@ -201,11 +223,19 @@
 			projectStart,
 			projectEnd,
 			calendar,
+			calendars,
 			slack,
 			undo,
 			_weekStart: lCalendar.weekStart,
 			splitTasks,
 			summary,
+			groupBy,
+			highlightTime,
+			wbs,
+			displayMode,
+			gridWidth,
+			cellBorders,
+			_compactMode: compactMode,
 		});
 
 		if (init_once && init) {
@@ -216,18 +246,6 @@
 
 	reinitStore();
 	$effect(reinitStore);
-
-	$effect(() => {
-		if (calendar && tasks) {
-			highlightTime = (day, unit) => {
-				if (unit === "day" && !calendar.getDayHours(day))
-					return "wx-weekend";
-				if (unit === "hour" && !calendar.getDayHours(day))
-					return "wx-weekend";
-				return "";
-			};
-		}
-	});
 </script>
 
-<Layout {taskTemplate} {readonly} {cellBorders} {highlightTime} bind:tableAPI />
+<Layout {taskTemplate} {readonly} bind:tableAPI bind:ganttWidth />

@@ -29,7 +29,7 @@
 		skin = parts[2];
 
 		const tPage = `/${page}/:skin`;
-		const matched = links.find(a => a[0] === tPage);
+		const matched = links.find(a => Array.isArray(a) && a[0] === tPage);
 		title = matched?.[1] ?? "";
 		name = matched?.[3] ?? "";
 		link = `${baseLink}${name.replace(/\s+/g, "")}.svelte`;

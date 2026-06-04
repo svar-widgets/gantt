@@ -8,15 +8,11 @@
 	import Chart from "./chart/Chart.svelte";
 	import Resizer from "./Resizer.svelte";
 
-	//helpers
-	import { useModeObserver } from "../helpers/modeResizeObserver";
-
 	let {
 		taskTemplate,
 		readonly,
-		cellBorders,
-		highlightTime,
 		tableAPI = $bindable(),
+		ganttWidth = $bindable(),
 	} = $props();
 
 	const api = getContext("gantt-store");
@@ -28,59 +24,13 @@
 		columns: rColumns,
 		scrollTop: rScrollTop,
 		undo,
+		gridWidth,
+		_columnsWidth,
 	} = api.getReactiveState();
 
-	// resize
-	let compactMode = $state(false);
-	let gridWidth = $state(0);
-	let ganttWidth = $state();
 	let ganttHeight = $state();
 	let innerWidth = $state();
 	let chart = $state();
-	let display = $state("all"); // all, grid, chart
-
-	$effect(() => {
-		const ro = useModeObserver(handleResize);
-		ro.observe();
-
-		return () => {
-			ro.disconnect();
-		};
-	});
-
-	let lastDisplay = null;
-
-	function handleResize(mode) {
-		if (mode !== compactMode) {
-			compactMode = mode;
-			if (compactMode) {
-				lastDisplay = display;
-				if (display === "all") display = "grid";
-			} else if (!lastDisplay || lastDisplay === "all") display = "all";
-		}
-	}
-
-	const gridColumnWidth = $derived.by(() => {
-		let w;
-
-		if ($rColumns.every(c => c.width && !c.flexgrow)) {
-			w = $rColumns.reduce((acc, c) => acc + parseInt(c.width), 0);
-		} else {
-			if (display === "chart") {
-				w =
-					parseInt($rColumns.find(c => c.id === "action")?.width) ||
-					50;
-			} else {
-				w = 440;
-			}
-		}
-
-		return w;
-	});
-
-	$effect(() => {
-		gridWidth = gridColumnWidth;
-	});
 
 	const scrollSize = $derived(ganttWidth - innerWidth);
 	const fullWidth = $derived($rScales.width);
@@ -101,7 +51,7 @@
 
 	function chartResizeHandler() {
 		api.exec("resize-chart", {
-			width: ganttWidth - gridWidth,
+			width: ganttWidth - $gridWidth - scrollSize - 4, // resizer width
 			height: ganttHeight - $rScales.height,
 			scrollSize,
 		});
@@ -166,31 +116,16 @@
 			>
 				{#if $rColumns.length}
 					<Grid
-						bind:display
-						{compactMode}
-						columnWidth={gridColumnWidth}
-						width={gridWidth}
+						columnWidth={$_columnsWidth}
 						{readonly}
 						{fullHeight}
 						bind:tableAPI
 					/>
-					<Resizer
-						bind:value={gridWidth}
-						bind:display
-						{compactMode}
-						containerWidth={ganttWidth}
-					/>
+					<Resizer containerWidth={ganttWidth} {api} />
 				{/if}
 
 				<div class="wx-content" bind:this={chart}>
-					<Chart
-						{readonly}
-						{fullWidth}
-						{fullHeight}
-						{taskTemplate}
-						{cellBorders}
-						{highlightTime}
-					/>
+					<Chart {readonly} {fullWidth} {fullHeight} {taskTemplate} />
 				</div>
 			</div>
 		</div>

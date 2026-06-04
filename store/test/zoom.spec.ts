@@ -4,13 +4,11 @@ import { getData, unitFormats } from "./stubs/data";
 import { writable } from "./stubs/writable";
 
 import { normalizeZoom } from "../src/scales";
-import { parseTaskDates } from "../src/normalizeDates";
 
 let store: DataStore;
 
 function resetState(data?: any) {
 	if (!data) data = getData();
-	parseTaskDates(data.tasks, { durationUnit: "day" });
 	if (data.links) data.links = normalizeLinks(data.links);
 	store = new DataStore(writable);
 

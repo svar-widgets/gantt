@@ -1,6 +1,5 @@
 <script>
 	import { Gantt, ContextMenu, Tooltip, Editor } from "@svar-ui/svelte-gantt";
-	import { Calendar } from "@svar-ui/gantt-store";
 	import { getData } from "../data/index";
 	import TooltipContent from "./TooltipContent.svelte";
 
@@ -30,7 +29,7 @@
 		<Tooltip {api} content={TooltipContent}>
 			<Gantt
 				bind:this={api}
-				calendar={new Calendar()}
+				calendar={true}
 				schedule={{ auto: true }}
 				criticalPath={{ type: "flexible" }}
 				summary={{ autoProgress: true }}

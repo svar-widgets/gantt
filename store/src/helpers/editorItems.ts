@@ -1,4 +1,10 @@
-import type { TEditorItem, ITask, IData, IDataConfig } from "../types";
+import type {
+	TEditorItem,
+	ITask,
+	IData,
+	IDataConfig,
+	IDataHash,
+} from "../types";
 import { defaultTaskTypes } from "../taskTypes";
 
 function isSummary(task: Partial<ITask>) {
@@ -92,6 +98,81 @@ export const defaultEditorItems: TEditorItem[] = [
 		key: "links",
 		comp: "links",
 		label: "",
+		batch: "links",
 		isHidden: task => isSegment(task),
 	},
 ];
+
+export function filterEditorButtons(
+	items: IDataHash[],
+	handler?: (item: IDataHash) => boolean
+): IDataHash[] {
+	if (!items || !Array.isArray(items)) return items;
+	return items.filter(handler).map(item => {
+		if (item.items && Array.isArray(item.items)) {
+			return {
+				...item,
+				items: filterEditorButtons(item.items, handler),
+			};
+		}
+		return { ...item };
+	});
+}
+
+const defaultEditorButtons: IDataHash[] = [
+	{
+		items: [
+			{ comp: "icon", icon: "wxi-close", id: "close" },
+			{ comp: "spacer" },
+			{
+				comp: "button",
+				type: "danger",
+				text: "Delete",
+				id: "delete",
+			},
+			{
+				comp: "button",
+				type: "primary",
+				text: "Save",
+				id: "save",
+			},
+		],
+	},
+	{
+		id: "tabs",
+		comp: "tabs",
+		css: "wx-toolbar-tabs",
+		options: [
+			{ id: "general", label: "General" },
+			{ id: "links", label: "Links" },
+		],
+	},
+];
+export function getEditorButtons(
+	config?: IDataConfig & { autoSave: boolean }
+): IDataHash[] {
+	let buttons = defaultEditorButtons.map(b => ({ ...b }));
+	if (config?.autoSave !== false) {
+		buttons = filterEditorButtons(
+			buttons,
+			(item: IDataHash) => item.id !== "save"
+		);
+	}
+	const tabs = buttons.find(item => item.id === "tabs");
+	if (tabs?.options) tabs.options = [...tabs.options];
+	if (config?.resources) {
+		tabs?.options.push({
+			id: "resources",
+			label: "Resources",
+			isHidden: (task: ITask) => isSummary(task) || isSegment(task),
+		} as any);
+	}
+	if (config?.splitTasks) {
+		tabs?.options.push({
+			id: "segments",
+			label: "Segments",
+			isHidden: (task: ITask) => !task.segments?.length,
+		} as any);
+	}
+	return buttons;
+}
