@@ -24,7 +24,6 @@
 		columns: rColumns,
 		scrollTop: rScrollTop,
 		undo,
-		gridWidth,
 		_columnsWidth,
 	} = api.getReactiveState();
 
@@ -51,7 +50,7 @@
 
 	function chartResizeHandler() {
 		api.exec("resize-chart", {
-			width: ganttWidth - $gridWidth - scrollSize - 4, // resizer width
+			width: ganttWidth - $_columnsWidth - scrollSize - 4, // resizer width
 			height: ganttHeight - $rScales.height,
 			scrollSize,
 		});
@@ -115,12 +114,7 @@
 				}}
 			>
 				{#if $rColumns.length}
-					<Grid
-						columnWidth={$_columnsWidth}
-						{readonly}
-						{fullHeight}
-						bind:tableAPI
-					/>
+					<Grid {readonly} {fullHeight} bind:tableAPI />
 					<Resizer containerWidth={ganttWidth} {api} />
 				{/if}
 

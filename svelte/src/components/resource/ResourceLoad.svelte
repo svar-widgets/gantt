@@ -1,7 +1,10 @@
 <script>
 	import { getContext, onMount, setContext } from "svelte";
 	import { locateID } from "@svar-ui/lib-dom";
-	import { getResourceColumns } from "@svar-ui/gantt-store";
+	import {
+		getResourceColumns,
+		normalizeResourceColumns,
+	} from "@svar-ui/gantt-store";
 	import { locale } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
 	import { en as coreEn } from "@svar-ui/core-locales";
@@ -17,12 +20,13 @@
 	import {
 		getFlexBasis,
 		getFitColumns,
+		getFillColumn,
+		getColumnsWidth,
 		getSortMarks,
-		adjustColumns,
-		checkFlex,
 		getResourceLoadColumns,
 		getScrollbarWidth,
 	} from "../../helpers/grid";
+	import { createZoomWheelHandler } from "../../helpers/zoom";
 
 	let {
 		api,
@@ -53,6 +57,7 @@
 		_columnsWidth,
 		_gridCollapseThreshold,
 		cellBorders,
+		zoom,
 	} = $derived(state ?? {});
 
 	let l = getContext("wx-i18n");
@@ -63,6 +68,7 @@
 	const _ = l.getGroup("gantt");
 
 	let containerWidth = $state(0);
+	let chartContainer = $state();
 	let scalesDiv = $state();
 	let rightContainerHeight = $state(0);
 	let leftApi;
@@ -70,7 +76,7 @@
 
 	const finalColumns = $derived.by(() => {
 		if (!columns || !columns.length) return [];
-		let cols = columns.map(col => {
+		let cols = normalizeResourceColumns(columns).map(col => {
 			col = { ...col };
 			const header = col.header;
 			if (typeof header === "object") {
@@ -100,52 +106,18 @@
 	let sortMarks = $derived(getSortMarks($rResources, $rResourceSort));
 
 	let gridClientWidth = $state(0);
-	let updateFlex = $state(false);
-
-	const hasFlexCol = $derived.by(() => {
-		updateFlex;
-		return checkFlex(finalColumns);
-	});
 
 	let columnWidth = $state(0);
 	$effect.pre(() => {
 		let width;
-		// use gantt grid column widths if set; otherwise, calculate
 		if ($_columnsWidth) width = $_columnsWidth;
 		else if ($displayMode === "chart") width = $_gridCollapseThreshold || 0;
-		else if (
-			columns?.length &&
-			columns.every(c => c.width && !c.flexgrow)
-		) {
-			width = columns.reduce((acc, c) => acc + c.width, 0);
-		} else width = 440; // default columns width
+		else width = $gridWidth;
 		columnWidth = width;
 	});
 
-	function setColumnWidth(resized) {
-		if (!checkFlex(finalColumns)) {
-			const newColumnWidth = fitColumns.reduce((acc, col) => {
-				if (resized && col.$width) col.$width = col.width;
-				return acc + (col.hidden ? 0 : col.width);
-			}, 0);
-			if (newColumnWidth !== columnWidth) columnWidth = newColumnWidth;
-		}
-		// hasFlexCol update
-		updateFlex = true;
-		updateFlex = false;
-	}
-
 	const fitColumns = $derived(
-		getFitColumns(
-			finalColumns,
-			columnWidth,
-			$displayMode,
-			gridClientWidth,
-			$gridWidth,
-			hasFlexCol,
-			$_gridCollapseThreshold,
-			"name"
-		)
+		getFitColumns(finalColumns, $displayMode, "name")
 	);
 
 	const rightColumns = $derived(
@@ -195,9 +167,8 @@
 
 	function initLeft(lapi) {
 		leftApi = lapi;
-		leftApi.intercept("select-row", ev => {
+		leftApi.on("select-row", ev => {
 			selectedRows = [ev.id];
-			return false;
 		});
 		leftApi.intercept("sort-rows", ev => {
 			const { key, add } = ev;
@@ -217,13 +188,12 @@
 			return false;
 		});
 
-		leftApi.on("resize-column", () => {
-			setColumnWidth(true);
+		leftApi.intercept("resize-column", ev => {
+			ev.flexgrowFallback = getFillColumn(finalColumns, ev.id);
 		});
 
-		leftApi.on("hide-column", ev => {
-			if (!ev.mode) adjustColumns(finalColumns);
-			setColumnWidth();
+		leftApi.on("resize-column", () => {
+			columnWidth = getColumnsWidth(leftApi.getState().columns);
 		});
 
 		leftApi.on("scroll-to", ev => {
@@ -237,9 +207,8 @@
 
 	function initRight(rapi) {
 		rightApi = rapi;
-		rightApi.intercept("select-row", ev => {
+		rightApi.on("select-row", ev => {
 			selectedRows = [ev.id];
-			return false;
 		});
 
 		rightApi.on("scroll-to", ev => {
@@ -269,6 +238,15 @@
 
 		return "";
 	}
+
+	const onWheel = $derived(
+		api &&
+			createZoomWheelHandler(
+				api,
+				() => $zoom,
+				() => chartContainer
+			)
+	);
 </script>
 
 {#if api}
@@ -313,7 +291,7 @@
 				<Resizer {containerWidth} {api} />
 			{/if}
 
-			<div class="wx-chart">
+			<div class="wx-chart" bind:this={chartContainer} onwheel={onWheel}>
 				<div
 					class="wx-timescale-viewport"
 					class:wx-v-scroll-reserve={rightHasVScroll}

@@ -8,7 +8,6 @@ const cases = [
 	"/holidays/:skin",
 	"/no-grid/:skin",
 	"/grid-fill-space-columns/:skin",
-	"/grid-fixed-columns/:skin",
 	"/grid-custom-columns/:skin",
 	"/toolbar/:skin",
 	"/toolbar-buttons/:skin",

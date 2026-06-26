@@ -21,9 +21,7 @@
 <div class="rows">
 	<div class="bar">
 		<Field label="Show baselines" position={"left"}>
-			{#snippet children({ id })}
-				<Switch bind:value={showBaseline} {id} />
-			{/snippet}
+			<Switch bind:value={showBaseline} />
 		</Field>
 		<Field label="Rollups mode" position={"left"}>
 			<Select {options} bind:value={rollupsMode} />

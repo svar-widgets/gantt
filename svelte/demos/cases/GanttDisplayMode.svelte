@@ -1,7 +1,7 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt } from "../../src";
-	import { Slider, RadioButtonGroup, Field, Button } from "@svar-ui/svelte-core";
+	import { Slider, RadioButtonGroup, Field } from "@svar-ui/svelte-core";
 
 	let { skinSettings } = $props();
 
@@ -14,8 +14,6 @@
 		{ id: "grid", label: "Grid" },
 		{ id: "chart", label: "Chart" },
 	];
-
-	let api = $state();
 </script>
 
 <div class="rows">
@@ -30,22 +28,11 @@
 		<Field label="Grid width: {gridWidth}" position={"left"}>
 			<Slider bind:value={gridWidth} min={200} max={600} step={50} />
 		</Field>
-		<div>
-			<Field label="For test only(action):" position={"left"}>
-				{#each ["all", "grid", "chart"] as mode}
-					<Button
-						onclick={() => api.exec("set-display-mode", { mode })}
-						>{mode}</Button
-					>
-				{/each}
-			</Field>
-		</div>
 	</div>
 
 	<div class="gtcell">
 		<Gantt
 			{...skinSettings}
-			bind:this={api}
 			tasks={data.tasks}
 			links={data.links}
 			scales={data.scales}

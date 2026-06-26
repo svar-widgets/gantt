@@ -324,7 +324,7 @@ export function expandScale(
 		if (width < minWidth && width) {
 			const k = minWidth / width;
 			return {
-				cellWidth: cellWidth * k,
+				cellWidth: Math.ceil(cellWidth * k),
 			};
 		}
 		return {};

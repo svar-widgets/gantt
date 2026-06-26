@@ -6,7 +6,6 @@ import GanttExcelImport from "./cases/GanttExcelImport.svelte";
 import GanttScales from "./cases/GanttScales.svelte";
 import GanttGrid from "./cases/GanttGrid.svelte";
 import GanttNoGrid from "./cases/GanttNoGrid.svelte";
-import GanttFixedColumns from "./cases/GanttFixedColumns.svelte";
 import GanttFlexColumns from "./cases/GanttFlexColumns.svelte";
 import GanttReadOnly from "./cases/GanttReadOnly.svelte";
 import GanttPreventActions from "./cases/GanttPreventActions.svelte";
@@ -113,16 +112,16 @@ export const links = [
 		"GanttFlexColumns",
 	],
 	[
-		"/grid-fixed-columns/:skin",
-		"Fixed grid columns",
-		GanttFixedColumns,
-		"GanttFixedColumns",
-	],
-	[
 		"/grid-custom-columns/:skin",
 		"Custom column content",
 		GanttGrid,
 		"GanttGrid",
+	],
+	[
+		"/display-mode/:skin",
+		"Grid width and display",
+		GanttDisplayMode,
+		"GanttDisplayMode",
 	],
 	["/no-grid/:skin", "No grid", GanttNoGrid, "GanttNoGrid"],
 	[
@@ -277,11 +276,5 @@ export const links = [
 		"GanttMultiple",
 	],
 	["/fullscreen/:skin", "Fullscreen", GanttFullscreen, "GanttFullscreen"],
-	[
-		"/display-mode/:skin",
-		"Display mode",
-		GanttDisplayMode,
-		"GanttDisplayMode",
-	],
 	["/locale/:skin", "Locales", GanttLocale, "GanttLocale"],
 ];

@@ -53,7 +53,7 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 	const resColumns = columns.map<IGanttColumn>(a => {
 		const align = a.align || "left";
 		const isAddTaskColumn = a.id === "add-task";
-		const flexgrow = !isAddTaskColumn && a.flexgrow ? a.flexgrow : null;
+		const flexgrow = isAddTaskColumn ? null : a.flexgrow;
 		const width = flexgrow
 			? 1
 			: a.width || (isAddTaskColumn ? ADD_TASK_COLUMN_WIDTH : 120);
@@ -75,6 +75,7 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 			template: a.template,
 			_template: a._template,
 			...(flexgrow && { flexgrow }),
+			...(a.hidden && { hidden: a.hidden }),
 			cell: a.cell,
 			resize: a.resize ?? true,
 			sort: a.sort ?? !isAddTaskColumn,
@@ -83,12 +84,29 @@ export function normalizeColumns(columns: IGanttColumn[]): IGanttColumn[] {
 			getter: a.getter,
 		};
 	});
+
+	ensureVisibleFlex(resColumns);
+
 	return resColumns;
 }
 
+export function ensureVisibleFlex(columns: IGanttColumn[]): void {
+	if (columns.some(c => c.flexgrow && !c.hidden)) return;
+	const fill =
+		columns.find(c => c.id === "text" && !c.hidden) ||
+		columns.find(c => c.id !== "add-task" && !c.hidden);
+	if (fill) fill.flexgrow = 1;
+}
+
 export const defaultColumns: IGanttColumn[] = [
-	{ id: "text", header: "Task name", flexgrow: 1, sort: true },
-	{ id: "start", header: "Start date", align: "center", sort: true },
+	{ id: "text", header: "Task name", width: 183, flexgrow: 1, sort: true },
+	{
+		id: "start",
+		header: "Start date",
+		width: 120,
+		align: "center",
+		sort: true,
+	},
 	{
 		id: "duration",
 		header: "Duration",
@@ -116,7 +134,26 @@ export function getDefaultColumns(
 	return columns;
 }
 
+export function getDefaultGridWidth(columns: IGanttColumn[]): number {
+	return columns.reduce((acc, c) => acc + (c.width ?? 0), 0);
+}
+
 export function getResourceColumns(): IResourceColumn[] {
 	const columns: IResourceColumn[] = [];
 	return columns;
+}
+
+export function normalizeResourceColumns(
+	columns: IResourceColumn[]
+): IResourceColumn[] {
+	if (!columns || !columns.length) return [];
+
+	const resColumns = columns.map(c => ({ ...c }));
+
+	if (!resColumns.some(c => c.flexgrow)) {
+		const fill = resColumns.find(c => c.id === "name") || resColumns[0];
+		if (fill) fill.flexgrow = 1;
+	}
+
+	return resColumns;
 }

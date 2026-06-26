@@ -5,7 +5,7 @@
 
 	const api = getContext("gantt-store");
 
-	const { _links: links, criticalPath } = api.getReactiveState();
+	const { _visibleLinks: links, criticalPath } = api.getReactiveState();
 
 	function onClickOutside(event) {
 		const css = event?.target?.classList;

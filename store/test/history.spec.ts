@@ -885,6 +885,38 @@ describe("history", () => {
 			]);
 		});
 
+		test("can undo moving the only child out of its branch", () => {
+			resetState({
+				...getData(),
+				tasks: [
+					{ id: 20, text: "New Task", type: "task" },
+					{
+						id: 47,
+						text: "Master project",
+						parent: 0,
+						type: "summary",
+					},
+					{ id: 22, text: "Task", parent: 47, type: "task" },
+					{ id: 21, text: "New Task 2", type: "task" },
+				],
+				links: [{ id: 1, source: 20, target: 21, type: "e2e" }],
+				undo: true,
+			});
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(22).parent).to.eq(47);
+
+			store.in.exec("move-task", { id: 22, target: 47, mode: "before" });
+			expect(tasks.byId(22).parent).to.eq(0);
+
+			store.in.exec("undo");
+			expect(tasks.byId(22).parent).to.eq(47);
+			expect(tasks.getBranch(22)?.map(t => t.id)).to.deep.equal([22]);
+
+			store.in.exec("redo");
+			expect(tasks.byId(22).parent).to.eq(0);
+		});
+
 		test("can undo/redo after moving tasks (summary tasks)", () => {
 			const initData = getData("summaries");
 			resetState({

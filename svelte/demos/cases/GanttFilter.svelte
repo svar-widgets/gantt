@@ -36,20 +36,15 @@
 <div class="demo">
 	<div class="bar">
 		<Field label="Filter by Task name" class="field">
-			{#snippet children({ id })}
-				<Text
-					{id}
-					clear
-					icon={"wxi-search"}
-					bind:value={text}
-					onchange={filterTasks}
-				/>
-			{/snippet}
+			<Text
+				clear
+				icon={"wxi-search"}
+				bind:value={text}
+				onchange={filterTasks}
+			/>
 		</Field>
 		<Field label="Open tasks while filtering" class="field">
-			{#snippet children({ id })}
-				<Switch {id} bind:value={open}></Switch>
-			{/snippet}
+			<Switch bind:value={open}></Switch>
 		</Field>
 		<div class="reload-btn">
 			<Button type="primary" onclick={reload}>Reload</Button>

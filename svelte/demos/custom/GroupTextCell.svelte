@@ -10,6 +10,7 @@
 	const isGroup = $derived($groupBy?.field && row.$group);
 
 	const groupValue = $derived.by(() => {
+		if (!isGroup) return undefined;
 		let value = row.$groupValue;
 		if (value && $groupBy.field === "priority") {
 			value = priorityMap[value];

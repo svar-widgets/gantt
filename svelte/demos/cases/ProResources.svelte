@@ -53,9 +53,7 @@
 			<div class="group-controls">
 				<div class="toggle">
 					<Field label="Group by resource" position="left">
-						{#snippet children({ id })}
-							<Switch {id} bind:value={enabled}></Switch>
-						{/snippet}
+						<Switch bind:value={enabled}></Switch>
 					</Field>
 				</div>
 				<div class="settings-anchor">
@@ -74,13 +72,10 @@
 										label="Multiple resources"
 										position="left"
 									>
-										{#snippet children({ id })}
-											<Switch
-												onchange={onResourceOptionChange}
-												{id}
-												bind:value={multipleResources}
-											></Switch>
-										{/snippet}
+										<Switch
+											onchange={onResourceOptionChange}
+											bind:value={multipleResources}
+										></Switch>
 									</Field>
 								</div>
 								<div class="switch">
@@ -88,14 +83,11 @@
 										label="Resource hierarchy"
 										position="left"
 									>
-										{#snippet children({ id })}
-											<Switch
-												onchange={onResourceOptionChange}
-												{id}
-												bind:value={resourceHierarchy}
-												disabled={multipleResources}
-											></Switch>
-										{/snippet}
+										<Switch
+											onchange={onResourceOptionChange}
+											bind:value={resourceHierarchy}
+											disabled={multipleResources}
+										></Switch>
 									</Field>
 								</div>
 							</div>

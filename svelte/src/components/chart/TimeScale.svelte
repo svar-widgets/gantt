@@ -93,7 +93,6 @@
 		right: 0px;
 		padding-left: 12px;
 		padding-right: 12px;
-		background-color: var(--wx-background);
 	}
 
 	.wx-cell {

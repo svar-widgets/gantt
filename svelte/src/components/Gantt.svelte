@@ -13,6 +13,7 @@
 	import {
 		DataStore,
 		getDefaultColumns,
+		getDefaultGridWidth,
 		defaultTaskTypes,
 		normalizeZoom,
 	} from "@svar-ui/gantt-store";
@@ -51,7 +52,7 @@
 		cellWidth = 100,
 		cellHeight = 38,
 		scaleHeight = 36,
-		gridWidth = 440,
+		gridWidth = null,
 		displayMode = "all",
 		readonly = false,
 		cellBorders = "full",
@@ -91,14 +92,20 @@
 	// prepare configuration objects
 	const { calendar: lCalendar } = locale.getRaw();
 
+	// default column set (incl. auto-added resources/wbs columns) drives the
+	// default grid width when none is provided by the user
+	let defaultGridColumns = $derived(
+		getDefaultColumns({ resources: !!resources, wbs })
+	);
+	let resolvedGridWidth = $derived(
+		gridWidth ?? getDefaultGridWidth(defaultGridColumns)
+	);
+
 	let normalizedConfig = $derived.by(() => {
 		let config = {
 			zoom: prepareZoom(zoom, lCalendar),
 			scales: prepareScales(scales, lCalendar),
-			columns: prepareColumns(
-				columns ?? getDefaultColumns({ resources: !!resources, wbs }),
-				lCalendar
-			),
+			columns: prepareColumns(columns ?? defaultGridColumns, lCalendar),
 			links,
 			cellWidth,
 		};
@@ -233,7 +240,7 @@
 			highlightTime,
 			wbs,
 			displayMode,
-			gridWidth,
+			gridWidth: resolvedGridWidth,
 			cellBorders,
 			_compactMode: compactMode,
 		});

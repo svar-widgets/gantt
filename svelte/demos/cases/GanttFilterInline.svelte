@@ -31,7 +31,7 @@
 	};
 
 	const columns = [
-		{ id: "text", header: ["Task name", textfilter], width: 200 },
+		{ id: "text", header: ["Task name", textfilter], flexgrow: 1 },
 		{
 			id: "start",
 			header: ["Start date", datefilter],
@@ -66,6 +66,7 @@
 				{...skinSettings}
 				{tasks}
 				{columns}
+				gridWidth={600}
 				links={data.links}
 				scales={data.scales}
 				zoom

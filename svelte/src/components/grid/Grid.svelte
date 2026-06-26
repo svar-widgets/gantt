@@ -17,12 +17,12 @@
 		getFlexBasis,
 		getScrollX,
 		getFitColumns,
+		getFillColumn,
+		getColumnsWidth,
 		getSortMarks,
-		adjustColumns,
-		checkFlex,
 	} from "../../helpers/grid";
 
-	let { readonly, columnWidth, tableAPI = $bindable() } = $props();
+	let { readonly, tableAPI = $bindable() } = $props();
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -45,10 +45,11 @@
 		gridWidth,
 		displayMode,
 		_compactMode,
-		_gridCollapseThreshold,
 	} = api.getReactiveState();
 
 	let dragTask = $state(null);
+
+	let columnWidth = $state(0);
 
 	function execAction(id, action) {
 		if (action === "add-task") {
@@ -166,7 +167,6 @@
 	let gridClientHeight = $state(0);
 
 	let tableContainer = $state();
-	let updateFlex = $state(false);
 
 	function handleHotkey(ev) {
 		const { key, isInput } = ev;
@@ -217,13 +217,20 @@
 			return false;
 		});
 
-		tapi.on("resize-column", () => {
-			setColumnWidth(true);
+		tapi.intercept("resize-column", ev => {
+			ev.flexgrowFallback = getFillColumn(cols, ev.id);
 		});
 
-		tapi.on("hide-column", ev => {
-			if (!ev.mode) adjustColumns(cols);
-			setColumnWidth();
+		tapi.on("resize-column", ev => {
+			const columns = tapi.getState().columns;
+			columnWidth = getColumnsWidth(columns);
+			if (ev.inProgress !== true) api.exec("set-columns", { columns });
+		});
+
+		tapi.on("hide-column", () => {
+			const columns = tapi.getState().columns;
+			columnWidth = getColumnsWidth(columns);
+			api.exec("set-columns", { columns });
 		});
 
 		tapi.intercept("update-cell", e => {
@@ -313,6 +320,10 @@
 		return cols;
 	});
 
+	$effect.pre(() => {
+		columnWidth = getColumnsWidth(cols);
+	});
+
 	function getColumnStyle(col) {
 		let style = `wx-text-${col.align} `;
 
@@ -364,24 +375,6 @@
 		return rows.map(t => ({ ...t }));
 	});
 
-	const hasFlexCol = $derived.by(() => {
-		updateFlex;
-		return checkFlex(cols);
-	});
-
-	function setColumnWidth(resized) {
-		if (!checkFlex(cols)) {
-			const newColumnWidth = fitColumns.reduce((acc, col) => {
-				if (resized && col.$width) col.$width = col.width;
-				return acc + (col.hidden ? 0 : col.width);
-			}, 0);
-			if (newColumnWidth !== columnWidth) columnWidth = newColumnWidth;
-		}
-		// hasFlexCol update
-		updateFlex = true;
-		updateFlex = false;
-	}
-
 	let sortMarks = $derived(getSortMarks(allTasks, $sort));
 
 	// preserve filters while sorting
@@ -389,17 +382,7 @@
 		return sortMarks ? { ...$filterValues } : $filterValues;
 	});
 
-	const fitColumns = $derived(
-		getFitColumns(
-			cols,
-			columnWidth,
-			$displayMode,
-			gridClientWidth,
-			$gridWidth,
-			hasFlexCol,
-			$_gridCollapseThreshold
-		)
-	);
+	const fitColumns = $derived(getFitColumns(cols, $displayMode));
 
 	const bodyOffset = $derived(scrollDelta - $scrollTop);
 
@@ -506,6 +489,8 @@
 		height: 100%;
 		display: flex;
 		align-items: center;
+	}
+	.wx-table :global(.wx-body .wx-cell:not([tabindex="0"])) {
 		outline: none;
 	}
 	.wx-table :global(.wx-grid .wx-row) {

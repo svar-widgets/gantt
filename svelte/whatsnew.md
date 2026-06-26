@@ -1,3 +1,17 @@
+## 2.7.1
+
+### Fixes
+
+-   Better performance with links rendering
+-   Zoom cannot start from Resource load view
+-   Auto scheduling and summary `autoProgress` trigger infinite loop
+-   Focus on Grid header and body cells is lost / unstable
+-   Undo of the "move-task" action doesn't work after task was moved to a different branch
+-   Cell width gets a fractional value when scale start/end are set
+-   Newly added task is not rendered correctly after update
+-   `highlightTime` can be used only with day / hour minimal scale unit
+-   Incorrect marker position when zooming out to year scale
+
 ## 2.7.0
 
 ### New features

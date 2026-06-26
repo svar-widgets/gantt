@@ -20,6 +20,7 @@ export const updateLink = function (
 	) {
 		link.$p = "";
 		link.$pl = 0;
+		link.$x1 = link.$x2 = link.$y1 = link.$y2 = 0;
 		return link;
 	}
 
@@ -52,7 +53,14 @@ export const updateLink = function (
 	const offset = (cellHeight - heightAdjustment - endTask.$h) / 2;
 
 	if (sx !== ex || sy !== ey) {
-		const lineCoords = getLineCoords(
+		const {
+			coords: lineCoords,
+			pl,
+			x1,
+			x2,
+			y1,
+			y2,
+		} = getLineCoords(
 			sx,
 			sy,
 			ex,
@@ -65,30 +73,15 @@ export const updateLink = function (
 
 		const arrowCoords = getArrowCoords(ex, ey, e_start);
 		link.$p = `${lineCoords},${arrowCoords}`;
-		link.$pl = getPolylineLength(link.$p);
+		link.$pl = pl;
+		link.$x1 = Math.min(x1, ex - 5);
+		link.$x2 = Math.max(x2, ex + 5);
+		link.$y1 = Math.min(y1, ey - 3);
+		link.$y2 = Math.max(y2, ey + 3);
 	}
 
 	return link;
 };
-
-function getPolylineLength(pointsString: string) {
-	const nums = pointsString.split(",").map(Number);
-	const points = [];
-
-	for (let i = 0; i < nums.length; i += 2) {
-		if (i + 1 < nums.length) {
-			points.push([nums[i], nums[i + 1]]);
-		}
-	}
-
-	let length = 0;
-	for (let i = 0; i < points.length - 1; i++) {
-		const [x1, y1] = points[i];
-		const [x2, y2] = points[i + 1];
-		length += Math.hypot(x2 - x1, y2 - y1);
-	}
-	return length;
-}
 
 function getLineCoords(
 	sx: number,
@@ -99,7 +92,14 @@ function getLineCoords(
 	e_start: boolean,
 	gapp: number,
 	offset: number
-): string {
+): {
+	coords: string;
+	pl: number;
+	x1: number;
+	x2: number;
+	y1: number;
+	y2: number;
+} {
 	const shift = delta * (s_start ? -1 : 1);
 	const backshift = delta * (e_start ? -1 : 1);
 
@@ -129,7 +129,22 @@ function getLineCoords(
 		line[7] = line[5];
 	}
 
-	return line.join(",");
+	let x1 = Infinity,
+		x2 = -Infinity,
+		y1 = Infinity,
+		y2 = -Infinity;
+	let pl = 0;
+	for (let i = 0; i < line.length - 1; i += 2) {
+		if (line[i] < x1) x1 = line[i];
+		if (line[i] > x2) x2 = line[i];
+		if (line[i + 1] < y1) y1 = line[i + 1];
+		if (line[i + 1] > y2) y2 = line[i + 1];
+		if (i < line.length - 3) {
+			pl += Math.hypot(line[i + 2] - line[i], line[i + 3] - line[i + 1]);
+		}
+	}
+
+	return { coords: line.join(","), pl, x1, x2, y1, y2 };
 }
 
 function getArrowCoords(x: number, y: number, start: boolean) {

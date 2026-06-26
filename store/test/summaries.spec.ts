@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DataStore, normalizeLinks } from "../src/index";
+import { DataStore, normalizeLinks, getDefaultColumns } from "../src/index";
 import { writable } from "svelte/store";
 import { getData, summaryDates, summaryPrettyDates } from "./stubs/data";
 
@@ -681,4 +681,60 @@ test("correctly update summary task to task milestone task and back, Default set
 	expect(tasks.byId(1).type).to.eq("summary");
 	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 13));
 	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 21));
+});
+
+// Regression: schedule auto + autoProgress
+test("auto schedule + autoProgress does not loop", () => {
+	const tasks = [
+		{
+			id: 1,
+			text: "S",
+			type: "summary",
+			parent: 0,
+			open: true,
+			start: new Date(2024, 3, 1),
+			end: new Date(2024, 3, 10),
+			progress: 0,
+		},
+		{
+			id: 10,
+			text: "a",
+			type: "task",
+			parent: 1,
+			start: new Date(2024, 3, 1),
+			end: new Date(2024, 3, 3),
+			progress: 50,
+		},
+		{
+			id: 11,
+			text: "b",
+			type: "task",
+			parent: 1,
+			start: new Date(2024, 3, 1),
+			end: new Date(2024, 3, 3),
+			progress: 0,
+		},
+	];
+	const links = [{ id: 1, source: 10, target: 11, type: "e2s" }];
+
+	const store = new DataStore(writable);
+	let scheduleRuns = 0;
+	// bound runaway so a regression fails fast instead of hanging the suite
+	(store as any).in.intercept("schedule-tasks", () => {
+		if (++scheduleRuns > 100) throw new Error("scheduling loop");
+	});
+
+	store.init({
+		tasks,
+		links: normalizeLinks(links),
+		columns: getDefaultColumns({ resources: false, wbs: false }),
+		scales: [{ unit: "day", step: 1, format: "%j" }],
+		cellWidth: 80,
+		cellHeight: 38,
+		scaleHeight: 36,
+		schedule: { auto: true },
+		summary: { autoProgress: true },
+	} as any);
+
+	expect(scheduleRuns).toBeLessThan(10);
 });

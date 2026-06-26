@@ -10,7 +10,7 @@ context(
 
 			cy.get(".wx-chart").should("exist");
 			cy.wxG("chart-task-list").get(".wx-bar").should("have.length", 19);
-			cy.wxG("chart-link-list").children().should("have.length", 11);
+			cy.wxG("chart-link-list").children().should("have.length", 5);
 			cy.shot("chart");
 		});
 
@@ -18,13 +18,13 @@ context(
 			cy.visit("/index.html#/local-data");
 			cy.viewport(1300, 900);
 
-			cy.wxG("chart-link-list").children().should("have.length", 11);
+			cy.wxG("chart-link-list").children().should("have.length", 5);
 			cy.wxG("link", 10, "left").click();
 			cy.wxG("link", 10, "left").should("be.visible");
 			cy.wxG("link", 10, "right").should("not.be.visible");
 			cy.wxG("link", 2, "left").click();
 
-			cy.wxG("chart-link-list").children().should("have.length", 12);
+			cy.wxG("chart-link-list").children().should("have.length", 6);
 			cy.shot("add s2s link");
 
 			cy.wxG("link", 10, "right").click();
@@ -32,7 +32,7 @@ context(
 			cy.wxG("link", 10, "left").should("not.be.visible");
 			cy.wxG("link", 2, "left").click();
 
-			cy.wxG("chart-link-list").children().should("have.length", 13);
+			cy.wxG("chart-link-list").children().should("have.length", 7);
 			cy.shot("add e2s link");
 
 			cy.wxG("link", 11, "right").click();
@@ -40,14 +40,14 @@ context(
 			cy.wxG("link", 11, "left").should("not.be.visible");
 			cy.wxG("link", 20, "right").click();
 
-			cy.wxG("chart-link-list").children().should("have.length", 14);
+			cy.wxG("chart-link-list").children().should("have.length", 8);
 			cy.shot("add e2e link");
 			cy.wxG("link", 20, "left").click();
 			cy.wxG("link", 20, "left").should("be.visible");
 			cy.wxG("link", 20, "right").should("not.be.visible");
 			cy.wxG("link", 21, "right").click();
 
-			cy.wxG("chart-link-list").children().should("have.length", 15);
+			cy.wxG("chart-link-list").children().should("have.length", 9);
 			cy.shot("add s2e link");
 		});
 
@@ -468,9 +468,9 @@ context(
 			});
 
 			it("critical links exist", () => {
-				cy.get(".wx-line.wx-critical").should("have.length", 4);
+				cy.get(".wx-line.wx-critical").should("have.length", 3);
 
-				[4, 5, 6, 7].forEach(id => {
+				[4, 5, 6].forEach(id => {
 					cy.wxG("polyline", id).should("have.class", "wx-critical");
 				});
 

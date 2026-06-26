@@ -54,7 +54,7 @@
 	let api = $state();
 
 	const columns = [
-		{ id: "text", header: "Task name", width: 220 },
+		{ id: "text", header: "Task name", flexgrow: 1 },
 		{ id: "assigned", header: "Assigned", width: 160, cell: AvatarCell },
 		{ id: "start", header: "Start Date", width: 100 },
 	];
@@ -68,5 +68,6 @@
 	scales={data.scales}
 	lengthUnit="hour"
 	{columns}
+	gridWidth={480}
 />
 <Editor {api} {items} />

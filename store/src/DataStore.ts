@@ -26,7 +26,11 @@ import {
 	setSummaryDates,
 } from "./tasks";
 import { normalizeLinks, updateLink } from "./links";
-import { ADD_TASK_COLUMN_WIDTH, normalizeColumns } from "./columns";
+import {
+	ADD_TASK_COLUMN_WIDTH,
+	normalizeColumns,
+	ensureVisibleFlex,
+} from "./columns";
 import {
 	getAdder,
 	getDiffer,
@@ -189,20 +193,13 @@ export default class DataStore extends Store<IData> {
 					},
 				},
 				{
-					in: ["displayMode", "columns"],
-					out: ["gridWidth", "_columnsWidth"],
+					in: ["displayMode", "columns", "gridWidth"],
+					out: ["_columnsWidth"],
 					exec: (ctx: TDataConfig) => {
-						const {
-							columns,
-							displayMode,
-							gridWidth,
-							_columnsWidth,
-						} = this.getState();
+						const { columns, displayMode, gridWidth } =
+							this.getState();
 						if (!columns?.length) {
-							this.setState(
-								{ gridWidth: 0, _columnsWidth: 0 },
-								ctx
-							);
+							this.setState({ _columnsWidth: 0 }, ctx);
 							return;
 						}
 						let width = 0;
@@ -213,24 +210,9 @@ export default class DataStore extends Store<IData> {
 							width = addCol?.width || ADD_TASK_COLUMN_WIDTH;
 						}
 						if (displayMode === "all") {
-							if (!columns?.length) width = 440;
-							else {
-								width = !_columnsWidth ? gridWidth : 440;
-								if (
-									columns.every(c => c.width && !c.flexgrow)
-								) {
-									width = columns.reduce(
-										(acc, c) => acc + c.width,
-										0
-									);
-								}
-							}
+							width = gridWidth;
 						}
-						if (width)
-							this.setState(
-								{ gridWidth: width, _columnsWidth: width },
-								ctx
-							);
+						if (width) this.setState({ _columnsWidth: width }, ctx);
 					},
 				},
 				// restore config cellWidth on scale change
@@ -385,17 +367,25 @@ export default class DataStore extends Store<IData> {
 							groupBy,
 							_tasksPatch,
 						} = this.getState();
+						const arr = tree.toArray();
 						if (_tasksPatch) {
-							this.setState(
-								{
-									_tasks: tree.toArray(),
-									_tasksPatch: null,
-								},
-								ctx
+							// canPatch = false if text update is called after
+							// add-task ( same batch)
+							const canPatch = arr.every(
+								t => t.$skip || typeof t.$x === "number"
 							);
-							return;
+							if (canPatch) {
+								this.setState(
+									{
+										_tasks: arr,
+										_tasksPatch: null,
+									},
+									ctx
+								);
+								return;
+							}
 						}
-						const _tasks = tree.toArray().map((task, i) =>
+						const _tasks = arr.map((task, i) =>
 							updateTask(task as IGanttTask, i, {
 								cellWidth,
 								cellHeight,
@@ -407,7 +397,7 @@ export default class DataStore extends Store<IData> {
 								groupBy,
 							})
 						);
-						this.setState({ _tasks }, ctx);
+						this.setState({ _tasks, _tasksPatch: null }, ctx);
 					},
 				},
 				// prepare link positions
@@ -458,6 +448,72 @@ export default class DataStore extends Store<IData> {
 								return a !== null;
 							});
 						this.setState({ _links }, ctx);
+					},
+				},
+				// build link spatial index
+				{
+					in: ["_links"],
+					out: ["_linksIndex"],
+					exec: (ctx: TDataConfig) => {
+						const { _links } = this.getState();
+						const index = new Map<number, IGanttLink[]>();
+						for (const link of _links) {
+							if (!link.$p) continue;
+							const cx1 = Math.floor(link.$x1 / 2048);
+							const cx2 = Math.floor(link.$x2 / 2048);
+							const cy1 = Math.floor(link.$y1 / 2048);
+							const cy2 = Math.floor(link.$y2 / 2048);
+							for (let cy = cy1; cy <= cy2; cy++) {
+								for (let cx = cx1; cx <= cx2; cx++) {
+									const key = cy * 65536 + cx;
+									let bucket = index.get(key);
+									if (!bucket) index.set(key, (bucket = []));
+									bucket.push(link);
+								}
+							}
+						}
+						this.setState({ _linksIndex: index }, ctx);
+					},
+				},
+				// cull links
+				{
+					in: ["_linksIndex", "area", "xArea", "cellHeight"],
+					out: ["_visibleLinks"],
+					exec: (ctx: TDataConfig) => {
+						const { _linksIndex, area, xArea, cellHeight } =
+							this.getState();
+						const areaTo = area.to ?? area.end * cellHeight;
+						const cx1 = Math.floor(xArea.from / 2048);
+						const cx2 = Math.floor(xArea.to / 2048);
+						const cy1 = Math.floor(area.from / 2048);
+						const cy2 = Math.floor((areaTo as number) / 2048);
+						// collect candidates from at most 4 grid cells
+						let candidates: IGanttLink[];
+						if (cx1 === cx2 && cy1 === cy2) {
+							candidates =
+								_linksIndex.get(cy1 * 65536 + cx1) ?? [];
+						} else {
+							const seen = new Set<IGanttLink>();
+							for (let cy = cy1; cy <= cy2; cy++) {
+								for (let cx = cx1; cx <= cx2; cx++) {
+									const bucket = _linksIndex.get(
+										cy * 65536 + cx
+									);
+									if (bucket)
+										for (const link of bucket)
+											seen.add(link);
+								}
+							}
+							candidates = Array.from(seen);
+						}
+						const _visibleLinks = candidates.filter(
+							link =>
+								link.$y2 >= area.from &&
+								link.$y1 <= areaTo &&
+								link.$x2 >= xArea.from &&
+								link.$x1 <= xArea.to
+						);
+						this.setState({ _visibleLinks }, ctx);
 					},
 				},
 				// activeTask
@@ -841,7 +897,6 @@ export default class DataStore extends Store<IData> {
 		inBus.on("update-task", (ev: TMethodsConfig["update-task"]) => {
 			const { id, segmentIndex, diff, eventSource } = ev;
 			let { task } = ev;
-
 			const state = this.getState();
 			const { tasks, _scales, durationUnit, splitTasks, _calendars } =
 				state;
@@ -889,8 +944,11 @@ export default class DataStore extends Store<IData> {
 
 			if (!hasDateChange) {
 				tasks.update(id, task);
-				this.setStateAsync({ tasks, _tasksPatch: !this.getGrouping() });
-				ev.task = tasks.byId(id);
+				const updated = tasks.byId(id);
+				const canPatch =
+					!this.getGrouping() && typeof updated.$x === "number";
+				this.setStateAsync({ tasks, _tasksPatch: canPatch });
+				ev.task = updated;
 				return;
 			}
 
@@ -1548,6 +1606,23 @@ export default class DataStore extends Store<IData> {
 			});
 		});
 		inBus.on(
+			"set-columns",
+			({ columns }: TMethodsConfig["set-columns"]) => {
+				const next = this.getState().columns.map(col => {
+					const u = columns.find(c => c.id === col.id);
+					if (!u) return col;
+					return {
+						...col,
+						width: u.width,
+						hidden: u.hidden,
+						flexgrow: u.flexgrow,
+					};
+				});
+				ensureVisibleFlex(next);
+				this.setState({ columns: next });
+			}
+		);
+		inBus.on(
 			"set-display-mode",
 			({ mode }: TMethodsConfig["set-display-mode"]) => {
 				const compactMode = this.getState()._compactMode;
@@ -2168,6 +2243,7 @@ export type IDataMethodsConfig = CombineTypes<
 		["delete-assignment"]: { id: TID };
 		["update-assignment"]: { id: TID; assignment: Partial<IAssignment> };
 		["resize-grid"]: { width: number };
+		["set-columns"]: { columns: IGanttColumn[] };
 		["set-display-mode"]: { mode: TDisplayMode };
 		["open-resource-row"]: { id: TID; mode: boolean };
 		["sort-resources"]: {

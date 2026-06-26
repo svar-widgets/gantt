@@ -58,13 +58,8 @@
 		</div>
 		<div class="switch">
 			<Field label="Task hierarchy" position="left">
-				{#snippet children({ id })}
-					<Switch
-						{id}
-						bind:value={taskHierarchy}
-						disabled={field === "none"}
-					></Switch>
-				{/snippet}
+				<Switch bind:value={taskHierarchy} disabled={field === "none"}
+				></Switch>
 			</Field>
 		</div>
 		<div class="switch">
@@ -73,13 +68,8 @@
 				position="left"
 				type="checkbox"
 			>
-				{#snippet children({ id })}
-					<Switch
-						{id}
-						bind:value={ungroupedTop}
-						disabled={field === "none"}
-					></Switch>
-				{/snippet}
+				<Switch bind:value={ungroupedTop} disabled={field === "none"}
+				></Switch>
 			</Field>
 		</div>
 	</div>

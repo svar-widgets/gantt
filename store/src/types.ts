@@ -180,6 +180,10 @@ export interface IGanttLink extends ILink {
 	id: TID;
 	$p: string;
 	$pl: number;
+	$x1: number;
+	$x2: number;
+	$y1: number;
+	$y2: number;
 	critical?: boolean;
 }
 
@@ -408,6 +412,8 @@ export interface IData
 		[key: TID]: Array<ITask>;
 	};
 	_links: IGanttLink[];
+	_linksIndex: Map<number, IGanttLink[]>;
+	_visibleLinks: IGanttLink[];
 	_assignments?: IDataAssignment;
 	_selected?: ITask[];
 	_activeTask?: ITask;
@@ -490,6 +496,7 @@ export type IGanttColumn = {
 	width?: number;
 	align?: "left" | "right" | "center";
 	flexgrow?: number;
+	hidden?: boolean;
 	resize?: boolean;
 	header?: IColumn["header"];
 	id?: string;

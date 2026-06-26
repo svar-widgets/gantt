@@ -13,7 +13,7 @@
 		{
 			id: "text",
 			header: "Task name",
-			width: 150,
+			flexgrow: 1,
 		},
 		{
 			id: "earliestStart",
@@ -57,6 +57,7 @@
 		{links}
 		{scales}
 		{columns}
+		gridWidth={590}
 		slack
 	/>
 </div>

@@ -8,7 +8,7 @@
 	let { skinSettings } = $props();
 
 	const columns = [
-		{ id: "text", header: "Task", width: 220, cell: NameAndDateCell },
+		{ id: "text", header: "Task", flexgrow: 1, cell: NameAndDateCell },
 		{ id: "assigned", header: "Assigned", width: 160, cell: AvatarCell },
 		{
 			id: "add-task",
@@ -27,5 +27,6 @@
 	links={data.links}
 	scales={data.scales}
 	{columns}
+	gridWidth={460}
 	cellHeight={40}
 />

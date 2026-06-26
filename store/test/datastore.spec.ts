@@ -133,6 +133,7 @@ describe("datastore", () => {
 				_scaleMinUnit: "day",
 				_tasks,
 				_links,
+				_visibleLinks: [],
 				focusTask: null,
 				_sort: null,
 				autoScale: true,
@@ -159,6 +160,7 @@ describe("datastore", () => {
 				_compactMode: false,
 				_columnsWidth: 440,
 				_gridCollapseThreshold: ADD_TASK_COLUMN_WIDTH,
+				_tasksPatch: null,
 			};
 
 			vi.advanceTimersByTime(1);
@@ -168,6 +170,7 @@ describe("datastore", () => {
 			for (const key in state) {
 				if (
 					key !== "_scales" &&
+					key !== "_linksIndex" &&
 					key !== "columns" &&
 					key !== "calendars"
 				) {
@@ -701,6 +704,33 @@ describe("datastore", () => {
 			vi.advanceTimersByTime(1);
 
 			expect(oTask).to.deep.eq(tasks.byId(1));
+		});
+
+		test("keeps correct layout when add-task and text update run in the same batch", () => {
+			resetState();
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("add-task", {
+				id: 3,
+				mode: "after",
+				target: 0,
+				task: { id: 3, text: "child 3" },
+			});
+			store.in.exec("update-task", {
+				id: 3,
+				task: { id: 3, text: "update 3" },
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const { _tasks } = store.getState();
+			const task = _tasks.find(t => t.id === 3);
+
+			expect(task?.text).to.eq("update 3");
+			expect(task?.$x).to.be.a("number");
+			expect(task?.$y).to.be.a("number");
+			expect(task?.$w).to.be.gt(0);
+			expect(task?.$h).to.be.gt(0);
 		});
 	});
 

@@ -26,7 +26,9 @@ export {
 export {
 	defaultColumns,
 	getDefaultColumns,
+	getDefaultGridWidth,
 	getResourceColumns,
+	normalizeResourceColumns,
 } from "./columns";
 export { defaultTaskTypes } from "./taskTypes";
 export { prepareEditTask, parseTaskDates } from "./normalizeDates";

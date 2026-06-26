@@ -35,80 +35,26 @@ export function getScrollX(
 		: columnWidth > containerWidth;
 }
 
-export function getFitColumns(
-	columns,
-	columnWidth,
-	displayMode,
-	containerWidth,
-	gridWidth,
-	hasFlexCol,
-	gridCollapseThreshold,
-	colId = "add-task"
-) {
-	let filteredColumns =
-		displayMode === "chart"
-			? [
-					{
-						...columns.filter(c => c.id === colId)[0],
-						resize: false,
-					},
-				]
-			: columns;
+export function getFitColumns(columns, displayMode, colId = "add-task") {
+	return displayMode === "chart"
+		? [
+				{
+					...columns.filter(c => c.id === colId)[0],
+					resize: false,
+				},
+			]
+		: columns;
+}
 
-	// Adjust widths if needed
-	const gridContainerWidth =
-		displayMode === "all" ? gridWidth : containerWidth;
+export function getFillColumn(columns, id) {
+	const ok = c => c.id !== "add-task" && c.id !== id && !c.hidden;
+	return columns
+		.filter(ok)
+		.reduce((max, c) => (!max || c.width > max.width ? c : max), null)?.id;
+}
 
-	if (!hasFlexCol) {
-		let baseColumnWidth = columnWidth;
-		let forceReset = false;
-		if (columns.some(c => c.$width)) {
-			let actualWidth = 0;
-			baseColumnWidth = columns.reduce((acc, col) => {
-				if (!col.hidden) {
-					actualWidth += col.width;
-					acc += col.$width || col.width;
-				}
-				return acc;
-			}, 0);
-
-			// Force widths reset when "display" "grid" changed to "all"
-			if (
-				actualWidth > baseColumnWidth &&
-				baseColumnWidth >= gridContainerWidth
-			)
-				forceReset = true;
-		}
-
-		if (forceReset || baseColumnWidth < gridContainerWidth) {
-			let k = 1;
-			if (!forceReset)
-				k =
-					(gridContainerWidth - gridCollapseThreshold) /
-					(baseColumnWidth - gridCollapseThreshold || 1);
-			const ganttColumns = colId === "add-task";
-			let currWidth = 0;
-			return filteredColumns.map((c, index) => {
-				if (c.id !== "add-task" && !c.hidden) {
-					if (!c.$width) c.$width = c.width;
-					c.width = c.$width * k;
-					if (!ganttColumns) {
-						if (index === filteredColumns.length - 1) {
-							const fitWidth = forceReset
-								? baseColumnWidth
-								: gridContainerWidth;
-							// for the last non-Gantt column, fill the remaining space.
-							// the 1px offset prevents a horizontal scrollbar from appearing.
-							c.width = fitWidth - currWidth - 1;
-						}
-						currWidth += c.width;
-					}
-				}
-				return c;
-			});
-		}
-	}
-	return filteredColumns;
+export function getColumnsWidth(columns) {
+	return columns.reduce((acc, c) => acc + (c.hidden ? 0 : c.width), 0);
 }
 
 export function getSortMarks(tasks, sort) {
@@ -123,18 +69,6 @@ export function getSortMarks(tasks, sort) {
 		return marks;
 	}
 	return {};
-}
-
-export function adjustColumns(columns) {
-	const flexCols = columns.filter(c => c.flexgrow && !c.hidden);
-	if (flexCols.length === 1)
-		columns.forEach(c => {
-			if (c.$width && !c.flexgrow && !c.hidden) c.width = c.$width;
-		});
-}
-
-export function checkFlex(columns) {
-	return columns.some(c => c.flexgrow && !c.hidden);
 }
 
 export function getResourceLoadColumns(scales, LoadCell, template) {

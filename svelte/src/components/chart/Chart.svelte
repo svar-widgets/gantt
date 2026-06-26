@@ -7,6 +7,7 @@
 
 	import { hotkeys } from "@svar-ui/grid-store";
 	import { setID } from "@svar-ui/lib-dom";
+	import { createZoomWheelHandler } from "../../helpers/zoom";
 
 	let { readonly, fullWidth, fullHeight, taskTemplate } = $props();
 
@@ -78,43 +79,11 @@
 		});
 	}
 
-	let lastWheelTime = performance.now();
-	const MAX_ZOOM_RATE = 0.003; // per ms
-	function getZoomFactor(evDelta) {
-		const isTouchpad = Math.abs(evDelta) < 50; // or mouse with smooth scrolling
-		const SENSITIVITY = isTouchpad ? 0.004 : 0.01; // smaller - slower
-		const now = performance.now();
-		const dt = Math.min(now - lastWheelTime, 50);
-		lastWheelTime = now;
-		const normalized = clamp(
-			-evDelta * SENSITIVITY,
-			-MAX_ZOOM_RATE * dt,
-			MAX_ZOOM_RATE * dt
-		);
-		return Math.exp(normalized);
-	}
-	function clamp(value, min, max) {
-		return Math.max(Math.min(value, max), min);
-	}
-	let pending = false;
-	function onWheel(e) {
-		if ($zoom && (e.ctrlKey || e.metaKey)) {
-			e.preventDefault();
-			const ratio = getZoomFactor(e.deltaY);
-			const offset = e.clientX - chart.getBoundingClientRect().left;
-			if (!pending) {
-				pending = true;
-				requestAnimationFrame(() => {
-					api.exec("zoom-scale", {
-						dir: ratio > 1 ? 1 : -1,
-						ratio: Math.abs(1 - ratio),
-						offset,
-					});
-					pending = false;
-				});
-			}
-		}
-	}
+	const onWheel = createZoomWheelHandler(
+		api,
+		() => $zoom,
+		() => chart
+	);
 
 	function getHoliday(cell) {
 		const style = $highlightTime?.(cell.date, cell.unit);
@@ -127,11 +96,7 @@
 	}
 
 	const holidays = $derived.by(() => {
-		if (
-			($scales.minUnit !== "hour" && $scales.minUnit !== "day") ||
-			!$highlightTime
-		)
-			return null;
+		if (!$highlightTime) return null;
 		const cells = $scales.rows[$scales.rows.length - 1].cells;
 		return cells.slice($xArea.start, $xArea.end).map(getHoliday);
 	});
