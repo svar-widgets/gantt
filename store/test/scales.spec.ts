@@ -42,4 +42,39 @@ describe("scales", () => {
 		expect(_scales.lengthUnit).to.eq("day");
 		expect(_scales.minUnit).to.eq("day");
 	});
+
+	test("month row width matches week row width across a month/week boundary", () => {
+		// A range crossing several month boundaries where the boundary
+		// week does not start on the 1st of the month (e.g. Aug 1, 2026
+		// is a Saturday), so weeks straddle two months. Every scale row
+		// should sum to the exact same total width - a row must never
+		// drift ahead of another because a shared boundary week got
+		// rounded into two neighboring cells.
+		const monthWeekScales = [
+			{ unit: "month", step: 1, format: "%F %Y" },
+			{ unit: "week", step: 1, format: "Uke %w" },
+		];
+
+		const _scales = resetScales(
+			new Date(2026, 6, 1), // Jul 1, 2026
+			new Date(2026, 8, 30), // Sep 30, 2026
+			"day",
+			cellWidth,
+			scaleHeight,
+			1, // weekStart = Monday
+			monthWeekScales,
+			1
+		) as GanttScaleData;
+
+		const [monthRow, weekRow] = _scales.rows;
+		const sumWidth = (cells: { width: number }[]) =>
+			cells.reduce((sum, cell) => sum + cell.width, 0);
+
+		const monthTotal = sumWidth(monthRow.cells);
+		const weekTotal = sumWidth(weekRow.cells);
+
+		expect(weekTotal).to.eq(_scales.width);
+		expect(monthTotal).to.eq(_scales.width);
+		expect(monthTotal).to.eq(weekTotal);
+	});
 });
