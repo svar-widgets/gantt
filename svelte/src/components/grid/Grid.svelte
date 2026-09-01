@@ -20,6 +20,7 @@
 		getFillColumn,
 		getColumnsWidth,
 		getSortMarks,
+		getColumnStyle,
 	} from "../../helpers/grid";
 
 	let { readonly, tableAPI = $bindable() } = $props();
@@ -276,6 +277,9 @@
 				if (line.text) line.text = _(line.text);
 			});
 			col.header = header;
+			// in readonly mode we must disable column inline editors entirely.
+			// otherwise grid will open per-cell editors on dblclick.
+			col.editor = readonly ? null : col.editor;
 			return col;
 		});
 
@@ -323,15 +327,6 @@
 	$effect.pre(() => {
 		columnWidth = getColumnsWidth(cols);
 	});
-
-	function getColumnStyle(col) {
-		let style = `wx-text-${col.align} `;
-
-		if (col.id === "add-task") style += "wx-action ";
-		else if (col.id === "wbs") style += "wx-wbs ";
-
-		return style.trim();
-	}
 
 	// SIZES
 	// --------
@@ -485,7 +480,7 @@
 	}
 	/*body*/
 	.wx-table :global(.wx-grid .wx-cell) {
-		padding: 0 5px;
+		padding: 0 var(--wx-grid-cell-padding-x);
 		height: 100%;
 		display: flex;
 		align-items: center;
@@ -510,15 +505,20 @@
 		height: 100%;
 		padding: 0;
 	}
+	.wx-table :global(.wx-grid .wx-body .wx-cell.wx-col-text) {
+		padding-left: var(--wx-grid-tree-column-padding-left);
+	}
 	/*header*/
 	.wx-table :global(.wx-grid .wx-header .wx-cell) {
 		font: var(--wx-grid-header-font);
 		text-transform: var(--wx-grid-header-text-transform);
-		padding: 0 5px;
 		border-bottom-color: transparent;
 	}
-	.wx-table :global(.wx-grid .wx-header .wx-cell:first-child) {
-		padding-left: 14px;
+	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-filter) {
+		padding: 0 5px;
+	}
+	.wx-table :global(.wx-grid .wx-header .wx-cell:has(.wx-sort)) {
+		padding-right: var(--wx-grid-header-sort-padding-right);
 	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell .wx-text) {
 		width: 100%;
@@ -531,7 +531,6 @@
 	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-text-center) {
 		text-align: center;
-		padding-left: 5px;
 	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-text-center.wx-action) {
 		justify-content: center;
@@ -539,9 +538,7 @@
 	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-text-right.wx-action) {
 		justify-content: right;
 	}
-	.wx-table :global(.wx-grid .wx-row .wx-cell.wx-wbs) {
-		padding: 0 14px;
-	}
+
 	/*drag element*/
 	.wx-table :global(.wx-grid .wx-reorder-task.wx-row) {
 		width: 100%;

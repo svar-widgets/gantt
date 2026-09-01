@@ -633,6 +633,56 @@ describe("history", () => {
 			]);
 		});
 
+		test("can undo/redo after deleting parent task with child assignments", () => {
+			const initData = getData("full");
+			const resources = [
+				{ id: "r1", name: "Alex" },
+				{ id: "r2", name: "Sophie" },
+			];
+			const assignments = [
+				{ id: 1, task: 11, resource: "r1" },
+				{ id: 2, task: 110, resource: "r1" },
+				{ id: 3, task: 112, resource: "r2" },
+			];
+			resetState({
+				...initData,
+				resources,
+				assignments,
+				undo: true,
+			});
+
+			const { tasks } = store.getState();
+			const beforeUndo = store.getState()._assignments!;
+
+			store.in.exec("delete-task", { id: 11 });
+
+			expect(tasks.byId(11)).to.eq(undefined);
+			expect(tasks.byId(110)).to.eq(undefined);
+			expect(tasks.byId(112)).to.eq(undefined);
+
+			store.in.exec("undo");
+
+			expect(tasks.byId(11)).toBeDefined();
+			expect(tasks.byId(110)).toBeDefined();
+			expect(tasks.byId(112)).toBeDefined();
+			const afterUndo = store.getState()._assignments!;
+			expect(afterUndo.byTask[11].map(a => a.id)).to.deep.equal(
+				beforeUndo.byTask[11].map(a => a.id)
+			);
+			expect(afterUndo.byTask[110].map(a => a.id)).to.deep.equal(
+				beforeUndo.byTask[110].map(a => a.id)
+			);
+			expect(afterUndo.byTask[112].map(a => a.id)).to.deep.equal(
+				beforeUndo.byTask[112].map(a => a.id)
+			);
+
+			store.in.exec("redo");
+
+			expect(tasks.byId(11)).to.eq(undefined);
+			expect(tasks.byId(110)).to.eq(undefined);
+			expect(tasks.byId(112)).to.eq(undefined);
+		});
+
 		test("can undo/redo after deliting childs", () => {
 			const initData = getData("full");
 			resetState({
@@ -997,6 +1047,25 @@ describe("history", () => {
 				20, 21, 22, 23, 11,
 			]);
 			expect(tasks.byId(11)?.data?.length).to.eq(4);
+		});
+
+		test("does not record history for a task that is already deleted", async () => {
+			const initData = getData("full");
+			resetState({
+				...initData,
+				undo: true,
+			});
+
+			store.in.exec("delete-task", { id: 110 });
+
+			let err: any = null;
+			await store.in
+				.exec("move-task", { id: 110, mode: "after", target: 112 })
+				.catch((e: any) => (err = e));
+
+			// the snapshot bails instead of dereferencing the deleted task
+			expect(err?.stack).not.to.contain("HistoryManager");
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 		});
 	});
 
@@ -2037,6 +2106,229 @@ describe("history", () => {
 				expect(tasks.byId(3).data?.[1]?.data?.length).to.eq(4);
 				expect(tasks.byId(3).data?.[7]?.id).to.eq(32);
 				expect(links.map(l => l).length).to.eq(8);
+			});
+		});
+	});
+
+	describe("auto scheduling", () => {
+		test("keeps history empty after init", () => {
+			resetState({
+				...getData("autoScheduling"),
+				undo: true,
+				schedule: { auto: true },
+			});
+
+			const { tasks, history } = store.getState();
+			// the initial pass did reschedule, it is just not recorded
+			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 7));
+			expect(history).to.deep.eq({ undo: 0, redo: 0 });
+		});
+
+		test("keeps history empty after dataset replacement", () => {
+			resetState({
+				...getData("autoScheduling"),
+				undo: true,
+				schedule: { auto: true },
+			});
+
+			const data = getData("autoScheduling");
+			data.links = normalizeLinks(data.links);
+			// move the head of the 3 -> 4 -> 5 chain, otherwise the replacement
+			// is deep equal to the initial data and nothing is rescheduled
+			data.tasks = data.tasks.map((t: any) =>
+				t.id === 3 ? { ...t, end: new Date(2024, 3, 9) } : t
+			);
+			store.init({ ...data, undo: true, schedule: { auto: true } });
+
+			const { tasks, history } = store.getState();
+			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 11));
+			expect(history).to.deep.eq({ undo: 0, redo: 0 });
+		});
+
+		test("keeps history empty after provide-data", () => {
+			resetState({
+				...getData("lazy"),
+				undo: true,
+				schedule: { auto: true },
+			});
+
+			store.in.exec("provide-data", {
+				id: 2,
+				data: {
+					tasks: [
+						{
+							id: 20,
+							text: "Task 20",
+							type: "task",
+							parent: 2,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 5),
+						},
+						{
+							id: 21,
+							text: "Task 21",
+							type: "task",
+							parent: 2,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 5),
+						},
+					],
+					links: [{ id: 10, source: 20, target: 21, type: "e2s" }],
+				},
+			});
+
+			const { tasks, history } = store.getState();
+			expect(tasks.byId(21).start).to.deep.eq(new Date(2024, 3, 5));
+			expect(history).to.deep.eq({ undo: 0, redo: 0 });
+		});
+
+		test("keeps summary updates derived from scheduling out of history", () => {
+			resetState({
+				...getData("summaries"),
+				undo: true,
+				schedule: { auto: true },
+				summary: { autoProgress: true, autoConvert: true },
+			});
+
+			const { tasks, history } = store.getState();
+			expect(tasks.byId(7).start).to.deep.eq(new Date(2024, 5, 14));
+			expect(history).to.deep.eq({ undo: 0, redo: 0 });
+		});
+	});
+
+	describe("disabled history", () => {
+		test("does not record actions after undo is turned off", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+			});
+
+			store.in.exec("add-task", { id: 7, task: {} });
+			expect(store.getState().history).to.deep.eq({
+				undo: 1,
+				redo: 0,
+			});
+
+			store.init({ undo: false });
+			expect(store.getState().history).to.eq(null);
+
+			store.in.exec("add-task", { id: 8, task: {} });
+			expect(store.getState().history).to.eq(null);
+		});
+	});
+
+	describe("dataset replacement", () => {
+		const resources = [
+			{ id: "r1", name: "Alex" },
+			{ id: "r2", name: "Sophie" },
+		];
+
+		test("resets history when only links are replaced", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+			});
+
+			store.in.exec("delete-link", { id: 1 });
+			expect(store.getState().history).to.deep.eq({
+				undo: 1,
+				redo: 0,
+			});
+
+			store.init({
+				...initData,
+				undo: true,
+				links: [{ id: 2, source: 2, target: 3, type: "e2s" }],
+			});
+
+			expect(store.getState().history).to.deep.eq({
+				undo: 0,
+				redo: 0,
+			});
+		});
+
+		test("does not restore a link of the replaced dataset on undo", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+			});
+
+			store.in.exec("delete-link", { id: 1 });
+
+			store.init({
+				...initData,
+				undo: true,
+				links: [{ id: 2, source: 2, target: 3, type: "e2s" }],
+			});
+			store.in.exec("undo");
+
+			const { links } = store.getState();
+			expect(links.map(l => l.id)).to.deep.eq([2]);
+		});
+
+		test("resets history when only resources are replaced", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+				resources,
+			});
+
+			store.in.exec("delete-link", { id: 1 });
+
+			store.init({
+				...initData,
+				undo: true,
+				resources: [{ id: "r3", name: "James" }],
+			});
+
+			expect(store.getState().history).to.deep.eq({
+				undo: 0,
+				redo: 0,
+			});
+		});
+
+		test("resets history when only assignments are replaced", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+				resources,
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+			});
+
+			store.in.exec("delete-link", { id: 1 });
+
+			store.init({
+				...initData,
+				undo: true,
+				resources,
+				assignments: [{ id: 2, task: 2, resource: "r2" }],
+			});
+
+			expect(store.getState().history).to.deep.eq({
+				undo: 0,
+				redo: 0,
+			});
+		});
+
+		test("keeps history when the config update carries the same data", () => {
+			const initData = getData();
+			resetState({
+				...initData,
+				undo: true,
+			});
+
+			store.in.exec("delete-link", { id: 1 });
+
+			store.init({ ...initData, undo: true });
+
+			expect(store.getState().history).to.deep.eq({
+				undo: 1,
+				redo: 0,
 			});
 		});
 	});

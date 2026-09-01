@@ -18,7 +18,7 @@
 		l = locale(en);
 		setContext("wx-i18n", l);
 	}
-	const _ = getContext("wx-i18n").getGroup("gantt");
+	const _ = l.getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
 	let { _selected, undo, history, splitTasks, groupBy } = $derived(

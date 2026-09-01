@@ -9,7 +9,11 @@ import type {
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 import type DataStore from "./DataStore";
-import type { IApi as ITableApi, IColumn, IFilterValues } from "@svar-ui/grid-store";
+import type {
+	IApi as ITableApi,
+	IColumn,
+	IFilterValues,
+} from "@svar-ui/grid-store";
 
 import type {
 	TaskSlackInfo,

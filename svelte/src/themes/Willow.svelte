@@ -5,9 +5,11 @@
 </script>
 
 {#if children}
-	<Willow {fonts}><GridWillow>{@render children()}</GridWillow></Willow>
+	<Willow {fonts}
+		><GridWillow {fonts}>{@render children()}</GridWillow></Willow
+	>
 {:else}
-	<GridWillow />
+	<GridWillow {fonts} />
 	<Willow {fonts} />
 {/if}
 
@@ -73,6 +75,9 @@
 		--wx-grid-body-font-color: var(--wx-color-font);
 		--wx-grid-body-row-border: var(--wx-gantt-border);
 		--wx-grid-body-cell-border: 1px solid transparent;
+		--wx-grid-cell-padding-x: 12px;
+		--wx-grid-header-sort-padding-right: 4px;
+		--wx-grid-tree-column-padding-left: 3px;
 
 		/* timescale */
 		--wx-timescale-font: var(--wx-font-weight-md) var(--wx-font-size-sm)

@@ -394,7 +394,8 @@ context(
 				cy.get("@el").should("contain", "100");
 				cy.wxG("chart-item", 10)
 					.find(".wx-progress-percent")
-					.should("have.attr", "style", "width:100%");
+					.invoke("attr", "style")
+					.should("match", /width:\s*100%/);
 			});
 		});
 

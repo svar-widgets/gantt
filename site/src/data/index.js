@@ -140,8 +140,8 @@ const tasks = [
 
 	{
 		id: 3,
-		start: new Date(2026, 3, 9),
-		end: new Date(2026, 4, 15),
+		start: new Date(2026, 3, 3),
+		end: new Date(2026, 4, 9),
 		text: "Development",
 		progress: 8,
 		parent: 0,
@@ -150,8 +150,8 @@ const tasks = [
 	},
 	{
 		id: 30,
-		start: new Date(2026, 3, 9),
-		end: new Date(2026, 3, 15),
+		start: new Date(2026, 3, 3),
+		end: new Date(2026, 3, 9),
 		text: "Prototyping",
 		progress: 55,
 		parent: 3,
@@ -159,8 +159,8 @@ const tasks = [
 	},
 	{
 		id: 31,
-		start: new Date(2026, 3, 15),
-		end: new Date(2026, 3, 30),
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 3, 24),
 		text: "Basic functionality",
 		progress: 0,
 		parent: 3,
@@ -168,8 +168,8 @@ const tasks = [
 	},
 	{
 		id: 32,
-		start: new Date(2026, 3, 30),
-		end: new Date(2026, 4, 15),
+		start: new Date(2026, 3, 24),
+		end: new Date(2026, 4, 9),
 		text: "Finalizing MVA",
 		progress: 0,
 		parent: 3,
@@ -178,8 +178,8 @@ const tasks = [
 
 	{
 		id: 4,
-		start: new Date(2026, 3, 9),
-		end: new Date(2026, 4, 25),
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 4, 20),
 		text: "Testing",
 		progress: 3,
 		parent: 0,
@@ -188,8 +188,8 @@ const tasks = [
 	},
 	{
 		id: 40,
-		start: new Date(2026, 3, 9),
-		end: new Date(2026, 3, 15),
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 10),
 		text: "Testing prototype",
 		progress: 3,
 		parent: 4,
@@ -197,8 +197,8 @@ const tasks = [
 	},
 	{
 		id: 41,
-		start: new Date(2026, 3, 15),
-		end: new Date(2026, 3, 30),
+		start: new Date(2026, 3, 10),
+		end: new Date(2026, 3, 25),
 		text: "Testing basic features",
 		progress: 7,
 		parent: 4,
@@ -206,8 +206,8 @@ const tasks = [
 	},
 	{
 		id: 42,
-		start: new Date(2026, 3, 30),
-		end: new Date(2026, 4, 15),
+		start: new Date(2026, 3, 27),
+		end: new Date(2026, 4, 12),
 		text: "Testing MVA",
 		progress: 0,
 		parent: 4,
@@ -215,8 +215,8 @@ const tasks = [
 	},
 	{
 		id: 43,
-		start: new Date(2026, 4, 15),
-		end: new Date(2026, 4, 23),
+		start: new Date(2026, 4, 12),
+		end: new Date(2026, 4, 20),
 		text: "Beta testing",
 		progress: 0,
 		parent: 4,
@@ -227,7 +227,7 @@ const tasks = [
 
 	{
 		id: 5,
-		start: new Date(2026, 4, 25),
+		start: new Date(2026, 4, 20),
 		text: "Release 1.0.0",
 		progress: 0,
 		parent: 0,

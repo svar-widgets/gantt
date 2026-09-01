@@ -6,7 +6,8 @@
 
 {#if children}
 	<WillowDark {fonts}
-		><GridWillowDark>{@render children()}</GridWillowDark></WillowDark
+		><GridWillowDark {fonts}>{@render children()}</GridWillowDark
+		></WillowDark
 	>
 {:else}
 	<GridWillowDark {fonts} />
@@ -78,6 +79,9 @@
 		--wx-grid-body-font-color: var(--wx-color-font);
 		--wx-grid-body-row-border: var(--wx-border);
 		--wx-grid-body-cell-border: 1px solid transparent;
+		--wx-grid-cell-padding-x: 12px;
+		--wx-grid-header-sort-padding-right: 4px;
+		--wx-grid-tree-column-padding-left: 3px;
 
 		/* timescale */
 		--wx-timescale-font: var(--wx-font-weight-md) var(--wx-font-size-sm)

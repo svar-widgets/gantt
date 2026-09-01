@@ -20,7 +20,7 @@ import {
 	normalizeColumns,
 	defaultColumns,
 } from "../src/columns";
-import { parseTaskDates } from "../src/normalizeDates";
+import { parseTaskDates, prepareEditTask } from "../src/normalizeDates";
 
 import type {
 	GanttScaleData,
@@ -607,6 +607,22 @@ describe("datastore", () => {
 			expect(tasks.byId(1).end).to.deep.eq(new Date(2024, 3, 10));
 		});
 
+		test("prepareEditTask clamps duration below 1 to 1", () => {
+			resetState();
+			const state = store.getState();
+			const start = new Date(2024, 3, 2);
+
+			const zero = { start, end: new Date(2024, 3, 5), duration: 0 };
+			prepareEditTask(zero, state, undefined, "duration");
+			expect(zero.duration).to.eq(1);
+			expect(zero.end).to.deep.eq(new Date(2024, 3, 3));
+
+			const negative = { start, end: new Date(2024, 3, 5), duration: -4 };
+			prepareEditTask(negative, state, undefined, "duration");
+			expect(negative.duration).to.eq(1);
+			expect(negative.end).to.deep.eq(new Date(2024, 3, 3));
+		});
+
 		test("can update task type", () => {
 			resetState();
 			const { tasks } = store.getState();
@@ -1113,6 +1129,104 @@ describe("datastore", () => {
 				links.map(l => l).length,
 				"links must be copied in this case"
 			).to.eq(10);
+		});
+
+		test("can copy resource assignments for a task", () => {
+			const data = getData("full");
+			data.resources = [{ id: "r1", name: "Resource 1" }];
+			data.assignments = [
+				{ id: "a1", task: 110, resource: "r1", units: 40 },
+			];
+			resetState(data);
+			const { tasks } = store.getState();
+			const beforeIds = new Set(tasks.serialize().map(t => t.id));
+
+			store.in.exec("copy-task", {
+				id: 110,
+				target: 112,
+				mode: "after",
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const copiedTask = tasks
+				.serialize()
+				.find(
+					t => !beforeIds.has(t.id) && t.text === tasks.byId(110).text
+				);
+
+			expect(copiedTask).to.be.ok;
+			expect(
+				store.getTaskResources(copiedTask!.id).map(a => ({
+					id: a.id,
+					units: a.units,
+					name: a.name,
+				}))
+			).to.deep.eq([{ id: "r1", units: 40, name: "Resource 1" }]);
+		});
+
+		test("can copy resource assignments for tasks with children", () => {
+			const data = getData("full");
+			data.resources = [
+				{ id: "r1", name: "Resource 1" },
+				{ id: "r2", name: "Resource 2" },
+			];
+			data.assignments = [
+				{ id: "a1", task: 20, resource: "r1", units: 40 },
+				{ id: "a2", task: 21, resource: "r2", units: 60 },
+			];
+			resetState(data);
+			const { tasks } = store.getState();
+			const beforeIds = new Set(tasks.serialize().map(t => t.id));
+
+			store.in.exec("copy-task", {
+				id: 2,
+				target: 2,
+				mode: "after",
+			});
+
+			vi.advanceTimersByTime(1);
+
+			const vIndex = tasks.toArray().findIndex(t => t.id === 2);
+			const branchLength = tasks.byId(2).data!.length;
+			const cTask = tasks.toArray()[vIndex + (branchLength + 1)];
+			const copiedPlanning = cTask.data?.find(
+				t => t.text === tasks.byId(20).text
+			);
+			const copiedApproval = cTask.data?.find(
+				t => t.text === tasks.byId(21).text
+			);
+
+			expect(
+				store.getTaskResources(copiedPlanning!.id).map(a => ({
+					id: a.id,
+					units: a.units,
+					name: a.name,
+				}))
+			).to.deep.eq([{ id: "r1", units: 40, name: "Resource 1" }]);
+			expect(
+				store.getTaskResources(copiedApproval!.id).map(a => ({
+					id: a.id,
+					units: a.units,
+					name: a.name,
+				}))
+			).to.deep.eq([{ id: "r2", units: 60, name: "Resource 2" }]);
+
+			const copiedAssignments = store
+				.getState()
+				.assignments!.map(a => ({
+					task: a.task,
+					resource: a.resource,
+					units: a.units,
+				}))
+				.filter(a => !beforeIds.has(a.task))
+				.sort((a, b) =>
+					String(a.resource).localeCompare(String(b.resource))
+				);
+			expect(copiedAssignments).to.deep.eq([
+				{ task: copiedPlanning!.id, resource: "r1", units: 40 },
+				{ task: copiedApproval!.id, resource: "r2", units: 60 },
+			]);
 		});
 
 		test("can't copy tasks inside self", () => {
@@ -2384,6 +2498,240 @@ describe("datastore", () => {
 
 			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 7));
 			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 9));
+		});
+		test("does not reschedule after auto scheduling is turned off", () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			const scheduled = vi.fn();
+			store.in.on("schedule-tasks", scheduled);
+
+			store.init({ schedule: { auto: false } });
+
+			// the same move that removes the link while the module is on
+			store.in.exec("move-task", { id: 2, target: 1, mode: "child" });
+			vi.advanceTimersByTime(20);
+
+			expect(scheduled).not.toHaveBeenCalled();
+			expect(store.getState().links.byId(1).id).to.exist;
+		});
+
+		describe("undo and redo", () => {
+			// counting passes, not dates: an extra pass is often idempotent,
+			// so dates can look right while the redundant cascade still runs
+
+			// counts from this call on, skipping the setup passes
+			function countSchedules() {
+				const res = { calls: 0 };
+				store.in.on("schedule-tasks", () => {
+					res.calls++;
+				});
+				return res;
+			}
+
+			function replayAll(action: "undo" | "redo") {
+				// bounded in case a replay pushes new entries back on the stack
+				for (let i = 0; i < 20; i++) {
+					if (!store.getState().history?.[action]) return;
+					store.in.exec(action);
+					vi.advanceTimersByTime(1);
+				}
+			}
+
+			function taskDates() {
+				return store
+					.getState()
+					.tasks.toArray()
+					.map(({ id, start, end }) => ({ id, start, end }));
+			}
+
+			test("does not reschedule when a move is replayed", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [
+						task(1, 0, "summary"),
+						task(9, 1),
+						task(2),
+						task(3),
+					],
+					links: [{ id: 1, source: 2, target: 3, type: "e2s" }],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("move-task", { id: 3, target: 1, mode: "child" });
+				vi.advanceTimersByTime(1);
+
+				const schedules = countSchedules();
+				replayAll("undo");
+				replayAll("redo");
+
+				expect(schedules.calls).to.eq(0);
+			});
+
+			test("does not reschedule when a link update is replayed", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1), task(2), task(3)],
+					links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("update-link", { id: 1, link: { target: 3 } });
+				vi.advanceTimersByTime(1);
+
+				const schedules = countSchedules();
+				replayAll("undo");
+				replayAll("redo");
+
+				expect(schedules.calls).to.eq(0);
+			});
+
+			test("does not reschedule when a link restore is replayed", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1), task(2), task(3)],
+					links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("delete-link", { id: 1 });
+				vi.advanceTimersByTime(1);
+
+				// undo of a deletion replays add-link
+				const schedules = countSchedules();
+				replayAll("undo");
+
+				expect(schedules.calls).to.eq(0);
+				expect(store.getState().links.byId(1).id).to.exist;
+			});
+
+			test("does not reschedule when a link deletion is replayed", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1), task(2), task(3)],
+					links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("add-link", {
+					link: { id: 2, source: 2, target: 3, type: "e2s" },
+				});
+				vi.advanceTimersByTime(1);
+
+				// undo of an addition replays delete-link
+				const schedules = countSchedules();
+				replayAll("undo");
+
+				expect(schedules.calls).to.eq(0);
+				expect(store.getState().links.byId(2)).to.be.undefined;
+			});
+
+			test("does not reschedule when a task addition is replayed", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+					links: [],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("add-task", {
+					task: { id: 7, text: "Task 7", type: "task" },
+					target: 9,
+					mode: "after",
+				});
+				vi.advanceTimersByTime(1);
+
+				// redo replays add-task, the summary child that triggers scheduling
+				const schedules = countSchedules();
+				replayAll("undo");
+				replayAll("redo");
+
+				expect(schedules.calls).to.eq(0);
+				expect(store.getState().tasks.byId(7).parent).to.eq(1);
+			});
+
+			test("does not reschedule a copy marked with a history eventSource", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+					links: [],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				// history records a copy as delete-task/add-task, so undo and
+				// redo never reach this handler. the event is marked by hand
+				// to pin the guard, it is not a replay
+				const schedules = countSchedules();
+				store.in.exec("copy-task", {
+					id: 2,
+					target: 9,
+					mode: "after",
+					eventSource: "undo",
+				});
+				vi.advanceTimersByTime(1);
+
+				expect(schedules.calls).to.eq(0);
+			});
+
+			test("runs no scheduling pass over a full undo/redo round trip", () => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [
+						task(1, 0, "summary"),
+						task(9, 1),
+						task(2),
+						task(3),
+						task(4),
+					],
+					links: [{ id: 1, source: 2, target: 3, type: "e2s" }],
+					schedule: { auto: true },
+					undo: true,
+				});
+				vi.advanceTimersByTime(1);
+
+				store.in.exec("update-task", {
+					id: 2,
+					task: {
+						start: new Date(2024, 3, 3),
+						end: new Date(2024, 3, 6),
+					},
+				});
+				store.in.exec("add-link", {
+					link: { id: 2, source: 3, target: 4, type: "e2s" },
+				});
+				store.in.exec("move-task", { id: 4, target: 1, mode: "child" });
+				vi.advanceTimersByTime(1);
+
+				const beforeUndo = taskDates();
+
+				const schedules = countSchedules();
+				replayAll("undo");
+				const afterUndo = taskDates();
+				replayAll("redo");
+
+				expect(schedules.calls).to.eq(0);
+				// replay restores the recorded state and nothing else
+				expect(taskDates()).to.deep.eq(beforeUndo);
+				expect(afterUndo).to.not.deep.eq(beforeUndo);
+				expect(store.getState().links.byId(2).id).to.exist;
+			});
 		});
 	});
 	describe("critical path and slack tasks", () => {

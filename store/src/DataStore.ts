@@ -616,7 +616,7 @@ export default class DataStore extends Store<IData> {
 					selected: ids,
 				};
 
-				this.setStateAsync(update);
+				this.setState(update);
 				if (ids.length) {
 					if (focus) show = focus === "chart" ? "xy" : show || "y";
 					if (show) {
@@ -655,6 +655,7 @@ export default class DataStore extends Store<IData> {
 			link = links.byId(id);
 
 			if (!link.lag && link.lag !== 0) delete link.lag;
+			else link.lag = Number(link.lag) || 0;
 
 			this.setStateAsync({ links });
 
@@ -1304,6 +1305,7 @@ export default class DataStore extends Store<IData> {
 				});
 			});
 
+
 			this.setStateAsync({ tasks });
 		});
 
@@ -1761,6 +1763,7 @@ export default class DataStore extends Store<IData> {
 		const tasksChanged = this.changed(state, "tasks");
 		const linksChanged = this.changed(state, "links");
 		const resourcesChanged = this.changed(state, "resources");
+		const assignmentsChanged = this.changed(state, "assignments");
 		const projectStartChanged = this.changed(state, "projectStart");
 		const criticalPathChanged =
 			tasksChanged ||
@@ -1802,9 +1805,17 @@ export default class DataStore extends Store<IData> {
 				delete state.tasks;
 			}
 		}
-		if (tasksChanged) {
-			// reset filtering, sort and history on tasks update
+		if (
+			tasksChanged ||
+			linksChanged ||
+			resourcesChanged ||
+			assignmentsChanged
+		) {
+			// any dataset replacement invalidates the recorded entries
 			this.getHistory()?.resetHistory();
+		}
+		if (tasksChanged) {
+			// filtering and sort belong to the task list, reset them with it
 			const currentState = this.getState();
 			if (currentState._isFiltered) {
 				this.setState({ _isFiltered: false, filterValues: {} });
@@ -2230,6 +2241,7 @@ export type IDataMethodsConfig = CombineTypes<
 			id?: TID;
 			task?: Partial<ITask>;
 			link?: TID;
+			skipUndo?: boolean;
 		};
 		["undo"]: void;
 		["redo"]: void;
@@ -2239,6 +2251,7 @@ export type IDataMethodsConfig = CombineTypes<
 		["add-assignment"]: {
 			id?: TID;
 			assignment: Partial<IAssignment>;
+			eventSource?: string;
 		};
 		["delete-assignment"]: { id: TID };
 		["update-assignment"]: { id: TID; assignment: Partial<IAssignment> };

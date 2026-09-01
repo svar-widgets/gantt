@@ -12,12 +12,12 @@ export function handleAction(
 	_: any
 ): void {
 	const state = api.getState();
-	const { selected } = state;
+	const selected = state._selected.map((t: ITask) => t.id);
 	const hasSelection = selected.length;
 	// single-target ops
 	const single = ["edit-task", "paste-task", "undo", "redo"];
 	// do not sort index-/level-wise
-	const avoidMap = ["copy-task", "cut-task"];
+	const avoidSort = ["copy-task", "cut-task"];
 	// apply in reverse to maintain relative positions
 	const reversed = [
 		"copy-task",
@@ -28,8 +28,14 @@ export function handleAction(
 	];
 	// targetless ops
 	const untargeted = ["add-task", "undo", "redo"];
-	// direct children should move with entire branch
-	const checkParent = ["indent-task:add", "move-task:down", "move-task:up"];
+	// direct children should move/copy with entire branch
+	const checkParent = [
+		"indent-task:add",
+		"move-task:down",
+		"move-task:up",
+		"copy-task",
+		"cut-task",
+	];
 	const checkLevel: { [k: string]: number } = {
 		"indent-task:remove": 2,
 	};
@@ -37,6 +43,7 @@ export function handleAction(
 	const limit = {
 		parent: checkParent.includes(action),
 		level: checkLevel[action],
+		sort: !avoidSort.includes(action),
 	};
 
 	target = target || (hasSelection ? selected[selected.length - 1] : null);
@@ -47,9 +54,7 @@ export function handleAction(
 	if (single.includes(action) || targetless || selected.length === 1) {
 		runSingleAction(api, action, target, _);
 	} else if (hasSelection) {
-		const order = avoidMap.includes(action)
-			? selected
-			: mapOrder(selected, limit, state);
+		const order = mapOrder(selected, limit, state);
 		if (reversed.includes(action)) {
 			order.reverse();
 		}
@@ -68,7 +73,7 @@ export function handleAction(
 
 function mapOrder(
 	selected: TID[],
-	limit: { parent: boolean; level: number },
+	limit: { parent: boolean; level: number; sort: boolean },
 	state: IData
 ): TID[] {
 	const { tasks, tree, groupBy } = state;
@@ -89,9 +94,11 @@ function mapOrder(
 			return ignoreParent || !selected.includes(obj.parent);
 		});
 	}
-	order.sort((a, b) => {
-		return a.level - b.level || a.index - b.index;
-	});
+	if (limit.sort) {
+		order.sort((a, b) => {
+			return a.level - b.level || a.index - b.index;
+		});
+	}
 	return order.map(o => o.id);
 }
 
@@ -115,14 +122,18 @@ function runSingleAction(
 		api._temp.push({ id, cut: op === "cut-task" });
 		return;
 	} else if (op === "paste-task") {
-		if (api._temp && api._temp.length) {
+		const { tasks } = api.getState();
+		// the clipboard outlives its tasks, any of them can be deleted before the paste
+		const clipboard = api._temp?.filter((temp: any) => tasks.byId(temp.id));
+
+		if (clipboard && clipboard.length) {
 			const history = api.getHistory();
 			// start batch for mass operations
 			if (history) history.startBatch();
 
 			const idPairs = new Map<TID, TID>();
 
-			api._temp.forEach((temp: any) => {
+			clipboard.forEach((temp: any) => {
 				const event = {
 					id: temp.id,
 					target: id,
@@ -133,9 +144,9 @@ function runSingleAction(
 			});
 
 			// if copying tasks, find links between them and copy them too
-			if (!api._temp[0].cut) {
+			if (!clipboard[0].cut) {
 				const { links } = api.getState();
-				const taskIds = api._temp.map((temp: ILink) => temp.id);
+				const taskIds = clipboard.map((temp: ILink) => temp.id);
 				const relevantLinks: ILink[] = [];
 
 				// find links where both source and target ids are in copied tasks
@@ -158,7 +169,7 @@ function runSingleAction(
 					});
 				});
 
-				api._temp.forEach((temp: any, i: number) => {
+				clipboard.forEach((temp: any, i: number) => {
 					exec("select-task", {
 						id: idPairs.get(temp.id),
 						toggle: !!i,
@@ -168,8 +179,8 @@ function runSingleAction(
 
 			// end batch for mass operations
 			if (history) history.endBatch();
-			api._temp = null;
 		}
+		api._temp = null;
 		return;
 	} else if (op === "add-task") {
 		extraData = {

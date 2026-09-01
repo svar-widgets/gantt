@@ -1,7 +1,11 @@
 <script>
 	import { getData } from "../data";
 	import { Gantt, ContextMenu } from "../../src/";
-	import { FilterBuilder, getOptions, createFilter } from "@svar-ui/svelte-filter";
+	import {
+		FilterBuilder,
+		getOptions,
+		createFilter,
+	} from "@svar-ui/svelte-filter";
 
 	let { skinSettings } = $props();
 

@@ -132,3 +132,15 @@ export function getScrollbarWidth() {
 	document.body.removeChild(div);
 	return w;
 }
+
+function toCssId(id) {
+	return String(id ?? "").replace(/[^\w-]/g, "-");
+}
+
+export function getColumnStyle(col) {
+	let style = `wx-text-${col.align}`;
+	if (col.id) style += ` wx-col-${toCssId(col.id)}`;
+	if (col.id === "add-task") style += " wx-action";
+
+	return style.trim();
+}

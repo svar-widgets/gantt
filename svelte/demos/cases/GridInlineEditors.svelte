@@ -25,7 +25,7 @@
 		{
 			id: "duration",
 			header: "Duration",
-			width: 80,
+			width: 100,
 			sort: true,
 			align: "center",
 			editor: "text",

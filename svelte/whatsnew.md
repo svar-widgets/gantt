@@ -1,3 +1,23 @@
+## 2.7.2
+
+### Fixes
+
+-   Setting link lag breaks task dates
+-   Editor allows negative values for split tasks segments
+-   Undoing "delete-task" action does not restore assignments for this task
+-   The "copy-task" action does not copy task assignments
+-   The `readonly` settings does not block grid inline editors
+-   Initial auto scheduling pass is added to history and can be undone
+-   Clipboard keeps ids of deleted tasks
+-   Tasks after undo/redo with enabled autoscheduling don't snap to dates correctly
+-   History is not reset when links, resources or assignments are replaced
+-   History handlers are active after disabling undo/redo at run time
+-   Undo/redo replay triggers auto scheduling
+-   Context menu references the previous task
+-   Copy and paste of parent branches duplicates child tasks
+-   Grid cell padding are misaligned
+-   Fonts cannot be fully switched off from theme settings
+
 ## 2.7.1
 
 ### Fixes

@@ -17,7 +17,7 @@
 			css: "myMiddleClass",
 		},
 		{
-			start: new Date(2026, 4, 25),
+			start: new Date(2026, 4, 20),
 			text: "End",
 			css: "myEndClass",
 		},

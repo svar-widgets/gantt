@@ -6,7 +6,7 @@
 
 <div align="center">
 
-[Website](https://svar.dev/svelte/gantt/) • [Getting Started](https://docs.svar.dev/svelte/gantt/getting-started/quickstart/) • [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
+[Website](https://svar.dev/svelte/gantt/) • [Getting Started](https://docs.svar.dev/svelte/gantt/getting_started/) • [Demos](https://docs.svar.dev/svelte/gantt/samples/#/base/willow)
 
 </div>
 
@@ -20,7 +20,7 @@
 
 **SVAR Svelte Gantt** is a customizable, interactive Gantt chart component written in Svelte and designed for visualizing project timelines. It provides an intuitive interface for managing tasks and dependencies directly on the timeline through drag-and-drop scheduling or a customizable task edit form. Comes with full TypeScript support, developer-friendly API, and flexible CSS styling.
 
-The component can be easily integrated with SvelteKit apps - [check the demo](https://github.com/svar-widgets/gantt-demo-sveltekit) and [integration guide](https://docs.svar.dev/svelte/gantt/integration-guides/sveltekit/setup/).
+The component can be easily integrated with SvelteKit apps - [check the demo](https://github.com/svar-widgets/gantt-demo-sveltekit) and [integration guide](https://docs.svar.dev/svelte/gantt/category/sveltekit/).
 
 <div align="center">
 <img src="https://svar.dev/images/github/basic-gantt-react.gif" alt="SVAR Svelte Gantt UI">
@@ -121,7 +121,7 @@ To use SVAR Svelte Gantt, simply import the package and include the component in
 <Gantt {tasks} {links} {scales} />
 ```
 
-For further instructions, follow the detailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting-started/quickstart/).
+For further instructions, follow the detailed [how-to-start guide](https://docs.svar.dev/svelte/gantt/getting_started/).
 
 ### How to Modify
 

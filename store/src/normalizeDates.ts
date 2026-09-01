@@ -84,6 +84,7 @@ export function getFields(isBaseline: boolean) {
 function prepareDates(task: Partial<ITask>, key: string, isBaseline: boolean) {
 	const [start, end, duration] = getFields(isBaseline);
 	if (key === duration || key === start) {
+		if (key === duration && task[duration] < 1) task[duration] = 1;
 		task[end] = null;
 	}
 	if (key === end) {

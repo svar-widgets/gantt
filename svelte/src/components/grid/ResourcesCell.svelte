@@ -21,7 +21,7 @@
 
 <style>
 	.wx-avatar {
-		margin: 0 4px 0 4px;
+		margin: 0 4px 0 0;
 		width: 100%;
 	}
 </style>

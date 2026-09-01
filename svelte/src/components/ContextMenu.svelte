@@ -23,14 +23,13 @@
 	} = $props();
 
 	let activeId = null;
-	let activeTask = $state(null);
 	// set locale
 	let l = getContext("wx-i18n");
 	if (!l) {
 		l = locale({ ...en, ...coreEn });
 		setContext("wx-i18n", l);
 	}
-	const _ = getContext("wx-i18n").getGroup("gantt");
+	const _ = l.getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
 	let { taskTypes, selected, _selected, splitTasks, summary, groupBy } =
@@ -43,10 +42,7 @@
 		group: !!$groupBy?.field,
 	});
 
-	// _selected lags behind single selection from resolver (setAsyncState)
-	const tasks = $derived(
-		$_selected?.length ? $_selected : activeTask ? [activeTask] : []
-	);
+	const tasks = $derived($_selected ?? []);
 
 	const fullOptions = $derived(getMenuOptions(config));
 
@@ -108,8 +104,6 @@
 			const result = resolver(id, ev);
 			task = result === true ? task : result;
 		}
-		activeTask = task;
-
 		if (task) {
 			const segmentIndex = locateID(ev.target, "data-segment");
 			if (segmentIndex !== null) activeId = { id: task.id, segmentIndex };
