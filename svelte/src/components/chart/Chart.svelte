@@ -56,6 +56,8 @@
 	const chartGridHeight = $derived(Math.max(chartHeight, fullHeight));
 
 	$effect(() => {
+		chartGridHeight;
+		chartHeight;
 		chart.scrollTop = $rScrollTop;
 		chart.scrollLeft = $rScrollLeft;
 	});
