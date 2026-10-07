@@ -2,48 +2,85 @@ export function getGridMinHeight(gridHeight, cellHeight) {
 	return `min-height:${gridHeight + cellHeight * 4}px;`;
 }
 
-export function getGridStyle(displayMode, columnWidth, scrollX) {
-	return scrollX && displayMode === "all"
-		? `width:${columnWidth}px;`
-		: displayMode === "grid"
-			? scrollX
-				? `width:${columnWidth}px;`
-				: `width:100%;`
-			: ``;
+function getPanelWidthStyle(contentWidth, scrollX) {
+	return scrollX ? `width:${contentWidth}px;` : `width:100%;`;
 }
 
-export function getFlexBasis(columns, displayMode, gridWidth) {
+/** Map visible panels to grid layout mode: "all" | "grid" | "chart". */
+function getGridChartDisplayMode(panels) {
+	if (!panels?.length) return "all";
+	if (panels.includes("grid") && panels.includes("chart")) return "all";
+	if (panels.includes("grid") && panels.includes("subGrid")) return "all";
+	if (panels.includes("grid")) return "grid";
+	return "chart";
+}
+
+export function getGridStyle(panels, contentWidth, scrollX, section = "grid") {
+	const displayMode = getGridChartDisplayMode(panels);
+	if (
+		section === "subGrid" ||
+		displayMode === "all" ||
+		displayMode === "grid"
+	) {
+		return getPanelWidthStyle(contentWidth, scrollX);
+	}
+	return ``;
+}
+
+export function getFlexBasis(
+	columns,
+	panels,
+	panelWidth,
+	section = "grid",
+	fillRemaining = false
+) {
+	if (section === "subGrid") {
+		if (fillRemaining) return "auto";
+		return `${panelWidth}px`;
+	}
+	const displayMode = getGridChartDisplayMode(panels);
+	if (displayMode === "all") {
+		return `${panelWidth}px`;
+	}
+	if (displayMode === "grid") {
+		return "calc(100% - 4px)";
+	}
 	const addCol = columns.find(c => c.id === "add-task");
-	return displayMode === "all"
-		? `${gridWidth}px`
-		: displayMode === "grid"
-			? "calc(100% - 4px)"
-			: addCol
-				? `${addCol.width}px`
-				: "0";
+	return addCol ? `${addCol.width}px` : "0";
 }
 
 export function getScrollX(
 	compactMode,
-	displayMode,
+	panels,
 	columnWidth,
 	containerWidth,
-	gridWidth
+	panelWidth,
+	section = "grid",
+	fillRemaining = false
 ) {
-	return !compactMode && displayMode !== "grid"
-		? columnWidth > gridWidth
-		: columnWidth > containerWidth;
+	if (section === "subGrid") {
+		return columnWidth > (fillRemaining ? containerWidth : panelWidth);
+	}
+	const displayMode = getGridChartDisplayMode(panels);
+	if (!compactMode && displayMode !== "grid") {
+		return columnWidth > panelWidth;
+	}
+	return columnWidth > containerWidth;
 }
 
-export function getFitColumns(columns, displayMode, colId = "add-task") {
-	return displayMode === "chart"
-		? [
-				{
-					...columns.filter(c => c.id === colId)[0],
-					resize: false,
-				},
-			]
-		: columns;
+export function getFitColumns(
+	columns,
+	panels,
+	section = "grid",
+	colId = "add-task",
+	stripWidth = 0
+) {
+	if (section !== "grid" || panels?.includes("grid")) return columns;
+
+	const col = columns.find(c => c.id === colId);
+	if (!col) return [{ id: colId, resize: false, width: stripWidth }];
+
+	return [{ ...col, resize: false }];
 }
 
 export function getFillColumn(columns, id) {
@@ -69,58 +106,6 @@ export function getSortMarks(tasks, sort) {
 		return marks;
 	}
 	return {};
-}
-
-export function getResourceLoadColumns(scales, LoadCell, template) {
-	if (!scales) return [];
-	const lowestRow = scales.rows[scales.rows.length - 1];
-	const { cells } = lowestRow;
-	const unit = scales.minUnit;
-
-	if (unit === "day") return getLoadColumns(cells, LoadCell, template);
-
-	const dayMs = 24 * 60 * 60 * 1000;
-	const stepMs = cells.length
-		? (cells.length > 1 ? cells[1].date.getTime() : scales.end.getTime()) -
-			cells[0].date.getTime()
-		: 0;
-	const isSubDayStep = stepMs && stepMs < dayMs;
-
-	if (isSubDayStep) {
-		const dayCols = [];
-		let group = null;
-		cells.forEach(cell => {
-			if (!group || group.key !== cell.key) {
-				group = {
-					id: cell.key,
-					key: cell.key,
-					width: 0,
-					date: cell.date,
-					unit: cell.unit,
-				};
-				dayCols.push(group);
-			}
-			group.width += cell.width;
-		});
-
-		return getLoadColumns(dayCols, LoadCell, template);
-	} else return getLoadColumns(cells, LoadCell, template, true);
-}
-
-function getLoadColumns(cells, LoadCell, template, unitLoad) {
-	return cells.map(cell => ({
-		id: cell.key,
-		width: cell.width,
-		date: cell.date,
-		unit: cell.unit,
-		getter: row =>
-			unitLoad ? row.$unitLoad?.[cell.key] : row.$load?.[cell.key],
-		template: v => {
-			if (!v) return "";
-			return template ? template(v) : `${v.hours}h`;
-		},
-		cell: LoadCell,
-	}));
 }
 
 export function getScrollbarWidth() {

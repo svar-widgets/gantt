@@ -1,31 +1,15 @@
 <script>
+	import { getContext } from "svelte";
+	import { getSegmentProgress } from "@svar-ui/gantt-store";
+
 	let { task, type } = $props();
+
+	const api = getContext("gantt-store");
+	const { inactiveTasks } = api.getReactiveState();
 
 	function segmentStyle(i) {
 		const s = task.segments[i];
 		return `left:${s.$x}px;top:0px;width:${s.$w}px;height:100%;`;
-	}
-
-	function getSegProgress(segmentIndex) {
-		if (!task.progress) return 0;
-
-		const progress = (task.duration * task.progress) / 100;
-		const segments = task.segments;
-		let duration = 0,
-			i = 0,
-			result = null;
-		do {
-			const s = segments[i];
-			if (i === segmentIndex) {
-				if (duration > progress) result = 0;
-				else
-					result =
-						Math.min((progress - duration) / s.duration, 1) * 100;
-			}
-			duration += s.duration;
-			i++;
-		} while (result === null && i < segments.length);
-		return result || 0;
 	}
 </script>
 
@@ -33,6 +17,7 @@
 	{#each task.segments as seg, i (i)}
 		<div
 			class="wx-segment wx-bar wx-{type}"
+			class:wx-inactive={$inactiveTasks && task.inactive}
 			data-segment={i}
 			style={segmentStyle(i)}
 		>
@@ -40,7 +25,7 @@
 				<div class="wx-progress-wrapper">
 					<div
 						class="wx-progress-percent"
-						style="width:{getSegProgress(i)}%"
+						style="width:{getSegmentProgress(task, i)}%"
 					></div>
 				</div>
 			{/if}

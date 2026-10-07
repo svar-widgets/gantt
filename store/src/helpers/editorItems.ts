@@ -6,9 +6,14 @@ import type {
 	IDataHash,
 } from "../types";
 import { defaultTaskTypes } from "../taskTypes";
+import { isManualSummary } from "../tasks";
 
 function isSummary(task: Partial<ITask>) {
 	return task.type === "summary";
+}
+
+function hasDerivedDates(task: Partial<ITask>, state?: IData) {
+	return isSummary(task) && !isManualSummary(task, state);
 }
 
 function isMilestone(task: Partial<ITask>) {
@@ -61,8 +66,7 @@ export const defaultEditorItems: TEditorItem[] = [
 		config: {
 			format: "%d-%m-%Y",
 		},
-		isHidden: task => isSummary(task),
-		isDisabled: isUnscheduled,
+		isHidden: (task, state) => hasDerivedDates(task, state),
 	},
 	{
 		key: "end",
@@ -71,8 +75,9 @@ export const defaultEditorItems: TEditorItem[] = [
 		config: {
 			format: "%d-%m-%Y",
 		},
-		isHidden: task => isSummary(task) || isMilestone(task),
-		isDisabled: isUnscheduled,
+		isHidden: (task, state) =>
+			hasDerivedDates(task, state) || isMilestone(task),
+		isDisabled: (task, state) => isUnscheduled(task, state),
 	},
 	{
 		key: "duration",
@@ -81,8 +86,9 @@ export const defaultEditorItems: TEditorItem[] = [
 		config: {
 			min: 1,
 		},
-		isHidden: task => isSummary(task) || isMilestone(task),
-		isDisabled: isUnscheduled,
+		isHidden: (task, state) =>
+			hasDerivedDates(task, state) || isMilestone(task),
+		isDisabled: (task, state) => isUnscheduled(task, state),
 	},
 	{
 		key: "progress",

@@ -8,7 +8,9 @@
 </script>
 
 <div class="demo">
-	<h4>Click the "expand" icon, or click on Gantt and press Ctrl+Shift+F</h4>
+	<div class="hint">
+		Click the "expand" icon, or click on Gantt and press Ctrl+Shift+F
+	</div>
 	<div class="gtcell">
 		<Fullscreen hotkey="ctrl+shift+f">
 			<Gantt {...skinSettings} tasks={data.tasks} links={data.links} />
@@ -20,13 +22,16 @@
 	.demo {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
 		height: 100%;
 	}
-
+	.hint {
+		flex-shrink: 0;
+		padding: 8px 12px;
+		color: var(--wx-color-font-alt);
+		border-bottom: var(--wx-gantt-border);
+	}
 	.gtcell {
-		overflow: hidden;
-		border: var(--wx-gantt-border);
-		height: calc(100% - 32px);
+		flex: 1;
+		min-height: 0;
 	}
 </style>

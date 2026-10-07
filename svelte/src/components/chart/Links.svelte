@@ -5,7 +5,13 @@
 
 	const api = getContext("gantt-store");
 
-	const { _visibleLinks: links, criticalPath } = api.getReactiveState();
+	const {
+		_visibleLinks: links,
+		criticalPath,
+		_conflicts,
+	} = api.getReactiveState();
+
+	let violated = $derived($_conflicts?.links);
 
 	function onClickOutside(event) {
 		const css = event?.target?.classList;
@@ -25,6 +31,7 @@
 		<g
 			class="wx-line"
 			class:wx-critical={$criticalPath && link.critical}
+			class:wx-violated={violated?.has(link.id)}
 			class:wx-line-selectable={!readonly}
 			onclick={() => !readonly && onSelectLink(link.id)}
 			data-link-id={setID(link.id)}
@@ -37,6 +44,7 @@
 		<g
 			use:clickOutside={onClickOutside}
 			class="wx-line wx-line-selected wx-line-selectable wx-delete-link"
+			class:wx-violated={violated?.has(selectedLink.id)}
 			data-link-id={setID(selectedLink.id)}
 		>
 			<polyline class="wx-line-draw" points={selectedLink.$p} />
@@ -80,6 +88,11 @@
 		stroke: var(--wx-gantt-link-critical-color-hovered);
 	}
 
+	.wx-line-selectable.wx-violated:hover > .wx-line-draw {
+		stroke: var(--wx-gantt-link-violation-color);
+		opacity: 0.85;
+	}
+
 	.wx-line-selectable {
 		cursor: pointer;
 	}
@@ -90,5 +103,15 @@
 
 	.wx-critical > .wx-line-draw {
 		stroke: var(--wx-gantt-link-critical-color);
+	}
+
+	.wx-violated > .wx-line-draw {
+		stroke: var(--wx-gantt-link-violation-color);
+		stroke-dasharray: 5 5;
+	}
+
+	.wx-line.wx-line-selected.wx-violated > .wx-line-draw {
+		stroke: var(--wx-color-danger);
+		stroke-dasharray: none;
 	}
 </style>

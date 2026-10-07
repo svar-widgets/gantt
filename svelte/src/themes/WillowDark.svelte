@@ -34,11 +34,14 @@
 		--wx-gantt-task-font-color: #ffffffe5;
 		--wx-gantt-task-fill-color: #098cdc;
 		--wx-gantt-task-border-color: #098cdc;
+		--wx-gantt-manual-border-color: #666666;
 		--wx-gantt-task-border: 1px solid transparent;
 		--wx-gantt-task-critical-color: var(--wx-gantt-critical-color);
 		--wx-gantt-task-critical-fill-color: #c83434;
 		--wx-gantt-task-slack-color: #2c3440;
 		--wx-gantt-task-slack-border-color: #597194;
+		--wx-gantt-inactive-color: #c5cace;
+		--wx-gantt-inactive-fill-color: #adb5ba;
 
 		--wx-gantt-summary-color: #00ba94;
 		--wx-gantt-summary-font-color: #ffffffe5;
@@ -64,6 +67,9 @@
 		--wx-gantt-link-color-hovered: #c8c7cf;
 		--wx-gantt-link-critical-color: var(--wx-gantt-critical-color);
 		--wx-gantt-link-critical-color-hovered: #b22e2e;
+		--wx-gantt-link-violation-color: var(
+			--wx-gantt-constraint-violation-color
+		);
 		--wx-gantt-link-marker-background: #384047;
 		--wx-gantt-link-marker-color: #9fa1ae;
 
@@ -100,11 +106,50 @@
 		--wx-gantt-marker-font-color: #fff;
 		--wx-gantt-marker-color: rgba(6, 189, 248, 0.77);
 
+		/* progress line */
+		--wx-gantt-progress-line-color: #f5953b;
+		--wx-gantt-progress-line-width: 1;
+
+		/* s-curve */
+		--wx-gantt-scurve-scheduled-color: #ffc975;
+		--wx-gantt-scurve-scheduled-width: 1;
+		--wx-gantt-scurve-scheduled-dasharray: none;
+		--wx-gantt-scurve-earned-color: #fe6158;
+		--wx-gantt-scurve-earned-width: 1;
+		--wx-gantt-scurve-earned-dasharray: 4 4;
+		--wx-gantt-scurve-baseline-color: #ffffffe5;
+		--wx-gantt-scurve-baseline-width: 1;
+		--wx-gantt-scurve-baseline-dasharray: 2 2;
+
 		/* sidebar */
 		--wx-sidebar-close-icon: #384047;
 
 		/* resources */
 		--wx-gantt-load-normal-color: #283433;
+		--wx-gantt-load-normal-hover-color: #286163;
 		--wx-gantt-load-danger-color: #3c2a2c;
+		--wx-gantt-load-danger-hover-color: #733e4e;
+		--wx-gantt-resource-histogram-load-color: var(
+			--wx-gantt-load-normal-color
+		);
+		--wx-gantt-resource-histogram-load-hover-color: var(
+			--wx-gantt-load-normal-hover-color
+		);
+		--wx-gantt-resource-histogram-overload-color: var(
+			--wx-gantt-load-danger-color
+		);
+		--wx-gantt-resource-histogram-overload-hover-color: var(
+			--wx-gantt-load-danger-hover-color
+		);
+		--wx-gantt-resource-histogram-capacity-color: var(--wx-color-primary);
+
+		/* deadlines */
+		--wx-gantt-deadline-color: var(--wx-color-font-alt);
+		--wx-gantt-deadline-overdue-color: var(--wx-color-danger);
+
+		/* constraints */
+		--wx-gantt-constraint-violation-color: #f0b258;
+		--wx-gantt-constraint-violation-font-color: #2c2f3c;
+		--wx-gantt-constraint-violated-badge-bg: #4a3d30;
 	}
 </style>

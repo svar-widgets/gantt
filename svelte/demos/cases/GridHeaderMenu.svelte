@@ -20,7 +20,9 @@
 
 <div class="rows">
 	<div class="bar">
-		<div>Right-click the grid header and select visible columns</div>
+		<div class="hint">
+			Right-click the grid header and select visible columns
+		</div>
 		<div class="bar">
 			<div class="label">Columns that can be hidden:</div>
 			<RadioButtonGroup {options} bind:value={selected} type="inline" />
@@ -49,14 +51,15 @@
 		height: 100%;
 		overflow: hidden;
 	}
-
 	.bar {
 		padding: 10px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 	}
-
+	.hint {
+		color: var(--wx-color-font-alt);
+	}
 	.gtcell {
 		position: relative;
 		height: 100%;

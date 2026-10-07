@@ -8,6 +8,7 @@
 	import { hotkeys } from "@svar-ui/grid-store";
 	import { setID } from "@svar-ui/lib-dom";
 	import { createZoomWheelHandler } from "../../helpers/zoom";
+	import SCurve from "./SCurve.svelte";
 
 	let { readonly, fullWidth, fullHeight, taskTemplate } = $props();
 
@@ -25,9 +26,10 @@
 		groupBy,
 		xArea,
 		zoom,
-		_calendars,
 		_markers,
+		_progressLinePoints,
 		highlightTime,
+		schedule,
 	} = api.getReactiveState();
 
 	let chartHeight = $state();
@@ -69,16 +71,14 @@
 
 	function dataRequest() {
 		const clientHeight = chartHeight || 0;
+		if (!clientHeight) return;
+
 		const num = Math.ceil(clientHeight / $cellHeight) + 1;
 		const pos = Math.floor(($rScrollTop || 0) / $cellHeight);
 		const start = Math.max(0, pos - extraRows);
 		const end = pos + num + extraRows;
 		const from = start * $cellHeight;
-		api.exec("render-data", {
-			start,
-			end,
-			from,
-		});
+		api.exec("render-data", { start, end, from });
 	}
 
 	const onWheel = createZoomWheelHandler(
@@ -137,22 +137,26 @@
 			});
 		}
 
-		const calendar = task.calendar ? api.getTaskCalendar(task) : undefined;
+		const calendar =
+			task.calendar || $schedule?.resourceCalendars
+				? api.getTaskCalendar(task)
+				: undefined;
 		return calendar ? [calendar] : [];
 	}
 
 	const rowHighlights = $derived.by(() => {
 		const result = [];
-		if (!$_calendars) return result;
 		const globalCalendar = api.getCalendar();
 		visibleTasks.forEach((task, index) => {
 			const rowCalendars = getRowCalendars(task);
 			if (!rowCalendars.length) return;
 			timelineCells.forEach((cell, cellIndex) => {
 				const nonWorkingCalendars = rowCalendars.filter(
-					cal => !cal.isWorkingDay(cell.date)
+					cal => cal.noWorkingTime || !cal.isWorkingDay(cell.date)
 				);
-				const isRowWorkingDay = nonWorkingCalendars.length === 0;
+				// a resource group works while any of its members does
+				const isRowWorkingDay =
+					nonWorkingCalendars.length < rowCalendars.length;
 				const isGlobalHoliday =
 					globalCalendar && !globalCalendar.isWorkingDay(cell.date);
 
@@ -170,8 +174,9 @@
 						.filter(Boolean);
 					css = ["wx-weekend", ...extra].join(" ");
 				}
-				if (isRowWorkingDay && isGlobalHoliday)
+				if (isRowWorkingDay && isGlobalHoliday) {
 					css = "wx-weekend-override";
+				}
 
 				if (css) result.push({ ...cellConfig, css });
 			});
@@ -249,7 +254,22 @@
 
 		<CellGrid />
 
+		{#if $_progressLinePoints}
+			<svg
+				class="wx-progress-line"
+				width={fullWidth}
+				height={chartGridHeight || 0}
+			>
+				<polyline
+					class="wx-progress-line-path"
+					points={$_progressLinePoints}
+				/>
+			</svg>
+		{/if}
+
 		<Bars {readonly} {taskTemplate} />
+
+		<SCurve />
 	</div>
 </div>
 
@@ -311,6 +331,21 @@
 		height: 100%;
 		width: 100%;
 		position: absolute;
+	}
+
+	.wx-progress-line {
+		position: absolute;
+		top: 0;
+		left: 0;
+		pointer-events: none;
+		z-index: 4;
+		overflow: visible;
+	}
+
+	:global(.wx-progress-line-path) {
+		fill: none;
+		stroke: var(--wx-gantt-progress-line-color, #f5953b);
+		stroke-width: var(--wx-gantt-progress-line-width, 1);
 	}
 
 	.wx-weekend {

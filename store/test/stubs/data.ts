@@ -101,6 +101,32 @@ const calendars = [
 			sunday: 0,
 		},
 	},
+	{
+		id: "part-time",
+		name: "Part time",
+		weekHours: {
+			monday: 4,
+			tuesday: 4,
+			wednesday: 4,
+			thursday: 4,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "weekends",
+		name: "Weekends only",
+		weekHours: {
+			monday: 0,
+			tuesday: 0,
+			wednesday: 0,
+			thursday: 0,
+			friday: 0,
+			saturday: 8,
+			sunday: 8,
+		},
+	},
 ];
 
 const summaryTasks = [
@@ -252,7 +278,6 @@ const summaryTasks = [
 		start: new Date("2024-06-08 00:00:00"),
 		end: new Date("2024-06-12 00:00:00"),
 		type: "task",
-		unscheduled: true,
 		id: 151,
 	},
 	{
@@ -271,7 +296,6 @@ const summaryTasks = [
 		start: new Date("2024-06-20 00:00:00"),
 		end: new Date("2024-06-21 00:00:00"),
 		type: "task",
-		unscheduled: true,
 		id: 16,
 	},
 	{

@@ -52,6 +52,7 @@
 					schedule={{ auto: true }}
 					projectStart={new Date(2026, 3, 2)}
 					projectEnd={new Date(2026, 5, 2)}
+					undo
 				/>
 			</ContextMenu>
 		</Tooltip>

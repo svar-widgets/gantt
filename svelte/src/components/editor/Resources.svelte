@@ -1,5 +1,5 @@
 <script>
-	import { getContext, onDestroy } from "svelte";
+	import { getContext } from "svelte";
 	import { Button } from "@svar-ui/svelte-core";
 
 	import GridSection from "./GridSection.svelte";
@@ -16,28 +16,22 @@
 		taskAssignments = null,
 	} = $props();
 
-	const { activeTask, resources, _assignments, assignments } =
-		api.getReactiveState();
+	const { activeTask, resources, _assignments, assignments } = $derived(
+		api.getReactiveState()
+	);
 
 	let gridApi = $state();
 	let newRowId = $state(null);
 
-	let taskResources = $state([]);
-
-	const unsubscribers = [
-		activeTask.subscribe(v => {
-			subscribeHandler(v);
-		}),
-		_assignments.subscribe(() => subscribeHandler($activeTask)),
-	];
-
-	function subscribeHandler(taskid) {
-		taskResources =
+	let taskResources = $derived.by(() => {
+		$_assignments;
+		return (
 			taskAssignments ||
-			api.getTaskResources(taskid).map(r => {
+			api.getTaskResources($activeTask).map(r => {
 				return { ...r, resource: r.id, id: r.assignmentId };
-			});
-	}
+			})
+		);
+	});
 
 	const allOptions = $derived.by(() => {
 		const items = [];
@@ -225,10 +219,6 @@
 			gridApi.exec("open-editor", { id, column: "resource" });
 		});
 	}
-
-	onDestroy(() => {
-		for (const unsub of unsubscribers) unsub();
-	});
 </script>
 
 <div class="wx-section">

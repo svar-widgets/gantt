@@ -10,14 +10,14 @@ import type {
 } from "../types";
 import { defaultTaskTypes } from "../taskTypes";
 
-function isGrouped(task: IParsedTask) {
-	return !task.$group && typeof task.$groupValue !== "undefined";
+function isGrouped(task?: IParsedTask | null) {
+	return !!task && !task.$group && typeof task.$groupValue !== "undefined";
 }
-function isGroup(task: IParsedTask) {
-	return task.$group;
+function isGroup(task?: IParsedTask | null) {
+	return !!task?.$group;
 }
 
-function isGroupParent(task: IParsedTask) {
+function isGroupParent(task?: IParsedTask | null) {
 	return isGroup(task) && typeof task.$groupValue === "undefined";
 }
 
@@ -79,7 +79,8 @@ export function assignChecks<T extends IOptionConfig>(items: T[]): T[] {
 					isGroup(task);
 				break;
 			case "move-task:down":
-				item.isDisabled = (task, state) => isLastTask(task, state);
+				item.isDisabled = (task, state) =>
+					isLastTask(task, state) || isGrouped(task) || isGroup(task);
 				break;
 			case "indent-task:add":
 				item.isDisabled = (task, state) =>
@@ -104,7 +105,10 @@ function isFirstTask(task: ITask, state: IData): boolean {
 }
 function isLastTask(task: ITask, state: IData): boolean {
 	const { _tasks } = state;
-	return _tasks[_tasks.length - 1]?.id === task.id;
+	const last = _tasks[_tasks.length - 1]?.$placeholder
+		? _tasks[_tasks.length - 2]
+		: _tasks[_tasks.length - 1];
+	return last?.id === task.id;
 }
 function prevTaskID(task: ITask, state: IData): TID {
 	const { _tasks } = state;

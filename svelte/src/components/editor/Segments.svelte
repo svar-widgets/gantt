@@ -15,7 +15,7 @@
 
 	let { api, autoSave, segments, onextchange: onchange } = $props();
 
-	const { _activeTask } = api.getReactiveState();
+	const { _activeTask } = $derived(api.getReactiveState());
 
 	let segmentsState = $state([]);
 

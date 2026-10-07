@@ -4,6 +4,8 @@ import type {
 	IData,
 	ICalendar,
 	TCalendarGetter,
+	GanttDataTree,
+	TID,
 } from "./types";
 import { getDiffer, getAdder } from "./time";
 import { setSummaryDates } from "./tasks";
@@ -13,36 +15,82 @@ const unitAdd = (unit: TDurationUnit, calendar?: ICalendar) =>
 const unitDiff = (unit: TDurationUnit, calendar?: ICalendar) =>
 	getDiffer(unit, calendar);
 
-export function parseTaskDates(
-	tasks: ITask[],
+// a summary reads only the branch below it, which post-order has already dated
+export function parseTreeDates(
+	tasks: GanttDataTree,
 	state: Partial<IData>,
-	calendarGetter: TCalendarGetter
+	calendarGetter: TCalendarGetter,
+	parent: TID = 0
 ) {
-	if (Array.isArray(tasks)) {
-		//calc dates for single task
-		tasks.forEach(task =>
-			normalizeDates(task, state, calendarGetter(task))
-		);
-		//calc summary dates
-		tasks.forEach(task => {
-			if (task.type === "summary" && !(task.start && task.end)) {
-				const { start, end } = setSummaryDates(task, tasks);
-				task.start = start;
-				task.end = end;
+	const walk = (branch: ITask[]) => {
+		if (!branch) return;
+		branch.forEach(task => {
+			walk(task.data as ITask[]);
+			normalizeDates(task, state, calendarGetter(task));
+			if (task.type !== "summary") return;
+
+			// a supplied value is kept, a missing one is derived
+			const datesMissing = !(task.start && task.end);
+			const flagMissing =
+				state.inactiveTasks && task.inactive === undefined;
+			if (!datesMissing && !flagMissing) return;
+
+			const derived = setSummaryDates(
+				task,
+				state.unscheduledTasks,
+				state.inactiveTasks,
+				// a supplied flag decides which members count
+				state.inactiveTasks && !flagMissing ? !task.inactive : undefined
+			);
+			if (flagMissing && derived.inactive) task.inactive = true;
+			if (datesMissing) {
+				task.start = derived.start;
+				task.end = derived.end;
+				task.duration = undefined;
 				normalizeDates(task, state, calendarGetter(task));
 			}
 		});
+	};
+	walk(tasks.byId(parent)?.data as ITask[]);
+}
+
+// a partial update speaks only about the fields it carries
+const effective = (
+	task: Partial<ITask>,
+	prev: Partial<ITask> | undefined,
+	key: string
+) => (key in task ? task[key] : prev?.[key]);
+
+export function deriveUnscheduled(task: Partial<ITask>, prev?: Partial<ITask>) {
+	if (effective(task, prev, "type") === "summary") {
+		task.unscheduled = false;
+		return;
 	}
+	task.unscheduled = !effective(task, prev, "start");
+}
+
+function fillDateFields(
+	task: Partial<ITask>,
+	prev: Partial<ITask>,
+	unscheduledTasks: boolean
+) {
+	if (!("type" in task)) task.type = prev.type;
+	// a start can only be dropped when unscheduled tasks are allowed
+	if (!task.start && !(unscheduledTasks && "start" in task))
+		task.start = prev.start;
+	if (!task.end && !task.duration) task.duration = prev.duration;
+	if (!("segments" in task) && prev.segments) task.segments = prev.segments;
 }
 
 export function normalizeDates(
 	task: Partial<ITask>,
 	state: Partial<IData>,
-	calendar: ICalendar | undefined
+	calendar: ICalendar | undefined,
+	prev?: Partial<ITask>
 ) {
-	if (!task.unscheduled) {
-		calcDates(task, state, calendar, false);
-	}
+	if (prev) fillDateFields(task, prev, state.unscheduledTasks);
+	if (task.start) calcDates(task, state, calendar, false);
+	if (state.unscheduledTasks) deriveUnscheduled(task, prev);
 	if (task.base_start) calcDates(task, state, calendar, true);
 }
 
@@ -76,6 +124,7 @@ export function calcDates(
 	}
 }
 
+
 export function getFields(isBaseline: boolean) {
 	if (isBaseline) return ["base_start", "base_end", "base_duration"];
 	return ["start", "end", "duration"];
@@ -83,7 +132,7 @@ export function getFields(isBaseline: boolean) {
 
 function prepareDates(task: Partial<ITask>, key: string, isBaseline: boolean) {
 	const [start, end, duration] = getFields(isBaseline);
-	if (key === duration || key === start) {
+	if (key === duration || (key === start && task.start)) {
 		if (key === duration && task[duration] < 1) task[duration] = 1;
 		task[end] = null;
 	}

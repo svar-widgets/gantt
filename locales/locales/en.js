@@ -11,21 +11,23 @@ export default {
 		Resources: "Resources",
 		WBS: "WBS",
 		Hours: "Hours",
+		Capacity: "Capacity",
 
 		// Sidebar
 		Save: "Save",
 		Delete: "Delete",
 		Name: "Name",
 		Description: "Description",
-		"Select type": "Select type",
 		Type: "Type",
 		"End date": "End date",
 		Progress: "Progress",
+		Manual: "Manual",
+		Inactive: "Inactive",
+		"Skip resource calendars": "Skip resource calendars",
 		Predecessors: "Predecessors",
 		Successors: "Successors",
 		"Add task name": "Add task name",
 		"Add description": "Add description",
-		"Select link type": "Select link type",
 		"End-to-start": "End-to-start",
 		"Start-to-start": "Start-to-start",
 		"End-to-end": "End-to-end",
@@ -36,11 +38,22 @@ export default {
 		"Add resource": "Add resource",
 		Resource: "Resource",
 		General: "General",
+		Scheduling: "Scheduling",
+		Deadline: "Deadline",
+		None: "None",
+		"Start no earlier than": "Start no earlier than",
+		"Start no later than": "Start no later than",
+		"Finish no earlier than": "Finish no earlier than",
+		"Finish no later than": "Finish no later than",
+		"Must start on": "Must start on",
+		"Must finish on": "Must finish on",
+		Constraint: "Constraint",
 		Links: "Links",
 		Lag: "Lag",
 		Segments: "Segments",
 		Ungrouped: "Ungrouped",
 		Unassigned: "Unassigned",
+		Unschedule: "Unschedule",
 
 		// Context menu / toolbar
 		Add: "Add",
@@ -57,7 +70,7 @@ export default {
 		Down: "Down",
 		Indent: "Indent",
 		Outdent: "Outdent",
-		"Split task": "Split task",
+		Split: "Split",
 		Segment: "Segment",
 
 		// Toolbar
@@ -70,5 +83,15 @@ export default {
 		// Formats
 		Week: "Week",
 		Q: "Quarter",
+
+		// Conflicts
+		Conflicts: "Conflicts",
+		"No conflicts found": "No conflicts found",
+		"Link violation": "Link violation",
+		"Constraint violation": "Constraint violation",
+		"From link": "From link",
+		"Remove link": "Remove link",
+		"Move task": "Move task",
+		"Remove constraint": "Remove constraint",
 	},
 };

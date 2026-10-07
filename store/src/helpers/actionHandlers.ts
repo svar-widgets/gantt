@@ -2,6 +2,7 @@ import type { TID } from "@svar-ui/lib-state";
 import type { ILink, IDataHash, ITask, IData } from "../types";
 import { IOptionConfig } from "./menuOptions";
 import { IButtonConfig } from "./toolbarButtons";
+import { isPlaceholder } from "../placeholder";
 
 type TTarget = TID | IDataHash | null;
 
@@ -12,10 +13,23 @@ export function handleAction(
 	_: any
 ): void {
 	const state = api.getState();
-	const selected = state._selected.map((t: ITask) => t.id);
+	const selected = state._selected
+		.filter((t: ITask) => !isPlaceholder(t.id))
+		.map((t: ITask) => t.id);
+	if (isPlaceholder(target as TID)) target = null;
 	const hasSelection = selected.length;
 	// single-target ops
-	const single = ["edit-task", "paste-task", "undo", "redo"];
+	const single = [
+		"edit-task",
+		"paste-task",
+		"undo",
+		"redo",
+		"add-task",
+		"add-task:child",
+		"add-task:before",
+		"add-task:after",
+		"show-conflicts",
+	];
 	// do not sort index-/level-wise
 	const avoidSort = ["copy-task", "cut-task"];
 	// apply in reverse to maintain relative positions
@@ -27,7 +41,7 @@ export function handleAction(
 		"move-task:down",
 	];
 	// targetless ops
-	const untargeted = ["add-task", "undo", "redo"];
+	const untargeted = ["add-task", "undo", "redo", "show-conflicts"];
 	// direct children should move/copy with entire branch
 	const checkParent = [
 		"indent-task:add",
@@ -35,6 +49,7 @@ export function handleAction(
 		"move-task:up",
 		"copy-task",
 		"cut-task",
+		"delete-task",
 	];
 	const checkLevel: { [k: string]: number } = {
 		"indent-task:remove": 2,
@@ -83,8 +98,8 @@ function mapOrder(
 		const tobj = tasks.byId(id);
 		return {
 			id,
-			level: tobj.$level,
-			parent: tobj.parent,
+			level: tobj?.$level,
+			parent: tobj?.parent,
 			index: tasks.getIndexById(id),
 		};
 	});
@@ -162,9 +177,10 @@ function runSingleAction(
 				relevantLinks.forEach((link: ILink) => {
 					exec("add-link", {
 						link: {
+							...link,
+							id: undefined,
 							source: idPairs.get(link.source),
 							target: idPairs.get(link.target),
-							type: link.type,
 						},
 					});
 				});
@@ -184,7 +200,7 @@ function runSingleAction(
 		return;
 	} else if (op === "add-task") {
 		extraData = {
-			task: { type: "task", text: _("New Task") },
+			task: { type: "task", text: _("New task") },
 			target: id,
 			show: true,
 			mode: "after",

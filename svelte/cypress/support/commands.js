@@ -67,6 +67,8 @@ Cypress.Commands.add(
 				return subject.get(".wx-grid .wx-data");
 			case "grid-item":
 				return subject.get(`.wx-grid .wx-row[data-id="${setID(id)}"]`);
+			case "grid-cell":
+				return subject.find(`.wx-cell[data-col-id="${setID(id)}"]`);
 
 			case "editor":
 				return subject.get(".wx-gantt-editor");

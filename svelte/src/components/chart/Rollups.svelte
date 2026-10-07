@@ -1,11 +1,16 @@
 <script>
+	import { getContext } from "svelte";
 	import { setID } from "@svar-ui/lib-dom";
 	let { rollup, parent } = $props();
+
+	const api = getContext("gantt-store");
+	const { inactiveTasks } = api.getReactiveState();
 </script>
 
 <div
 	data-rollup-id={setID(rollup.id)}
 	class={`wx-rollup wx-${rollup.type}-rollup`}
+	class:wx-inactive={$inactiveTasks && parent.inactive}
 	style={`left:${rollup.$x_rollup}px;top:${parent.$y + parent.$h + rollup.$y_rollup_relative}px;width:${rollup.$w_rollup}px;height:${rollup.$h_rollup}px;`}
 ></div>
 
@@ -32,5 +37,8 @@
 		background-color: var(--wx-gantt-milestone-color);
 		transform: rotate(45deg) scale(0.75);
 		border-radius: var(--wx-gantt-milestone-border-radius);
+	}
+	.wx-rollup.wx-inactive {
+		background-color: var(--wx-gantt-inactive-color);
 	}
 </style>

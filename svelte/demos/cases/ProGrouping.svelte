@@ -73,7 +73,6 @@
 			</Field>
 		</div>
 	</div>
-
 	<div class="gtcell">
 		<ContextMenu {api}>
 			<Gantt
@@ -90,7 +89,6 @@
 		<Editor {api} />
 	</div>
 </div>
-<Editor {api} />
 
 <style>
 	.demo {
@@ -116,8 +114,8 @@
 		border-top: var(--wx-gantt-border);
 	}
 
-	.demo :global(.wx-field) {
-		display: flex;
+	.select :global(.wx-field),
+	.switch :global(.wx-field) {
 		align-items: center !important;
 	}
 

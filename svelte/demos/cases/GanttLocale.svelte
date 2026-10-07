@@ -17,13 +17,13 @@
 	];
 	let lang = $state("en");
 
-	const settings = {
+	const settings = $derived({
 		...skinSettings,
 		tasks: data.tasks,
 		links: data.links,
 		scales: data.scales,
 		zoom: true,
-	};
+	});
 </script>
 
 <div class="rows">

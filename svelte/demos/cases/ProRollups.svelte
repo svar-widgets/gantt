@@ -37,6 +37,7 @@
 				tasks={data.tasks}
 				links={data.links}
 				baselines={showBaseline}
+				unscheduledTasks
 			/>
 		</Tooltip>
 		<Editor {api} />

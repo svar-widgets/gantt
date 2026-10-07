@@ -1,7 +1,11 @@
 <script>
 	let { api } = $props();
 
-	const { _scales: scales, xArea, highlightTime } = api.getReactiveState();
+	const {
+		_scales: scales,
+		xArea,
+		highlightTime,
+	} = $derived(api.getReactiveState());
 
 	// Upper-row cells span multiple lowest-row cells. Walk widths so a span
 	// whose left edge has scrolled off is still rendered while its body is visible.

@@ -4,10 +4,14 @@
 	import { registerToolbarItem } from "@svar-ui/svelte-toolbar";
 	import { Locale, Tabs } from "@svar-ui/svelte-core";
 	import {
+		defaultConstraintTypes,
 		getEditorItems,
 		prepareEditTask,
 		getEditorButtons,
 		filterEditorButtons,
+		getDateEditorButtons,
+		toInclusiveTask,
+		fromInclusiveTask,
 	} from "@svar-ui/gantt-store";
 	import { dateToString, locale } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
@@ -24,6 +28,7 @@
 	import DateTimePicker from "./editor/DateTimePicker.svelte";
 	import Resources from "./editor/Resources.svelte";
 	import Segments from "./editor/Segments.svelte";
+	import Constraint from "./editor/Constraint.svelte";
 
 	registerEditorItem("select", RichSelect);
 	registerEditorItem("date", DateTimePicker);
@@ -34,6 +39,7 @@
 	registerEditorItem("checkbox", Checkbox);
 	registerEditorItem("resources", Resources);
 	registerEditorItem("segments", Segments);
+	registerEditorItem("constraint", Constraint);
 	registerToolbarItem("tabs", Tabs);
 
 	let l = getContext("wx-i18n");
@@ -67,29 +73,39 @@
 	let activeTask = $derived(state?._activeTask ?? null);
 	let taskId = $derived(state?.activeTask ?? null);
 	let unscheduledTasks = $derived(state?.unscheduledTasks);
+	let inactiveTasks = $derived(state?.inactiveTasks);
 	let rollups = $derived(state?.rollups);
 	let summary = $derived(state?.summary);
 	let links = $derived(state?.links);
 	let splitTasks = $derived(state?.splitTasks);
 	let taskTypes = $derived(state?.taskTypes);
 	let resources = $derived(state?.resources ?? null);
+	let schedule = $derived(state?.schedule);
 	let activeBatch = $state(defBatch);
 	let compactMode = $derived(state?._compactMode);
 	let styleCss = $derived($compactMode ? "wx-full-screen" : "");
+	let deadlines = $derived(state?.deadlines);
+	let criticalPath = $derived(state?.criticalPath);
+	let inclusiveEnd = $derived(state?.inclusiveEnd);
 
 	let baseItems = $derived(
 		getEditorItems({
 			unscheduledTasks: $unscheduledTasks,
+			inactiveTasks: $inactiveTasks,
 			rollups: $rollups,
 			summary: $summary,
 			taskTypes: $taskTypes,
 			resources: $resources,
 			splitTasks: $splitTasks,
+			deadlines: $deadlines,
+			schedule: $schedule,
+			criticalPath: $criticalPath,
 		})
 	);
 	let undo = $derived(state?.undo);
 
 	let linksActions = $state(new Map());
+	let taskChanges = null;
 	let assignmentsActions = $state(new Map());
 	let segmentsActions = $state(new Map());
 	let inProgress = $state(null);
@@ -99,8 +115,6 @@
 
 	const externalValues = {
 		taskAssignments: null,
-		predecessors: null,
-		successors: null,
 	};
 	let notSavedValues = $state({ ...externalValues });
 
@@ -111,13 +125,23 @@
 		if (readonly) {
 			// preserve parent to differentiate between segment and task
 			let values = { parent: data.parent };
+			const shown = $inclusiveEnd
+				? toInclusiveTask(data, api.getTaskCalendar(data))
+				: data;
 			baseItems.forEach(({ key, comp }) => {
 				if (comp !== "links" && comp !== "resources") {
-					const value = data[key];
+					const value = shown[key];
 					if (comp === "date" && value instanceof Date) {
 						values[key] = dateFormat(value);
 					} else if (comp === "slider" && key === "progress") {
 						values[key] = `${value}%`;
+					} else if (comp === "constraint") {
+						const kind = defaultConstraintTypes.find(
+							t => t.id === value?.type
+						);
+						values[key] = kind
+							? `${_(kind.label)}: ${dateFormat(value.date)}`
+							: "";
 					} else {
 						values[key] = value;
 					}
@@ -125,17 +149,25 @@
 			});
 			return values;
 		}
-		return data || null;
+		return $inclusiveEnd
+			? toInclusiveTask(data, api.getTaskCalendar(data))
+			: data;
 	});
+
+	// the form shows end-like dates under inclusiveEnd,
+	// saves and app callbacks get the stored values behind them
+	let storedValues = $state.raw(null);
 
 	$effect(() => {
 		editorValues = task;
+		storedValues = $activeTask ? { ...$activeTask } : null;
 	});
 
 	$effect(() => {
 		$taskId;
 		untrack(() => {
 			linksActions = new Map();
+			taskChanges = null;
 			assignmentsActions = new Map();
 			segmentsActions = new Map();
 			editorErrors = null;
@@ -151,8 +183,8 @@
 		if (!api || !items || !Array.isArray(items)) return items;
 		return items
 			.filter(b => {
-				if (!editorValues) return true;
-				return !b.isHidden || !b.isHidden(editorValues, api.getState());
+				if (!storedValues) return true;
+				return !b.isHidden || !b.isHidden(storedValues, api.getState());
 			})
 			.map(b => {
 				const item = { ...b };
@@ -173,13 +205,13 @@
 					if (item.key === "resources") {
 						item.taskAssignments = notSavedValues.taskAssignments;
 					} else if (item.key === "links") {
-						item.successors = notSavedValues.successors;
-						item.predecessors = notSavedValues.predecessors;
+						if (!autoSave) item.edits = linksActions;
 					} else if (item.key === "segments") {
 						item.segments = notSavedValues.segments;
 					}
 					item.onextchange = handleExternalChange;
 				}
+				if (item.key === "constraint") item.task = editorValues;
 				if (item.id === "tabs") {
 					item.api = api;
 					item.css = "wx-gantt-tabs";
@@ -198,13 +230,21 @@
 				if (item.config?.placeholder)
 					item.config.placeholder = _(item.config.placeholder);
 
+				if (item.comp === "date" && api) {
+					item.config = { ...item.config };
+					item.config.buttons = getDateEditorButtons(
+						item.key,
+						$unscheduledTasks
+					).map(b => _(b));
+				}
+
 				if (
-					editorValues &&
+					storedValues &&
 					item.isDisabled &&
 					item.isDisabled(
-						editorValues,
+						storedValues,
 						api.getState(),
-						api.getTaskCalendar(editorValues)
+						api.getTaskCalendar(storedValues)
 					)
 				) {
 					item.disabled = true;
@@ -235,6 +275,10 @@
 				resources: $resources,
 				autoSave,
 				splitTasks: $splitTasks,
+				deadlines: $deadlines,
+				criticalPath: $criticalPath,
+				inactiveTasks: $inactiveTasks,
+				schedule: $schedule,
 			});
 		}
 		bar.items = filterEditorButtons(bar.items, item => {
@@ -264,31 +308,45 @@
 		return normalizeBar(bottomBar, editorBatches, "bottom");
 	});
 
-	function handleExternalChange({ view, event, values }) {
-		const { id, action, data } = event;
+	function handleExternalChange({ view, event, values = {} }) {
+		let { id, action, data } = event;
 		let actions;
 		if (view === "links") actions = linksActions;
 		else if (view === "resources") actions = assignmentsActions;
 		else if (view === "segments") actions = segmentsActions;
+		// edits to one link add up: a type change survives a later lag change
+		const prev = actions.get(id);
+		if (action === "update-link" && prev?.action === action)
+			data = { ...data, link: { ...prev.data.link, ...data.link } };
 		actions.set(id, { action, data });
 		Object.keys(values).forEach(key => {
 			notSavedValues[key] = values[key];
 		});
 	}
 
-	function saveSections() {
-		for (let [linkId, value] of linksActions) {
-			if ($links.byId(linkId)) {
-				const { action, data } = value;
-				api.exec(action, data);
-			}
-		}
+	function saveAll() {
+		// removals, then link updates, then the task change: a link update is
+		// checked against the saved task
+		const edits = [...linksActions.values()].filter(e =>
+			$links.byId(e.data.id)
+		);
+		const steps = [
+			...edits.filter(e => e.action === "delete-link"),
+			...edits.filter(e => e.action !== "delete-link"),
+		];
+
+		const history = api.getHistory();
+		history?.startBatch();
+		steps.forEach(({ action, data }) => api.exec(action, data));
+		if (taskChanges) save({ ...taskChanges });
 		[assignmentsActions, segmentsActions].forEach(actions => {
 			for (let [, value] of actions) {
 				const { action, data } = value;
 				api.exec(action, data);
 			}
 		});
+		history?.endBatch();
+		taskChanges = null;
 	}
 
 	function deleteTask() {
@@ -304,7 +362,8 @@
 		if (item.id === "delete") {
 			deleteTask();
 		} else if (item.id === "save") {
-			saveSections();
+			if (editorErrors) return;
+			saveAll();
 		}
 		if (item.comp) hide();
 	}
@@ -314,28 +373,31 @@
 
 		if (input) inProgress = true;
 
-		ev.update = normalizeTask({ ...update }, key, input);
+		const values = $inclusiveEnd
+			? fromInclusiveTask(update, key, storedValues)
+			: { ...update };
+		storedValues = normalizeTask(values, key, input);
+		ev.update = $inclusiveEnd
+			? toInclusiveTask(storedValues, api.getTaskCalendar(storedValues))
+			: { ...storedValues };
 
 		if (!autoSave) editorValues = ev.update;
 		else if (!editorErrors && !input) {
 			const item = editorItems.find(i => i.key === key);
 			const v = update[key];
 			const isValid = !item.validation || item.validation(v);
-			if (isValid && (!item.required || v)) save(ev.update);
+			if (isValid && (!item.required || v)) save({ ...storedValues });
 		}
 	}
 
 	function normalizeTask(task, key, input) {
-		if ($unscheduledTasks && task.type === "summary")
-			task.unscheduled = false;
-
 		prepareEditTask(task, api.getState(), api.getTaskCalendar(task), key);
 		if (!input) inProgress = false;
 		return task;
 	}
 
-	function handleSave(ev) {
-		if (!autoSave) save(ev.values, ev.changes);
+	function handleSave() {
+		if (!autoSave) taskChanges = { ...storedValues };
 	}
 
 	function handleValidation(check) {
@@ -343,7 +405,7 @@
 		editorErrors = check.errors;
 	}
 
-	function save(values, changes) {
+	function save(values) {
 		delete values.links;
 		delete values.data;
 
@@ -360,9 +422,6 @@
 		if (autoSave && inProgress) data.inProgress = inProgress;
 
 		api.exec("update-task", data);
-
-		// when changes is not empty, Editor calls onsave and onaction({id: "save})
-		if (!autoSave && !changes?.length) saveSections();
 	}
 
 	const defaultHotkeys = $derived(

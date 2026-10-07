@@ -6,53 +6,66 @@
 	const mask = "yyyy.MM.dd";
 </script>
 
-{#if data?.task}
+{#snippet row(label, value)}
+	<div class="wx-row">
+		<span class="wx-label">{label}:</span>
+		<span class="wx-value">{value}</span>
+	</div>
+{/snippet}
+
+{#if data?.text}
+	<div class="data">
+		<div class="wx-row">{data.text}</div>
+	</div>
+{:else if data?.task}
 	{@const task = data.task}
 	<div class="data">
-		<div class="text">
-			<span class="caption">{task.type}:</span>
-			{task.text}
-		</div>
-		<div class="text">
-			<span class="caption">start:</span>
-			{format(task.start, mask)}
-		</div>
+		{@render row("Name", task.text)}
+		{#if task.start}
+			{@render row("Start date", format(task.start, mask))}
+		{/if}
 		{#if task.end}
-			<div class="text">
-				<span class="caption">end:</span>
-				{format(task.end, mask)}
-			</div>
+			{@render row("End date", format(task.end, mask))}
 		{/if}
 	</div>
 {:else if data?.link}
 	{@const link = data.link}
 	<div class="data">
-		<div class="text">
-			<span class="caption">predecessor:</span>
-			{api.getTask(link.source).text}
-		</div>
-		<div class="text">
-			<span class="caption">successor:</span>
-			{api.getTask(link.target).text}
-		</div>
+		{@render row("Predecessors", api.getTask(link.source).text)}
+		{@render row("Successors", api.getTask(link.target).text)}
 	</div>
 {:else if data?.rollup}
 	{@const rollup = data.rollup}
 	<div class="data">
-		<div class="text">
-			<span class="caption">{rollup.type}:</span>
-			{rollup.text}
-		</div>
-		<div class="text">
-			<span class="caption">start:</span>
-			{format(rollup.start, mask)}
-		</div>
-		{#if rollup.end}
-			<div class="text">
-				<span class="caption">end:</span>
-				{format(rollup.end, mask)}
-			</div>
+		{@render row("Name", rollup.text)}
+		{#if rollup.start}
+			{@render row("Start date", format(rollup.start, mask))}
 		{/if}
+		{#if rollup.end}
+			{@render row("End date", format(rollup.end, mask))}
+		{/if}
+	</div>
+{:else if data?.sCurve}
+	{@const sCurve = data.sCurve}
+	<div class="data">
+		{@render row("Start date", format(sCurve.date, mask))}
+		{#each sCurve.lines as line (line.line)}
+			<div
+				class="wx-row"
+				class:hovered={line.line === sCurve.hovered.line}
+			>
+				<span class="wx-label">{line.type} by {line.metric}:</span>
+				<span class="wx-value">{Math.round(line.value)}%</span>
+			</div>
+		{/each}
+	</div>
+{:else if data?.deadline}
+	{@const task = data.deadline}
+	<div class="data">
+		<div class="text">
+			<span class="caption">deadline:</span>
+			{format(task.deadline, mask)}
+		</div>
 	</div>
 {/if}
 
@@ -60,22 +73,30 @@
 	.data {
 		white-space: nowrap;
 		background-color: var(--wx-tooltip-background);
-		padding: 3px 8px;
+		padding: 6px 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
 	}
 
-	.text {
+	.wx-row {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
 		font-family: var(--wx-font-family);
-		color: var(--wx-color-primary-font);
 		font-size: 13px;
-		text-transform: capitalize;
-		margin-bottom: 5px;
+		color: var(--wx-color-primary-font);
 	}
 
-	.text:last-child {
-		margin-bottom: 0;
+	.wx-label {
+		font-weight: normal;
 	}
 
-	.caption {
-		font-weight: 700;
+	.wx-value {
+		font-weight: 600;
+	}
+
+	.hovered .wx-value {
+		color: #ffd88a;
 	}
 </style>

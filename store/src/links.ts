@@ -183,6 +183,7 @@ export function placeLink(
 export function normalizeLinks(links: ILink[]) {
 	return links?.map(link => {
 		const id = link.id || uid();
-		return { ...link, id };
+		const lag = Number(link.lag) || 0;
+		return { ...link, id, lag };
 	});
 }

@@ -1,15 +1,20 @@
 <script>
-	import { getContext } from "svelte";
+	import { getContext, onDestroy } from "svelte";
 	import { locateID } from "@svar-ui/lib-dom";
-	import { reorder } from "../../helpers/reorder";
-	import { prepareEditTask } from "@svar-ui/gantt-store";
+	import { reorder, followReorder } from "../../helpers/reorder";
+	import {
+		prepareEditTask,
+		setTaskResources,
+		getHeaderLength,
+		isPlaceholder,
+		getPlaceholderTask,
+	} from "@svar-ui/gantt-store";
 
 	import { Grid } from "@svar-ui/svelte-grid";
 	import TextCell from "./TextCell.svelte";
 	import ActionCell from "./ActionCell.svelte";
 	import ResourcesCell from "./ResourcesCell.svelte";
 	import EditorResourcesCell from "./EditorResourcesCell.svelte";
-	import { setTaskResources } from "../../helpers/setTaskResources.js";
 
 	import {
 		getGridMinHeight,
@@ -23,7 +28,9 @@
 		getColumnStyle,
 	} from "../../helpers/grid";
 
-	let { readonly, tableAPI = $bindable() } = $props();
+	let { readonly, section = "grid", tableAPI = $bindable() } = $props();
+
+	const isSubGrid = $derived(section === "subGrid");
 
 	const _ = getContext("wx-i18n").getGroup("gantt");
 	const api = getContext("gantt-store");
@@ -36,27 +43,38 @@
 		area,
 		_tasks: rTasks,
 		_scales: scales,
-		_headerLength,
-		columns,
+		_columns,
 		_sort: sort,
 		durationUnit,
+		inclusiveEnd,
 		splitTasks,
+		unscheduledTasks,
+		inactiveTasks,
 		filterValues,
 		groupBy,
 		gridWidth,
-		displayMode,
+		subGridWidth,
+		_displayPanels,
 		_compactMode,
+		_columnsWidth,
 	} = api.getReactiveState();
+
+	const panelWidth = $derived(isSubGrid ? $subGridWidth : $gridWidth);
+	const fillRemaining = $derived(
+		isSubGrid && !$_displayPanels.includes("chart")
+	);
 
 	let dragTask = $state(null);
 
 	let columnWidth = $state(0);
 
 	function execAction(id, action) {
+		// no task behind the placeholder to target
+		if (isPlaceholder(id)) return;
 		if (action === "add-task") {
 			api.exec(action, {
 				target: id,
-				task: { text: _("New Task") },
+				task: { text: _("New task") },
 				mode: "child",
 				show: true,
 				focus: id ? "grid" : null,
@@ -66,6 +84,16 @@
 			if (task.data || task.lazy)
 				api.exec(action, { id, mode: !task.open });
 		}
+	}
+
+	function createPlaceholder(task) {
+		const ev = {
+			task: getPlaceholderTask(task, _("New task")),
+			show: true,
+			eventSource: "placeholder",
+		};
+		api.exec("add-task", ev);
+		return ev.id;
 	}
 
 	function onClick(e) {
@@ -82,7 +110,7 @@
 					toggle: e.ctrlKey || e.metaKey,
 					range: e.shiftKey,
 					show: "xy",
-					focus: "grid",
+					focus: isSubGrid ? "subGrid" : "grid",
 				});
 			}
 		} else if (action === "add-task") {
@@ -93,9 +121,11 @@
 	function onDblClick(e) {
 		if (!readonly) {
 			const id = locateID(e);
+			if (isPlaceholder(id)) return;
 			const column = locateID(e, "data-col-id");
 			const columnObj = column && cols.find(c => c.id === column);
-			if (!columnObj?.editor && id) api.exec("show-editor", { id });
+			if (!columnObj?.editor && id && !isSubGrid)
+				api.exec("show-editor", { id });
 		}
 	}
 
@@ -113,7 +143,7 @@
 				const task = allTasks[targetIndex];
 				if (index - targetIndex === 1) {
 					mode = "before";
-				} else if (task.data && task.open) {
+				} else if (!$groupBy?.field && task.data && task.open) {
 					mode = "before";
 					target = task.data[0].id;
 				}
@@ -130,7 +160,11 @@
 	}
 
 	function startReorder({ id }) {
-		if (readonly) return false;
+		if (readonly || isSubGrid) return false;
+		if ($groupBy?.field) {
+			const task = api.getTask(id);
+			if (task.$group || task.data) return false;
+		}
 
 		if (api.getTask(id).open) api.exec("open-task", { id, mode: false });
 
@@ -172,7 +206,7 @@
 	function handleHotkey(ev) {
 		const { key, isInput } = ev;
 		if (!isInput && (key === "arrowup" || key === "arrowdown")) {
-			ev.eventSource = "grid";
+			ev.eventSource = isSubGrid ? "subGrid" : "grid";
 			api.exec("hotkey", ev);
 			return false;
 		} else if (key === "enter") {
@@ -239,38 +273,58 @@
 			const task = tasks.find(t => t.id === id);
 			if (task) {
 				if (column === "resources") {
-					setTaskResources(id, value, api);
+					if (task.$placeholder) {
+						const history = api.getHistory();
+						if (history) history.startBatch();
+						const newId = createPlaceholder(task);
+						if (newId) setTaskResources(newId, value, api);
+						if (history) history.endBatch();
+					} else setTaskResources(id, value, api);
 					return;
 				}
 
-				const update = { ...task };
 				let v = value;
-				if (v && !isNaN(v) && !(v instanceof Date)) v *= 1;
-				update[column] = v;
+				if (
+					typeof v !== "boolean" &&
+					v &&
+					!isNaN(v) &&
+					!(v instanceof Date)
+				)
+					v *= 1;
+				const update = { ...task };
+				const col = $_columns.find(c => c.id === column);
+				if (col?.setter) col.setter(update, v);
+				else update[column] = v;
 				prepareEditTask(
 					update,
 					{
 						durationUnit: $durationUnit,
 						splitTasks: $splitTasks,
+						unscheduledTasks: $unscheduledTasks,
 					},
 					api.getTaskCalendar(update),
 					column
 				);
 
-				api.exec("update-task", {
-					id: id,
-					task: update,
-				});
+				if (task.$placeholder) {
+					createPlaceholder(update);
+				} else {
+					api.exec("update-task", {
+						id: id,
+						task: update,
+					});
+				}
 			}
 			return false;
 		});
 	}
-
 	// COLUMNS
 	// --------
 
 	const cols = $derived.by(() => {
-		let cols = $columns.map(col => {
+		// end-like column getters read the mode: new columns redraw the cells
+		$inclusiveEnd;
+		let cols = $_columns.map(col => {
 			col = { ...col };
 			const header = [...col.header];
 			header.forEach(line => {
@@ -305,7 +359,7 @@
 				};
 			}
 		}
-		if (ai !== -1) {
+		if (ai !== -1 && !isSubGrid) {
 			cols[ai].cell = cols[ai].cell || ActionCell;
 			const header = cols[ai].header[0];
 			cols[ai].header[0].cell = header.cell || ActionCell;
@@ -320,6 +374,7 @@
 			}
 		}
 
+		cols = cols.filter(c => (c.section || "grid") === section);
 		if (cols.length > 0) cols[cols.length - 1].resize = false;
 		return cols;
 	});
@@ -334,22 +389,31 @@
 	const scrollDelta = $derived($area.from);
 	const headerHeight = $derived($scales.height);
 	const flexBasis = $derived(
-		getFlexBasis($columns, $displayMode, $gridWidth)
+		getFlexBasis(
+			$_columns,
+			$_displayPanels,
+			panelWidth,
+			section,
+			fillRemaining
+		)
 	);
 	const scrollX = $derived(
 		getScrollX(
 			$_compactMode,
-			$displayMode,
+			$_displayPanels,
 			columnWidth,
 			gridClientWidth,
-			$gridWidth
+			panelWidth,
+			section,
+			fillRemaining
 		)
 	);
 	const tableHeight = $derived(
 		getGridMinHeight(gridClientHeight, $cellHeight)
 	);
 	const tableStyle = $derived(
-		tableHeight + getGridStyle($displayMode, columnWidth, scrollX)
+		tableHeight +
+			getGridStyle($_displayPanels, columnWidth, scrollX, section)
 	);
 
 	// --------
@@ -362,10 +426,14 @@
 	// --------
 
 	const tasks = $derived($rTasks.slice($area.start, $area.end));
+	const reorderTask = $derived(
+		isSubGrid ? $rTasks.find(task => task.$reorder) : null
+	);
 	const allTasks = $derived.by(() => {
+		const extra = dragTask || reorderTask;
 		const rows =
-			dragTask && !tasks.find(t => t.id === dragTask.id)
-				? [...tasks, dragTask]
+			extra && !tasks.find(t => t.id === extra.id)
+				? [...tasks, extra]
 				: tasks;
 		return rows.map(t => ({ ...t }));
 	});
@@ -377,30 +445,40 @@
 		return sortMarks ? { ...$filterValues } : $filterValues;
 	});
 
-	const fitColumns = $derived(getFitColumns(cols, $displayMode));
+	const fitColumns = $derived(
+		getFitColumns(
+			cols,
+			$_displayPanels,
+			section,
+			"add-task",
+			$_columnsWidth
+		)
+	);
+	const visibleHeaderLength = $derived(getHeaderLength(fitColumns));
 
 	const bodyOffset = $derived(scrollDelta - $scrollTop);
 
-	let pending = false;
-	focusTask.subscribe(value => {
+	let focusFrame;
+	const unsubFocusTask = focusTask.subscribe(value => {
 		if (!value) return;
-		const { id, column } = value;
-		// focus a new cell
-		if (column) {
-			if (!pending) {
-				pending = true;
-				requestAnimationFrame(() => {
-					const { focusCell, editor } = tableAPI.getState();
-					if (!editor) {
-						tableAPI.exec("focus-cell", {
-							row: id,
-							column: focusCell?.column || cols[0]?.id,
-						});
-						pending = false;
-					}
+		const { id, section } = value;
+		if (section !== (isSubGrid ? "subGrid" : "grid")) return;
+		if (focusFrame) return;
+		focusFrame = requestAnimationFrame(() => {
+			focusFrame = 0;
+			const { focusCell, editor } = tableAPI.getState();
+			if (!editor) {
+				tableAPI.exec("focus-cell", {
+					row: id,
+					column: focusCell?.column || cols[0]?.id,
 				});
 			}
-		}
+		});
+	});
+	onDestroy(() => {
+		unsubFocusTask();
+		if (focusFrame) cancelAnimationFrame(focusFrame);
+		tableAPI = null;
 	});
 </script>
 
@@ -408,7 +486,9 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="wx-table-container"
-	style="flex: 0 0 {flexBasis};"
+	class:wx-table-container-subgrid={isSubGrid}
+	data-gantt-section={section}
+	style="flex: {fillRemaining ? '1 1' : '0 0'} {flexBasis}; min-width: 0;"
 	bind:clientWidth={gridClientWidth}
 	bind:clientHeight={gridClientHeight}
 	bind:this={tableContainer}
@@ -417,12 +497,12 @@
 		style="{tableStyle}--wx-body-offset:{bodyOffset}px;"
 		class="wx-table"
 		use:reorder={{
-			isDisabled: () => !!$groupBy?.field,
 			start: startReorder,
 			end: endReorder,
 			move: moveReorder,
 			getTask: api.getTask,
 		}}
+		use:followReorder={isSubGrid ? { api } : null}
 		onclick={onClick}
 		ondblclick={onDblClick}
 	>
@@ -430,9 +510,18 @@
 			{init}
 			sizes={{
 				rowHeight: $cellHeight,
-				headerHeight: headerHeight / $_headerLength,
+				headerHeight: headerHeight / visibleHeaderLength,
 			}}
-			rowStyle={row => (row.$reorder ? "wx-reorder-task" : "")}
+			rowStyle={row => {
+				let style = row.$placeholder
+					? "wx-placeholder-row"
+					: row.$reorder
+						? "wx-reorder-task"
+						: "";
+				if ($inactiveTasks && row.inactive)
+					style += (style ? " " : "") + "wx-inactive-row";
+				return style;
+			}}
 			columnStyle={getColumnStyle}
 			data={allTasks}
 			columns={fitColumns}
@@ -452,6 +541,11 @@
 		overflow-y: hidden;
 		height: 100%;
 		box-sizing: content-box;
+	}
+
+	.wx-table-container-subgrid {
+		border-right: none;
+		border-left: var(--wx-gantt-border);
 	}
 
 	/*table*/
@@ -512,6 +606,8 @@
 	.wx-table :global(.wx-grid .wx-header .wx-cell) {
 		font: var(--wx-grid-header-font);
 		text-transform: var(--wx-grid-header-text-transform);
+	}
+	.wx-table :global(.wx-grid .wx-header .wx-h-row:not(:last-child) .wx-cell) {
 		border-bottom-color: transparent;
 	}
 	.wx-table :global(.wx-grid .wx-header .wx-cell.wx-filter) {
@@ -544,10 +640,18 @@
 		width: 100%;
 		background: var(--wx-background-alt);
 		border-top: var(--wx-grid-body-row-border);
+		z-index: 1;
 	}
 	.wx-table :global(.wx-grid .wx-reorder-task.wx-selected) {
 		background: var(--wx-gantt-select-color);
 		border-top: transparent;
 		border-bottom: transparent;
+	}
+	.wx-table :global(.wx-grid .wx-inactive-row.wx-row) {
+		color: var(--wx-gantt-inactive-color);
+	}
+	/*placeholder row*/
+	.wx-table :global(.wx-grid .wx-placeholder-row) {
+		color: var(--wx-color-font-disabled);
 	}
 </style>

@@ -5,6 +5,7 @@ import type {
 	IEventBus,
 	IPublicWritable,
 	IEventConfig,
+	DataTree,
 } from "@svar-ui/lib-state";
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
@@ -20,12 +21,45 @@ import type {
 	ICalendarRule,
 	CalendarConfig,
 	ICalendar,
+	Constraint,
+	Conflict,
+	InvalidLinkReason,
 } from "./schedule-types";
-export type { TaskSlackInfo, ICalendarRule, CalendarConfig, ICalendar };
-import ResourceDataTree from "./pro/ResourceDataTree";
+export type {
+	TaskSlackInfo,
+	ICalendarRule,
+	CalendarConfig,
+	ICalendar,
+	Constraint,
+	Conflict,
+	InvalidLinkReason,
+};
+
+// A resolved task calendar. In resource mode it can be a composite, which
+// reports whether its members share any working time; plain calendars leave
+// the flag unset.
+export type ITaskCalendar = ICalendar & { noWorkingTime?: boolean };
 
 export type TMethodsConfig = IDataMethodsConfig;
 export type { GanttDataTree, TID };
+
+export interface IConflict {
+	type: "link" | "constraint";
+	task: TID; // Violated task (`target`)
+	link?: TID;
+	required: Date; //  Start that clears the conflict (`requiredStart`)
+}
+
+export interface IConflictReportRow extends IConflict {
+	id: string;
+	typeKey: string | null;
+}
+
+export interface IConflictsIndex {
+	rows: IConflictReportRow[];
+	constraints: Set<TID>;
+	links: Set<TID>;
+}
 
 export interface IExportConfig {
 	url?: string;
@@ -103,7 +137,9 @@ export type TSerializeData = {
 export type TDataName = keyof TSerializeData;
 
 export type TSortFunction = (a: IDataHash, b: IDataHash) => 1 | -1 | 0;
+export type TDisplayPanel = "grid" | "chart" | "subGrid";
 export type TDisplayMode = "all" | "grid" | "chart";
+export type TDisplayModeConfig = TDisplayMode | TDisplayPanel[];
 export type TCellBorders = "column" | "full";
 
 export type TCalendarGetter = (task: Partial<ITask>) => ICalendar | undefined;
@@ -158,12 +194,60 @@ export interface IParsedResource extends IResource {
 	data?: IParsedResource[];
 }
 
+export interface IResourceDataTree extends DataTree<IParsedResource> {
+	sort(conf: TSort[], columns?: IResourceColumn[]): void;
+}
+
 export interface IComputedResource extends IParsedResource {
 	data?: IComputedResource[];
 	$load: Record<string, IResourceLoad>;
+	$capacity: Record<string, number>;
+	$capacityTotal: number;
+	$fullDay: number;
 	$total: number;
 	$overloaded: boolean;
 	$unitLoad?: Record<string, IResourceLoad>;
+	$unitCapacity?: Record<string, number>;
+}
+
+export interface IHistogramColumn {
+	id: string;
+	width: number;
+	date: Date;
+	end?: Date;
+	pxPerDayThreshold: number;
+	overloadHeadroom?: number;
+}
+
+export interface IResourceHistogramConfig {
+	overloadHeadroom?: number;
+	capacityLine?: boolean;
+}
+
+export interface IResourceHistogramTooltip {
+	resource: IComputedResource;
+	start: Date;
+	end: Date;
+	hours: number;
+	capacity: number;
+	days: number;
+}
+
+export interface IHistogramColumnPosition {
+	column: IHistogramColumn;
+	left: number;
+}
+
+export interface IHistogramBar {
+	key: string;
+	start: Date;
+	end?: Date;
+	hours: number;
+	capacity: number;
+	ceiling: number;
+	width: number;
+	days: number;
+	overloaded: boolean;
 }
 
 export interface IResourceColumn {
@@ -202,6 +286,8 @@ export interface ITask {
 	base_end?: Date;
 	base_duration?: number;
 
+	deadline?: Date;
+
 	rollup?: boolean;
 	open?: boolean;
 	text?: string;
@@ -210,8 +296,12 @@ export interface ITask {
 	type?: TTaskType;
 	parent?: TID;
 	calendar?: TID;
+	skipResourceCalendars?: boolean;
 	unscheduled?: boolean;
+	manual?: boolean;
+	inactive?: boolean;
 	segments?: Partial<ITask>[];
+	constraint?: Constraint | null;
 
 	[key: string]: any;
 }
@@ -222,6 +312,8 @@ export interface IParsedTask extends ITask {
 	data?: IParsedTask[];
 	$level: number;
 	$wbs?: string;
+	$noWorkingTime?: boolean;
+	$placeholder?: boolean;
 }
 
 export interface IGanttTask extends IParsedTask {
@@ -238,12 +330,17 @@ export interface IGanttTask extends IParsedTask {
 	$y_rollup_relative?: number;
 	$w_rollup?: number;
 
+	$x_deadline?: number;
+	$overdue?: boolean;
+
 	$reorder?: boolean;
 	critical?: boolean;
 	slack?: TaskSlackInfo;
 	$visibleSlack?: number;
 	$x_slack?: number;
 	$w_slack?: number;
+
+	$x_constraint?: number;
 }
 
 export type TDispatch = <A extends keyof TMethodsConfig>(
@@ -288,9 +385,82 @@ export interface IMarker {
 	left?: number;
 }
 
+export interface IProgressLineData {
+	statusX: number;
+	statusDate: Date;
+}
+
+export type TSCurveType = "scheduled" | "earned" | "baseline";
+export type TSCurveMetric = "duration" | "progress";
+
+export type TSCurveLine = {
+	type: TSCurveType;
+	metric?: TSCurveMetric;
+	css?: string;
+};
+export type TSCurveConfig = boolean | TSCurveLine[];
+
+export interface ISCurveLineInfo {
+	type: TSCurveType;
+	metric: TSCurveMetric;
+}
+
+export interface ISCurveLineConfig extends ISCurveLineInfo {
+	css?: string;
+}
+
+export type TSCurvePlan = "scheduled" | "baseline";
+
+export interface ISCurveLine extends ISCurveLineInfo {
+	series: Float64Array; // Cumulative 0..1, indexed by scale cell
+}
+
+export interface ISCurveData {
+	lines: ISCurveLine[];
+	start: number; // Fractional cell position where the curve begins
+	end: number; // Fractional cell position where it ends
+}
+
+export interface ISCurveViewPoint {
+	index: number;
+	x: number;
+	y: number;
+}
+
+export interface ISCurveLineView extends ISCurveLineConfig {
+	line: number; // Index into ISCurveData.lines
+	path: string;
+	points: ISCurveViewPoint[];
+}
+
+export interface ISCurveTooltipLine extends ISCurveLineInfo {
+	line: number; // Index into ISCurveData.lines
+	value: number; // Percent done at the hovered cell, 0..100
+}
+
+export interface ISCurveTooltip {
+	date: Date;
+	hovered: ISCurveTooltipLine;
+	lines: ISCurveTooltipLine[];
+}
+
 export interface IHistory {
 	undo: number;
 	redo: number;
+}
+
+export interface IHistoryManager {
+	startBatch: () => void;
+	endBatch: (discard?: boolean) => void;
+	isBatching: () => boolean;
+	handleUndo: () => void;
+	handleRedo: () => void;
+	resetHistory: () => void;
+}
+
+export interface IGroupManager {
+	buildTree: () => GanttDataTree;
+	updateTaskGroup: (id: TID) => void;
 }
 
 export interface ICriticalPathConfig {
@@ -308,6 +478,7 @@ export interface IUnitFormats {
 export interface IScheduleConfig {
 	type?: "forward";
 	auto?: boolean;
+	resourceCalendars?: boolean;
 }
 
 export interface ISummaryConfig {
@@ -338,11 +509,12 @@ export interface IConfig {
 	selected?: TID[];
 	activeTask?: TID | { id: TID; segmentIndex: number };
 	scales?: IScaleConfig[];
-	columns?: IGanttColumn[];
+	columns?: false | IGanttColumn[];
 	start?: Date;
 	end?: Date;
 	lengthUnit?: TLengthUnit;
 	durationUnit?: TDurationUnit;
+	inclusiveEnd?: boolean;
 	cellWidth?: number;
 	cellHeight?: number;
 	scaleHeight?: number;
@@ -351,6 +523,8 @@ export interface IConfig {
 	schedule?: IScheduleConfig;
 	undo?: boolean;
 	unscheduledTasks?: boolean;
+	inactiveTasks?: boolean;
+	placeholderRow?: boolean;
 	baselines?: boolean;
 	rollups?: boolean | { type: "all" | "closest" };
 	markers?: IMarker[];
@@ -365,12 +539,19 @@ export interface IConfig {
 	groupBy?: string | IGroupByConfig | null;
 	wbs?: boolean;
 	highlightTime?: (date: Date, unit: TDurationUnit) => string;
-	displayMode?: TDisplayMode;
+	displayMode?: TDisplayModeConfig;
 	gridWidth?: number;
+	subGridWidth?: number;
 	cellBorders?: TCellBorders;
+	deadlines?: boolean;
+	progressLine?: boolean | Date | null;
+	sCurve?: TSCurveConfig | null;
 }
 
 export interface IDataConfig extends IConfig {
+	displayMode: TDisplayPanel[];
+	gridWidth: number;
+	_displayPanels: TDisplayPanel[];
 	scrollLeft: number;
 	scrollTop: number;
 	area: IVisibleArea;
@@ -393,25 +574,34 @@ export interface IDataConfig extends IConfig {
 	_chartHeight?: number;
 	_scrollSize?: number;
 	_calendar?: ICalendar;
-	_calendars?: Record<TID, ICalendar>;
+	_calendars?: Map<TID, ICalendar>;
+	_composites?: Map<string, ICalendar>;
 	_compactMode: boolean;
+	_containerWidth: number | null;
 	_columnsWidth?: number;
 	_gridCollapseThreshold?: number;
+	_progressLine?: IProgressLineData | null;
+	_progressLinePoints?: string | null;
+	_sCurve?: ISCurveData | null;
+	_sCurvePoints?: ISCurveLineView[] | null;
+	conflicts?: IConflict[];
+	_conflicts?: IConflictsIndex | null;
+	showConflicts?: boolean;
 }
 
-export interface IData
-	extends Omit<IDataConfig, TDataName | "rollups" | "groupBy"> {
+export interface IData extends Omit<IDataConfig, TDataName> {
+	columns?: IGanttColumn[];
+	_columns?: IGanttColumn[];
 	rollups?: false | { type: "all" | "closest" };
 	zoom?: IZoomConfig;
 	tasks: GanttDataTree;
 	links: DataArray<ILink>;
-	resources?: ResourceDataTree;
+	resources?: IResourceDataTree;
 	assignments?: DataArray<IAssignment>;
 	calendars?: GanttCalendarConfig[];
 
 	tree: GanttDataTree;
 	_tasks: IParsedTask[];
-	_tasksPatch?: boolean | null;
 	_rollups: {
 		[key: TID]: Array<ITask>;
 	};
@@ -424,7 +614,6 @@ export interface IData
 	_start?: Date;
 	_end?: Date;
 	_scales?: GanttScaleData;
-	_scaleMinUnit?: TLengthUnit;
 	_scaleDate?: Date;
 	_zoomOffset?: number;
 	_weekStart?: Day;
@@ -436,6 +625,9 @@ export interface IData
 	_columnsWidth?: number;
 	groupBy?: IGroupByConfig;
 	_gridCollapseThreshold?: number;
+	_progressLine?: IProgressLineData | null;
+	_progressLinePoints?: string | null;
+	conflicts: IConflict[];
 }
 
 export interface IDataHash<T = any> {
@@ -454,7 +646,10 @@ export type IScaleConfig = {
 export type GanttScaleCell = {
 	width: number;
 	value: string;
+	date: Date;
+	key: string;
 	css: string;
+	unit: TLengthUnit;
 };
 
 export type GanttScaleRow = {
@@ -496,11 +691,14 @@ export type GanttScaleUnit = {
 	};
 };
 
+export type TColumnSection = "grid" | "subGrid";
+
 export type IGanttColumn = {
 	width?: number;
 	align?: "left" | "right" | "center";
 	flexgrow?: number;
 	hidden?: boolean;
+	section?: TColumnSection;
 	resize?: boolean;
 	header?: IColumn["header"];
 	id?: string;
@@ -511,6 +709,7 @@ export type IGanttColumn = {
 	editor?: IColumn["editor"];
 	options?: IColumn["options"];
 	getter?: (obj: IDataHash) => any;
+	setter?: (obj: IDataHash, value: any) => void;
 };
 
 export type TCommonShape = {
@@ -534,12 +733,12 @@ export type TCounterShape = TCommonShape & {
 
 export type TRadioShape = TCommonShape & {
 	comp: "radio";
-	options: { id: TID; label: string }[];
+	options: IOption[];
 };
 
 export type TComboFieldShape = TCommonShape & {
 	comp: "combo" | "select" | "multiselect";
-	options?: { id: any; label: string }[];
+	options?: IOption<any>[];
 };
 
 export type TCheckboxShape = TCommonShape & {
@@ -572,6 +771,10 @@ export type ISegments = TCommonShape & {
 	comp: "segments";
 };
 
+export type IConstraintShape = TCommonShape & {
+	comp: "constraint";
+};
+
 export type TEditorItem =
 	| TTextFieldShape
 	| TCounterShape
@@ -584,12 +787,16 @@ export type TEditorItem =
 	| TCheckboxShape
 	| IResources
 	| ISegments
+	| IConstraintShape
 	| ITabs;
 
-export type ITaskType = {
-	id: TID;
+export type IOption<T = TID> = {
+	id: T;
 	label: string;
 };
+
+export type ITaskType = IOption;
+export type IConstraintType = IOption;
 
 export type TSort = {
 	key: string;
@@ -601,8 +808,14 @@ export type TFilterHandler = (task: any) => boolean;
 export type TScrollMode = "x" | "y" | "xy" | boolean;
 export type TFocusTask = {
 	id: TID;
-	column?: boolean;
+	/** Where to move focus; omitted or "chart" focuses the chart bar. */
+	section?: TDisplayPanel;
 };
+
+export type TLinkDraft = Pick<ILink, "source" | "target" | "type"> & {
+	id?: TID;
+};
+export type TLinkValidator = (link: TLinkDraft) => InvalidLinkReason | null;
 
 export interface IApi {
 	exec: <A extends keyof TMethodsConfig | (string & {})>(
@@ -630,13 +843,22 @@ export interface IApi {
 	};
 	setNext: (ev: IEventBus<TMethodsConfig>) => void;
 	getStores: () => { data: DataStore };
-	getTable: (waitRender?: boolean) => Promise<ITableApi> | ITableApi;
+	getTable: (
+		waitRender?: boolean,
+		section?: TColumnSection
+	) => Promise<ITableApi> | ITableApi;
 	getTask: (id: TID) => ITask;
 	getResource: (id: TID) => IResource;
 	serialize: (config?: {
 		data?: keyof TSerializeData;
 	}) => TSerializeData[keyof TSerializeData] | null;
 	getCalendar: (id?: TID) => ICalendar | undefined;
+	getTaskCalendar: (task: Partial<ITask>) => ITaskCalendar | undefined;
+	getResourceCalendar: (
+		resource: Partial<IResource>
+	) => ICalendar | undefined;
+	getHistory: () => IHistoryManager | null | undefined;
 	getTaskResources: (id: TID) => TResourceAssignment[];
 	getResourceTasks: (id: TID) => ITask[];
+	getLinkValidator: () => TLinkValidator;
 }

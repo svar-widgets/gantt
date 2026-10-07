@@ -5,6 +5,7 @@
 		handleAction,
 		getMenuOptions,
 		isHandledAction,
+		isPlaceholder,
 	} from "@svar-ui/gantt-store";
 
 	import { locale, locateID, locate } from "@svar-ui/lib-dom";
@@ -95,7 +96,8 @@
 		if (
 			locate(ev.target, "data-menu-ignore")?.classList.contains(
 				"wx-resource-load"
-			)
+			) ||
+			isPlaceholder(id)
 		)
 			return null;
 
@@ -171,9 +173,13 @@
 	bind:this={menu}
 />
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<span oncontextmenu={menu.show} data-menu-ignore="true">
+<div
+	style="display: contents"
+	oncontextmenu={menu.show}
+	data-menu-ignore="true"
+>
 	{@render children?.()}
-</span>
+</div>
 
 <style>
 	:global(.wx-menu .wx-option.wx-disabled) {

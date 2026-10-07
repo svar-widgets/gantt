@@ -8,10 +8,11 @@
 		title,
 		link,
 		name;
-	const baseLink =
+	const baseLink = $derived(
 		"https://github.com/svar-widgets/" +
-		productTag +
-		"/blob/main/svelte/demos/cases/";
+			productTag +
+			"/blob/main/svelte/demos/cases/"
+	);
 
 	$effect(() => {
 		if (skin && page) {

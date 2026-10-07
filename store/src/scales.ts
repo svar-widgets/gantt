@@ -15,6 +15,7 @@ import {
 	getSmallerUnitCount,
 	formatDay,
 } from "./time";
+import { clamp } from "./helpers/data";
 import type GanttDataTree from "./GanttDataTree";
 import { Day } from "date-fns";
 
@@ -29,17 +30,36 @@ export const units = ["year", "quarter", "month", "week", "day", "hour"];
 const defaultMinCellWidth = 50;
 const defaultMaxCellWidth = 300;
 
+interface IScaleBounds {
+	markers?: IMarker[];
+	projectStart?: Date;
+	projectEnd?: Date;
+	baselines?: boolean;
+	unscheduledTasks?: boolean;
+	progressLine?: Date;
+	deadlines?: boolean;
+	constraints?: boolean;
+}
+
 export function calcScales(
 	prevStart?: Date,
 	prevEnd?: Date,
 	autoScale?: boolean,
 	minUnit?: string,
 	tasks?: GanttDataTree,
-	markers?: IMarker[],
-	projectStart?: Date,
-	projectEnd?: Date,
-	baselines?: boolean
+	config?: IScaleBounds
 ): { _start: Date; _end: Date } {
+	const {
+		markers,
+		projectStart,
+		projectEnd,
+		baselines,
+		unscheduledTasks,
+		progressLine,
+		deadlines,
+		constraints,
+	} = config || {};
+
 	const flexStart = !prevStart || autoScale;
 	const flexEnd = !prevEnd || autoScale;
 	let _start = prevStart,
@@ -50,16 +70,12 @@ export function calcScales(
 	if (flexStart || flexEnd) {
 		tasks?.forEach(t => {
 			let tStart = t.start;
-			if (baselines && t.base_start < t.start) tStart = t.base_start;
+			let tEnd = t.type === "milestone" ? t.start : t.end;
+
+
 			if (flexStart && (!_start || tStart <= _start)) {
 				_start = tStart;
 				_sFix = true;
-			}
-
-			let tEnd = t.type === "milestone" ? t.start : t.end;
-			if (baselines) {
-				const bEnd = t.type === "milestone" ? t.base_start : t.base_end;
-				if (bEnd && bEnd > tEnd) tEnd = bEnd;
 			}
 			if (flexEnd && (!_end || tEnd >= _end)) {
 				_end = tEnd;
@@ -169,7 +185,15 @@ export function normalizeZoom(
 	cellWidth: number
 ): { zoom: IZoomConfig; scales: IScaleConfig[]; cellWidth: number } {
 	const _zoom: any = typeof zoom === "boolean" ? {} : zoom;
-	const mainScaleLevel = units.indexOf(getMinUnit(scales).unit);
+
+	scales.forEach(s => {
+		if (s.format && !unitFormats[s.unit]) unitFormats[s.unit] = s.format;
+	});
+	// skip custom units registered by other gantts
+	const zoomUnits = units.filter(
+		u => unitFormats[u] || scales.some(s => s.unit === u)
+	);
+	const mainScaleLevel = zoomUnits.indexOf(getMinUnit(scales).unit);
 	if (typeof _zoom.level === "undefined") {
 		_zoom.level = mainScaleLevel;
 	}
@@ -199,13 +223,7 @@ export function normalizeZoom(
 			defaultMaxCellWidth
 		);
 
-		// adds a format from a custom unit config to the format collection to be used during zoom
-		scales.forEach(s => {
-			if (s.format && !unitFormats[s.unit])
-				unitFormats[s.unit] = s.format;
-		});
-
-		units.forEach((unit, i) => {
+		zoomUnits.forEach((unit, i) => {
 			if (i === mainScaleLevel) {
 				levels.push({
 					minCellWidth,
@@ -216,7 +234,7 @@ export function normalizeZoom(
 				const levelScales: IScaleConfig[] = [];
 				if (i) {
 					for (let j = numOfScales - 1; j > 0; j--) {
-						const pUnit = units[i - j];
+						const pUnit = zoomUnits[i - j];
 						if (pUnit) {
 							levelScales.push({
 								unit: pUnit,
@@ -296,7 +314,7 @@ export function zoomScale(
 
 	return {
 		scales: nextScales,
-		cellWidth: Math.min(max, Math.max(min, newCellWidth)),
+		cellWidth: clamp(newCellWidth, min, max),
 		lengthUnit: nextLengthUnit,
 		zoom,
 	};
@@ -394,4 +412,42 @@ export function calcScaleDate(x: number, state: Partial<IData>) {
 		getUnitStart(_scales.minUnit, _start, _weekStart),
 		Math.floor(x / width)
 	);
+}
+
+// get date at the start of the corresponding scale cell
+export function calcScaleCellDate(x: number, state: Partial<IData>) {
+	const { _scales, _weekStart, cellWidth, durationUnit } = state;
+	const { minUnit, lengthUnit, lengthUnitWidth } = _scales;
+	const minUnitStart = getUnitStart(minUnit, _scales.start, _weekStart);
+
+	if (cellWidth === lengthUnitWidth) {
+		const date = getAdder(lengthUnit)(
+			minUnitStart,
+			Math.round(x / lengthUnitWidth)
+		);
+
+		if (durationUnit !== minUnit) {
+			return getUnitStart(durationUnit, date, _weekStart);
+		}
+
+		return date;
+	}
+
+	const minUnitStep = Math.trunc(x / cellWidth);
+	const currentMinUnitStart = getAdder(minUnit)(minUnitStart, minUnitStep);
+	const offset = x - minUnitStep * cellWidth;
+
+	if (offset <= 0) return currentMinUnitStart;
+
+	const lengthUnitsInMinUnit = getSmallerUnitCount(
+		minUnit,
+		lengthUnit,
+		currentMinUnitStart
+	);
+	const lengthUnitStep = Math.min(
+		lengthUnitsInMinUnit - 1,
+		Math.round(offset / lengthUnitWidth)
+	);
+
+	return getAdder(lengthUnit)(currentMinUnitStart, lengthUnitStep);
 }

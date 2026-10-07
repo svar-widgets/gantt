@@ -383,7 +383,7 @@ export function registerScaleUnit(unit: string, config: GanttScaleUnit) {
 				if (count <= countI) break;
 				index = i;
 			}
-			units.splice(index, 0, unit);
+			if (!units.includes(unit)) units.splice(index, 0, unit);
 		}
 		if (key === "biggerCount") {
 			for (const parentUnit in config[key])
@@ -397,12 +397,23 @@ export function adjustToWorkingDay(
 	diff: number = 1,
 	calendar: ICalendar
 ): Date {
-	if (!calendar.isWorkingDay(start))
-		start =
-			diff > 0
-				? calendar.getNextWorkingDay(start)
-				: calendar.getPreviousWorkingDay(start);
-	return start;
+	// a single search, so a calendar that falls back while searching answers
+	// both "is start working" and "which day instead" from the same rules
+	const day =
+		diff > 0
+			? calendar.getNextWorkingDay(addDays(start, -1))
+			: calendar.getPreviousWorkingDay(addDays(start, 1));
+	return day && isSameDay(day, start) ? start : day;
+}
+
+// an exclusive end: snap the day before it, then return the boundary after that day
+export function adjustEndToWorkingDay(
+	end: Date,
+	diff: number,
+	calendar: ICalendar
+): Date {
+	const addDay = add.day;
+	return addDay(adjustToWorkingDay(addDay(end, -1), diff, calendar), 1);
 }
 
 export function shiftByWorkingDays(calendar: ICalendar) {

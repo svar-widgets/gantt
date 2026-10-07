@@ -20,7 +20,7 @@
 	});
 </script>
 
-{#if cell || icon}
+{#if !row.$placeholder && (cell || icon)}
 	<div style="text-align:{column.align}">
 		<i
 			class="wx-action-icon {icon}"

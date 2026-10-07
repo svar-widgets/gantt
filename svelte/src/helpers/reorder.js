@@ -1,4 +1,5 @@
-import { locate, getID } from "@svar-ui/lib-dom";
+import { locate, getID, setID } from "@svar-ui/lib-dom";
+import { isPlaceholder } from "@svar-ui/gantt-store";
 
 function getOffset(node, relative, ev) {
 	const box = node.getBoundingClientRect();
@@ -13,10 +14,89 @@ function getOffset(node, relative, ev) {
 }
 
 function checkSource(node) {
-	return node && getID(node, "data-context-id");
+	if (!node) return null;
+	const id = getID(node, "data-context-id");
+	return isPlaceholder(id) ? null : id;
+}
+
+function findRow(root, id) {
+	return root.querySelector(`[data-id="${setID(id)}"]`);
+}
+
+function makeClone(source) {
+	const clone = source.cloneNode(true);
+	clone.classList.add("wx-reorder-task");
+	clone.style.pointerEvents = "none";
+	clone.style.position = "absolute";
+	return clone;
 }
 
 const SHIFT = 5;
+
+// Mirror reorder started in another panel
+export function followReorder(node, config) {
+	if (!config) return {};
+
+	let clone = null;
+	let activeId = null;
+	const tag = Symbol();
+	const { api } = config;
+
+	function cleanup() {
+		if (clone?.parentNode) clone.parentNode.removeChild(clone);
+		clone = null;
+		if (activeId) {
+			const source = findRow(node, activeId);
+			if (source) source.style.visibility = "";
+		}
+		activeId = null;
+	}
+
+	function onDrag(ev) {
+		if (typeof ev.top === "undefined") return;
+
+		if (ev.inProgress === false) {
+			cleanup();
+			return;
+		}
+
+		const body = node.querySelector(".wx-body");
+		const source = findRow(node, ev.id);
+		if (!body || !source) return;
+
+		activeId = ev.id;
+
+		if (!clone || !clone.parentNode) {
+			if (clone?.parentNode) clone.parentNode.removeChild(clone);
+			clone = makeClone(source);
+			clone.style.left = "0";
+			body.appendChild(clone);
+		}
+
+		source.style.visibility = "hidden";
+		const from = api.getState().area?.from ?? 0;
+		clone.style.top = Math.round(Math.max(0, ev.top - from)) + "px";
+	}
+
+	if (node.style.position !== "absolute") node.style.position = "relative";
+
+	api.on("drag-task", onDrag, { tag });
+
+	api.on(
+		"move-task",
+		ev => {
+			if (ev.inProgress === false) cleanup();
+		},
+		{ tag }
+	);
+
+	return {
+		destroy() {
+			api.detach(tag);
+			cleanup();
+		},
+	};
+}
 
 export function reorder(node, config) {
 	let source, clone, sid;
@@ -35,7 +115,6 @@ export function reorder(node, config) {
 	}
 
 	function handleTouchstart(event) {
-		if (config.isDisabled?.()) return;
 		source = locate(event);
 		if (!checkSource(source)) return;
 
@@ -60,7 +139,7 @@ export function reorder(node, config) {
 	}
 
 	function handleMousedown(event) {
-		if (config.isDisabled?.() || event.which !== 1) return;
+		if (event.which !== 1) return;
 
 		source = locate(event);
 		if (!checkSource(source)) return;
@@ -74,10 +153,15 @@ export function reorder(node, config) {
 	}
 
 	function end(full) {
+		if (touchTimer) {
+			clearTimeout(touchTimer);
+			touchTimer = null;
+		}
 		node.removeEventListener("mousemove", handleMousemove);
 		node.removeEventListener("touchmove", handleTouchmove);
-		document.body.removeEventListener("mouseup", handleMouseup);
-		document.body.removeEventListener("touchend", handleTouchend);
+		node.removeEventListener("contextmenu", handleContext);
+		window.removeEventListener("mouseup", handleMouseup);
+		window.removeEventListener("touchend", handleTouchend);
 		document.body.style.userSelect = "";
 
 		if (full) {
@@ -95,10 +179,7 @@ export function reorder(node, config) {
 				if (config.start({ id: sid, e: event }) === false) return;
 			}
 
-			clone = source.cloneNode(true);
-			clone.style.pointerEvents = "none";
-			clone.classList.add("wx-reorder-task");
-			clone.style.position = "absolute";
+			clone = makeClone(source);
 			clone.style.left = base.left + "px";
 			clone.style.top = base.top + "px";
 
@@ -130,6 +211,7 @@ export function reorder(node, config) {
 
 			if (target && target !== source) {
 				const tid = getID(target);
+				if (isPlaceholder(tid)) return;
 				const box = target.getBoundingClientRect();
 				const line = box.top + box.height / 2;
 

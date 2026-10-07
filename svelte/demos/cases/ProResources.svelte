@@ -10,7 +10,7 @@
 
 	let tasks = $state([...data.tasks]);
 
-	let enabled = $state(false);
+	let enabled = $state(true);
 	let multipleResources = $state(false);
 	let resourceHierarchy = $state(false);
 	let popup = $state(false);
@@ -96,7 +96,6 @@
 				</div>
 			</div>
 		</div>
-
 		<div class="gtcell">
 			<Gantt
 				{init}

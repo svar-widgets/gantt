@@ -1,6 +1,7 @@
 import BasicInit from "./cases/BasicInit.svelte";
 import GanttProvider from "./cases/GanttProvider.svelte";
 import GanttBatchProvider from "./cases/GanttBatchProvider.svelte";
+import MultiUser from "./cases/MultiUser.svelte";
 import GanttBackend from "./cases/GanttBackend.svelte";
 import GanttExcelImport from "./cases/GanttExcelImport.svelte";
 import GanttScales from "./cases/GanttScales.svelte";
@@ -12,8 +13,9 @@ import GanttPreventActions from "./cases/GanttPreventActions.svelte";
 import GanttForm from "./cases/GanttForm.svelte";
 import GanttSizes from "./cases/GanttSizes.svelte";
 import GanttMultiple from "./cases/GanttMultiple.svelte";
-import GanttPerformance from "./cases/GanttPerformance.svelte";
 import GanttDisplayMode from "./cases/GanttDisplayMode.svelte";
+import GanttPerformance from "./cases/GanttPerformance.svelte";
+import GanttDragFromOutside from "./cases/GanttDragFromOutside.svelte";
 
 
 import GanttTooltips from "./cases/GanttTooltips.svelte";
@@ -29,6 +31,7 @@ import GanttZoom from "./cases/GanttZoom.svelte";
 import GanttCustomZoom from "./cases/GanttCustomZoom.svelte";
 import GanttLengthUnit from "./cases/GanttLengthUnit.svelte";
 import GanttTaskTypes from "./cases/GanttTaskTypes.svelte";
+import GanttInclusiveEnd from "./cases/GanttInclusiveEnd.svelte";
 import ChartCellBorders from "./cases/ChartBorders.svelte";
 import ContextMenu from "./cases/ContextMenu.svelte";
 import ContextMenuHandler from "./cases/ContextMenuHandler.svelte";
@@ -130,11 +133,16 @@ export const links = [
 		HeaderMenu,
 		"GridHeaderMenu",
 	],
-	// #endif
 	{ group: "Tasks" },
 	["/task-types/:skin", "Task types", GanttTaskTypes, "GanttTaskTypes"],
 	["/templates/:skin", "Custom text", GanttText, "GanttText"],
 	["/tooltips/:skin", "Tooltips", GanttTooltips, "GanttTooltips"],
+	[
+		"/inclusive-end/:skin",
+		"Inclusive end date",
+		GanttInclusiveEnd,
+		"GanttInclusiveEnd",
+	],
 
 	{ group: "Data operations" },
 	[
@@ -148,6 +156,12 @@ export const links = [
 		"Edit tasks in grid",
 		GridInlineEditors,
 		"GridInlineEditors",
+	],
+	[
+		"/drag-from-outside/:skin",
+		"Add tasks by drag-n-drop from outside",
+		GanttDragFromOutside,
+		"GanttDragFromOutside",
 	],
 	["/readonly/:skin", "Readonly", GanttReadOnly, "GanttReadOnly"],
 	[
@@ -194,6 +208,7 @@ export const links = [
 		GanttBatchProvider,
 		"GanttBatchProvider",
 	],
+	["/multi-user/:skin", "Multi-user editing", MultiUser, "MultiUser"],
 	[
 		"/excel-import/:skin",
 		"Import from Excel / CSV",

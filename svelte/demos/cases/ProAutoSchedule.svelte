@@ -28,6 +28,7 @@
 				schedule={{ auto: true }}
 				{projectStart}
 				projectEnd={new Date(2026, 5, 2)}
+				undo
 			/>
 		</ContextMenu>
 	</div>

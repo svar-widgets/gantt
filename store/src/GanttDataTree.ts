@@ -13,6 +13,8 @@ import {
 	resetEmptyState,
 } from "./helpers/filter";
 
+const branchIndex = new WeakMap<IParsedTask[], Map<TID, number>>();
+
 export default class GanttDataTree extends DataTree<IParsedTask> {
 	private _filteredIds: Set<string | number>;
 
@@ -47,7 +49,34 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 		return res;
 	}
 	getIndexById(id: TID) {
-		return this.getBranch(id).findIndex(task => task.id === id);
+		return this._indexOf(this.getBranch(id), id);
+	}
+	update<Data>(id: TID, values: Data): void {
+		let task = this._pool.get(id);
+		const branch = this._pool.get(task.parent);
+		const data = branch?.data;
+		const index = data ? this._indexOf(data, id) : -1;
+
+		task = { ...task, ...values };
+
+		if (index >= 0) data[index] = task;
+		this._pool.set(task.id, task);
+	}
+	//lazy map of indicies, recollected on demand
+	private _indexOf(data: IParsedTask[], id: TID): number {
+		let map = branchIndex.get(data);
+		if (map && map.size === data.length) {
+			const index = map.get(id);
+			// a branch can be sorted or spliced in place, behind the map
+			if (index !== undefined && data[index].id === id) return index;
+		}
+
+		map = new Map();
+		for (let i = 0; i < data.length; i++) map.set(data[i].id, i);
+		branchIndex.set(data, map);
+
+		const index = map.get(id);
+		return index === undefined ? -1 : index;
 	}
 	add(task: Partial<ITask>, index: number): IParsedTask {
 		const normalizedTask = this.normalizeTask(task);
@@ -138,12 +167,6 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			});
 		}
 	}
-	serialize() {
-		const out: Partial<ITask>[] = [];
-		const kids = this._pool.get(0).data;
-		if (kids) toArray(kids, out);
-		return out;
-	}
 	clear() {
 		this.forEach(t => {
 			this.remove(t.id);
@@ -177,11 +200,4 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			return task.data.some(t => this.isFilteredId(t.id));
 		return !!childCount;
 	}
-}
-
-function toArray(line: Partial<ITask>[], out: Partial<ITask>[]): void {
-	line.forEach(a => {
-		out.push(a);
-		if (a.data) toArray(a.data, out);
-	});
 }

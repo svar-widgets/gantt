@@ -1,6 +1,7 @@
 import { Rest } from "@svar-ui/lib-data-provider";
-import { format } from "date-fns";
 import type { ActionMap } from "@svar-ui/lib-data-provider";
+import { format } from "date-fns";
+import { TaskID, LinkID, AssignmentID } from "./constants";
 import type {
 	TMethodsConfig,
 	ITask,
@@ -14,6 +15,8 @@ type TProviderConfig = {
 	batchURL: string;
 };
 
+const DATE_KEYS = ["start", "end", "base_start", "base_end", "deadline"];
+
 type TProviderData = {
 	tasks: ITask[];
 	links: ILink[];
@@ -21,32 +24,42 @@ type TProviderData = {
 	assignments?: IAssignment[];
 };
 
+type Timeout = ReturnType<typeof setTimeout>;
+
 export default class RestDataProvider extends Rest<TMethodsConfig> {
 	private changeQueue: Array<{
 		url: string;
 		method: string;
 		data: any;
+		customHeaders?: any;
+		resolve: (value: any) => void;
+		reject: (reason?: any) => void;
 	}> = [];
 	protected _batchUrl: string;
-	private flushTimeout: any = null;
+	private flushTimeout: Timeout | null = null;
+	private headers: Record<string, string> = {};
 
 	constructor(url: string, config?: Partial<TProviderConfig>) {
 		super(url);
 		this._batchUrl = config?.batchURL;
 	}
 
+	setHeaders(headers: Record<string, string>): void {
+		this.headers = headers;
+	}
+
 	getHandlers(): ActionMap<TMethodsConfig> {
 		return {
 			"add-task": {
 				ignoreID: true,
-				handler: async (ev: TMethodsConfig["add-task"]) => {
-					ev.task.parent = this.correctID(ev.task.parent);
-					return this.sendBatch(`tasks`, "POST", {
+				kind: TaskID,
+				handler: async (ev: TMethodsConfig["add-task"]) =>
+					this.sendBatch<{ id: TID }>(`tasks`, "POST", {
 						task: ev.task,
+						target: ev.target,
 						mode: ev.mode,
-						target: this.correctID(ev.target),
-					});
-				},
+						index: ev.index,
+					}),
 			},
 			"update-task": {
 				debounce: 500,
@@ -62,15 +75,16 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 			},
 			"copy-task": {
 				ignoreID: true,
-				handler: async (ev: TMethodsConfig["copy-task"]) => {
-					return this.sendBatch(`tasks/${ev.source}`, "PUT", {
+				kind: TaskID,
+				handler: async (ev: TMethodsConfig["copy-task"]) =>
+					this.sendBatch<{ id: TID }>(`tasks/${ev.source}`, "PUT", {
 						operation: "copy",
 						id: ev.id,
-						target: this.correctID(ev.target),
+						target: ev.target,
 						mode: ev.mode,
+						index: ev.index,
 						lazy: !!ev.lazy,
-					});
-				},
+					}),
 			},
 			"move-task": {
 				handler: async (ev: TMethodsConfig["move-task"]) => {
@@ -86,11 +100,9 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 
 			"add-link": {
 				ignoreID: true,
-				handler: async (ev: TMethodsConfig["add-link"]) => {
-					ev.link.source = this.correctID(ev.link.source);
-					ev.link.target = this.correctID(ev.link.target);
-					return this.sendBatch(`links`, "POST", ev.link);
-				},
+				kind: LinkID,
+				handler: async (ev: TMethodsConfig["add-link"]) =>
+					this.sendBatch<{ id: TID }>(`links`, "POST", ev.link),
 			},
 			"update-link": {
 				handler: async (ev: TMethodsConfig["update-link"]) =>
@@ -103,26 +115,25 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 
 			"add-assignment": {
 				ignoreID: true,
-				handler: async (ev: TMethodsConfig["add-assignment"]) => {
-					ev.assignment.task = this.correctID(ev.assignment.task);
-					return this.sendBatch(`assignments`, "POST", ev.assignment);
-				},
+				kind: AssignmentID,
+				handler: async (ev: TMethodsConfig["add-assignment"]) =>
+					this.sendBatch<{ id: TID }>(
+						`assignments`,
+						"POST",
+						ev.assignment
+					),
 			},
 			"delete-assignment": {
-				handler: async (ev: TMethodsConfig["delete-assignment"]) => {
-					this.sendBatch(`assignments/${ev.id}`, "DELETE");
-				},
+				handler: async (ev: TMethodsConfig["delete-assignment"]) =>
+					this.sendBatch(`assignments/${ev.id}`, "DELETE"),
 			},
 			"update-assignment": {
-				handler: async (ev: TMethodsConfig["update-assignment"]) => {
-					const { task } = ev.assignment;
-					if (task) ev.assignment.task = this.correctID(task);
+				handler: async (ev: TMethodsConfig["update-assignment"]) =>
 					this.sendBatch(
 						`assignments/${ev.id}`,
 						"PUT",
 						ev.assignment
-					);
-				},
+					),
 			},
 		};
 	}
@@ -152,7 +163,7 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 					: undefined,
 			]);
 		const tasks = this.parseDates(tasksResponse).map(t => {
-			if (t.parent == id) t.parent = tempId;
+			if (t.parent === id) t.parent = tempId;
 			return t;
 		});
 		const result: TProviderData = { tasks, links };
@@ -163,10 +174,16 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 
 	parseDates(data: ITask[]) {
 		data.forEach(item => {
-			item.start = new Date(item.start);
-			if (item.end) item.end = new Date(item.end);
-			if (item.base_start) item.base_start = new Date(item.base_start);
-			if (item.base_end) item.base_end = new Date(item.base_end);
+			DATE_KEYS.forEach(key => {
+				if (item[key]) item[key] = new Date(item[key]);
+			});
+			if (item.constraint?.date)
+				item.constraint.date = new Date(item.constraint.date);
+			item.segments?.forEach((segment: Partial<ITask>) => {
+				DATE_KEYS.forEach(key => {
+					if (segment[key]) segment[key] = new Date(segment[key]);
+				});
+			});
 		});
 		return data;
 	}
@@ -188,51 +205,79 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 		}
 	}
 
+	resolveId(id: TID, kind: number): TID {
+		return this.getQueue().resolve(id, kind);
+	}
+
 	private async sendBatchRequest<T>(
 		url: string,
 		method: string,
 		data?: any,
 		customHeaders?: any
 	): Promise<T> {
-		this.changeQueue.push({ url, method, data });
+		const request = new Promise<T>((resolve, reject) => {
+			this.changeQueue.push({
+				url,
+				method,
+				data,
+				customHeaders,
+				resolve,
+				reject,
+			});
+		});
 
-		if (this.flushTimeout) {
-			clearTimeout(this.flushTimeout);
+		if (this.flushTimeout) clearTimeout(this.flushTimeout);
+		this.flushTimeout = setTimeout(() => this.flushBatch(), 10);
+
+		return request;
+	}
+
+	private async flushBatch(): Promise<void> {
+		const queue = this.changeQueue;
+		this.changeQueue = [];
+		this.flushTimeout = null;
+		if (!queue.length) return;
+
+		if (queue.length === 1) {
+			const [req] = queue;
+			try {
+				req.resolve(
+					await this.send(
+						req.url,
+						req.method,
+						req.data,
+						req.customHeaders
+					)
+				);
+			} catch (error) {
+				req.reject(error);
+			}
+			return;
 		}
 
-		return new Promise<T>(resolve => {
-			this.flushTimeout = setTimeout(async () => {
-				if (this.changeQueue.length > 1) {
-					const batchData = this.changeQueue.map(req => {
-						return {
-							url: req.url,
-							method: req.method,
-							data: {
-								...req.data,
-							},
-						};
-					});
+		const batchData = queue.map(req => ({
+			url: req.url,
+			method: req.method,
+			data: req.data ? { ...req.data } : undefined,
+			customHeaders: req.customHeaders,
+		}));
 
-					this.changeQueue = [];
-
-					const result = await this.send<T>(
-						this._batchUrl,
-						"POST",
-						batchData
-					);
-					resolve(result);
-				} else {
-					this.changeQueue = [];
-					const result = await this.send<T>(
-						url,
-						method,
-						data,
-						customHeaders
-					);
-					resolve(result);
-				}
-			}, 10);
-		});
+		try {
+			const result = await this.send<any>(
+				this._batchUrl,
+				"POST",
+				batchData
+			);
+			if (!Array.isArray(result))
+				throw new Error("batch endpoint did not return a list");
+			queue.forEach((req, i) => {
+				const response = result[i];
+				if (response?.error) req.reject(new Error(response.error));
+				else req.resolve(response);
+			});
+		} catch (error) {
+			queue.forEach(req => req.reject(error));
+		}
 	}
 
 	async send<T>(
@@ -243,8 +288,10 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 	): Promise<T> {
 		const headers = {
 			"Content-Type": "application/json",
+			...this.headers,
 			...customHeaders,
 		};
+
 		const req: RequestInit = {
 			method,
 			headers,
@@ -254,39 +301,29 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 			req.body = this.getPayload(data);
 		}
 
-		return fetch(`${this._url}/${url}`, req).then(res => {
-			return res.json().catch(error => {
-				console.error(error);
-			});
+		return fetch(`${this._url}/${url}`, req).then(async res => {
+			if (!res.ok) {
+				const text = await res.text().catch(() => "");
+				throw new Error(
+					`request failed with status ${res.status}${text ? `: ${text}` : ""}`
+				);
+			}
+			return res.json();
 		});
 	}
 
 	private getPayload(obj: Record<string, any>): string {
-		const transformedObj = this.transformDates(obj);
-		return JSON.stringify(transformedObj);
+		return JSON.stringify(this.transformDates(obj));
 	}
 
 	private transformDates = (item: any): any => {
-		if (Array.isArray(item)) {
-			return item.map(this.transformDates);
-		}
+		if (item instanceof Date) return this.formatDate(item);
+		if (Array.isArray(item)) return item.map(this.transformDates);
 		if (typeof item === "object" && item !== null) {
-			for (const key in item) {
-				const value = item[key];
-				if (value instanceof Date) {
-					item[key] = this.formatDate(value);
-				} else if (typeof value === "object") {
-					item[key] = this.transformDates(value);
-				}
-			}
+			const copy: Record<string, any> = {};
+			for (const key in item) copy[key] = this.transformDates(item[key]);
+			return copy;
 		}
 		return item;
 	};
-
-	private correctID(localId: TID): TID {
-		const tempId = localId;
-		const id = this.getQueue().getId(tempId);
-		if (localId !== id) return id;
-		return localId;
-	}
 }

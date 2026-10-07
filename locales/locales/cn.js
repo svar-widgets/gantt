@@ -11,21 +11,23 @@ export default {
 		Resources: "资源",
 		WBS: "WBS",
 		Hours: "小时",
+		Capacity: "容量",
 
 		// Sidebar
 		Save: "保存",
 		Delete: "删除",
 		Name: "名称",
 		Description: "描述",
-		"Select type": "选择类型",
 		Type: "类型",
 		"End date": "结束日期",
 		Progress: "进步",
+		Manual: "手动",
+		Inactive: "未激活",
+		"Skip resource calendars": "忽略资源日历",
 		Predecessors: "前辈",
 		Successors: "后继者",
 		"Add task name": "添加任务名称",
 		"Add description": "添加描述",
-		"Select link type": "选择链接类型",
 		"End-to-start": "结束开始",
 		"Start-to-start": "开始开始",
 		"End-to-end": "端到端",
@@ -36,11 +38,22 @@ export default {
 		"Add resource": "添加资源",
 		Resource: "资源",
 		General: "常规",
+		Scheduling: "排期",
+		Deadline: "截止日期",
+		None: "无",
+		"Start no earlier than": "不早于此日期开始",
+		"Start no later than": "不晚于此日期开始",
+		"Finish no earlier than": "不早于此日期完成",
+		"Finish no later than": "不晚于此日期完成",
+		"Must start on": "必须开始于",
+		"Must finish on": "必须完成于",
+		Constraint: "约束",
 		Links: "链接",
 		Lag: "滞后",
 		Segments: "任务段",
 		Ungrouped: "未分组",
 		Unassigned: "未分配",
+		Unschedule: "取消排程",
 
 		// Context menu / toolbar
 		Add: "添加",
@@ -57,7 +70,7 @@ export default {
 		Down: "下",
 		Indent: "缩进",
 		Outdent: "凹痕",
-		"Split task": "拆分任务",
+		Split: "拆分",
 		Segment: "分段",
 
 		// Toolbar
@@ -70,5 +83,15 @@ export default {
 		// Formats
 		Week: "星期",
 		Q: "季度",
+
+		// Conflicts
+		Conflicts: "冲突",
+		"No conflicts found": "未发现冲突",
+		"Link violation": "链接冲突",
+		"Constraint violation": "约束冲突",
+		"From link": "来自链接",
+		"Remove link": "删除链接",
+		"Move task": "移动任务",
+		"Remove constraint": "删除约束",
 	},
 };

@@ -14,9 +14,12 @@ const groupedToolbarButtons = new Set<TID>([
 	"edit-task",
 	"undo",
 	"redo",
+	"show-conflicts",
 ]);
 
-export function getToolbarButtons(config?: IDataConfig & { group?: boolean }) {
+export function getToolbarButtons(
+	config?: IDataConfig & { group?: boolean; conflicts?: boolean }
+) {
 	let buttons = [...defaultToolbarButtons];
 
 	return buttons;

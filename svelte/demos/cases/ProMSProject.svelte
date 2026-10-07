@@ -1,14 +1,27 @@
 <script>
-	import { getData } from "../data";
+	import { getData, resources, assignments } from "../data";
 	import { Gantt } from "../../src";
+	import ConstraintCell from "../custom/ConstraintCell.svelte";
 	import { Toolbar, registerToolbarItem } from "@svar-ui/svelte-toolbar";
 	import UploadButton from "../custom/UploadButton.svelte";
 	registerToolbarItem("upload", UploadButton);
 
 	let { skinSettings } = $props();
-	const data = getData();
+	const data = getData("day", { constraints: true });
 	let tasks = $state(data.tasks);
 	let links = $state(data.links);
+
+	const columns = [
+		{ id: "text", header: "Task name", flexgrow: 1 },
+		{ id: "start", header: "Start date", align: "center", width: 100 },
+		{ id: "resources", header: "Resources", width: 110 },
+		{
+			id: "constraint",
+			header: "Constraint",
+			width: 160,
+			cell: ConstraintCell,
+		},
+	];
 
 	const items = $derived([
 		{
@@ -50,7 +63,13 @@
 		{...skinSettings}
 		{tasks}
 		{links}
+		{columns}
+		{resources}
+		{assignments}
 		scales={data.scales}
+		gridWidth={480}
+		schedule={{ auto: true }}
+		projectStart={new Date(2026, 3, 2)}
 	/>
 </div>
 

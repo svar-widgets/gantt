@@ -15,12 +15,13 @@ import { DataArray } from "@svar-ui/lib-state";
 import { resetScales } from "../src/scales";
 import { updateTask } from "../src/tasks";
 import { updateLink, normalizeLinks } from "../src/links";
+import { getAdder } from "../src/time";
 import {
 	ADD_TASK_COLUMN_WIDTH,
 	normalizeColumns,
 	defaultColumns,
 } from "../src/columns";
-import { parseTaskDates, prepareEditTask } from "../src/normalizeDates";
+import { parseTreeDates, prepareEditTask } from "../src/normalizeDates";
 
 import type {
 	GanttScaleData,
@@ -62,14 +63,13 @@ describe("datastore", () => {
 			resetState();
 			const data = getData();
 
-			const normalizedTasks = data.tasks.map((t: any) => ({ ...t }));
-			parseTaskDates(
-				normalizedTasks,
+			const tasks = new GanttDataTree(data.tasks as ITask[]);
+			parseTreeDates(
+				tasks,
 				{ durationUnit: "day", splitTasks: false },
 				store.getTaskCalendar.bind(store)
 			);
-			const tasks = new GanttDataTree(normalizedTasks as ITask[]);
-			const links = new DataArray(data.links as ILink[]);
+			const links = new DataArray(normalizeLinks(data.links as ILink[]));
 			const scales = getData().scales;
 			const calendars = getData().calendars;
 			const resources = new ResourceDataTree([]);
@@ -102,10 +102,11 @@ describe("datastore", () => {
 				)
 			);
 
-			const _calendars = {};
+			const _calendars = new Map();
 			calendars.forEach(({ id, ...config }) => {
-				_calendars[id] = new Calendar(config);
-				_calendars[id].css = config.css;
+				const instance = new Calendar(config);
+				instance.css = config.css;
+				_calendars.set(id, instance);
 			});
 
 			const defaultState: any = {
@@ -130,7 +131,6 @@ describe("datastore", () => {
 				_start: new Date(2024, 3, 1),
 				_end: new Date(2024, 3, 9),
 				_scales,
-				_scaleMinUnit: "day",
 				_tasks,
 				_links,
 				_visibleLinks: [],
@@ -140,6 +140,7 @@ describe("datastore", () => {
 				markers: [],
 				_markers: [],
 				durationUnit: "day",
+				inclusiveEnd: false,
 				_unitFormats: unitFormats,
 				_isFiltered: false,
 				_headerLength: 1,
@@ -154,13 +155,30 @@ describe("datastore", () => {
 					byTask: {},
 					byResource: {},
 				},
+				_composites: new Map(),
 				_resourceSort: null,
-				displayMode: "all",
+				displayMode: ["grid", "chart"],
+				_displayPanels: ["grid", "chart"],
 				gridWidth: 440,
+				subGridWidth: 0,
 				_compactMode: false,
+				_containerWidth: null,
+				_chartHeight: null,
 				_columnsWidth: 440,
 				_gridCollapseThreshold: ADD_TASK_COLUMN_WIDTH,
-				_tasksPatch: null,
+				progressLine: false,
+				_progressLine: null,
+				_progressLinePoints: null,
+				sCurve: false,
+				_sCurve: null,
+				_sCurvePoints: null,
+				conflicts: [],
+				showConflicts: false,
+				_conflicts: {
+					rows: [],
+					constraints: new Set(),
+					links: new Set(),
+				},
 			};
 
 			vi.advanceTimersByTime(1);
@@ -172,6 +190,7 @@ describe("datastore", () => {
 					key !== "_scales" &&
 					key !== "_linksIndex" &&
 					key !== "columns" &&
+					key !== "_columns" &&
 					key !== "calendars"
 				) {
 					expect(state[key as keyof IData], key).to.deep.eq(
@@ -205,6 +224,319 @@ describe("datastore", () => {
 					defaultState["columns"]?.[i].flexgrow
 				);
 			});
+		});
+	});
+
+	describe("layout toggles", () => {
+		const subGridColumns = [
+			{ id: "text", header: "Task", width: 200, section: "grid" },
+			{
+				id: "status",
+				header: "Status",
+				width: 120,
+				section: "subGrid",
+			},
+		];
+
+		function resetLayout(overrides: Record<string, unknown> = {}) {
+			resetState({
+				...getData(),
+				columns: subGridColumns,
+				displayMode: ["grid", "chart", "subGrid"],
+				gridWidth: 440,
+				subGridWidth: 226,
+				...overrides,
+			});
+		}
+
+		function resizeGantt(
+			ganttWidth: number,
+			extra: Record<string, unknown> = {}
+		) {
+			store.in.exec("resize-chart", {
+				width: 500,
+				height: 400,
+				scrollSize: 0,
+				ganttWidth,
+				...extra,
+			});
+			vi.advanceTimersByTime(1);
+		}
+
+		test("set-display-mode restores default grid width when reopening from the strip", () => {
+			resetLayout({ gridWidth: ADD_TASK_COLUMN_WIDTH });
+			resizeGantt(1200);
+			store.in.exec("set-display-mode", { mode: ["chart"] });
+			vi.advanceTimersByTime(1);
+			expect(store.getState()._displayPanels).to.not.include("grid");
+			expect(store.getState().gridWidth).to.eq(ADD_TASK_COLUMN_WIDTH);
+
+			store.in.exec("set-display-mode", { mode: ["grid", "chart"] });
+			vi.advanceTimersByTime(1);
+			expect(store.getState()._displayPanels).to.include("grid");
+			expect(store.getState().gridWidth).to.eq(200);
+		});
+
+		function dragGrid(
+			widths: number[],
+			section: "grid" | "subGrid" = "grid"
+		) {
+			const last = widths.length - 1;
+			widths.forEach((width, i) => {
+				store.in.exec("resize-grid", {
+					width,
+					section,
+					inProgress: i < last,
+				});
+				vi.advanceTimersByTime(1);
+			});
+		}
+
+		test("resize-grid preview collapses only the visible panels", () => {
+			resetLayout();
+			resizeGantt(1500);
+			store.in.exec("resize-grid", { width: 20, inProgress: true });
+			vi.advanceTimersByTime(1);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+		});
+
+		test("resize-grid preview clamps grid to the space beside the subGrid", () => {
+			resetLayout();
+			resizeGantt(1500);
+			store.in.exec("resize-grid", { width: 1500, inProgress: true });
+			vi.advanceTimersByTime(1);
+			// 1500 - 226 subGrid - 8 resizers
+			expect(store.getState().gridWidth).to.eq(1266);
+		});
+
+		test("resize-grid commit at the strip collapses grid and keeps its width", () => {
+			resetLayout();
+			resizeGantt(1500);
+			dragGrid([300, 100, 20]);
+			expect(store.getState().displayMode).to.deep.eq([
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState().gridWidth).to.eq(440);
+		});
+
+		test("resize-grid dragged back from the strip restores panels", () => {
+			resetLayout();
+			resizeGantt(1500);
+			dragGrid([20, 400]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState().gridWidth).to.eq(400);
+		});
+
+		test("resize-grid commit fits the subGrid like the gantt resizer", () => {
+			resetLayout();
+			resizeGantt(1300);
+			// a resizer outside the gantt layout (ResourceLoad) sends the raw width;
+			// 1300 - 900 - 226 subGrid leaves the chart under its subGrid floor
+			dragGrid([800, 900]);
+			expect(store.getState().gridWidth).to.eq(900);
+			expect(store.getState().displayMode).to.deep.eq(["grid", "chart"]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+			]);
+		});
+
+		test("resize-grid commit past the chart min keeps only the grid", () => {
+			resetLayout();
+			resizeGantt(1300);
+			dragGrid([800, 1296]);
+			expect(store.getState()._displayPanels).to.deep.eq(["grid"]);
+		});
+
+		test("resize-grid subGrid commit at the min strip collapses subGrid", () => {
+			resetLayout();
+			resizeGantt(1500);
+			dragGrid([200, 10], "subGrid");
+			expect(store.getState().displayMode).to.deep.eq(["grid", "chart"]);
+			expect(store.getState().subGridWidth).to.eq(226);
+		});
+
+		test("set-display-mode in compact updates only display panels", () => {
+			resetLayout({ gridWidth: 300, subGridWidth: 200 });
+			resizeGantt(400, { width: 0, height: 0 });
+			expect(store.getState()._compactMode).to.be.true;
+
+			store.in.exec("set-display-mode", { mode: ["chart"] });
+			vi.advanceTimersByTime(1);
+			expect(store.getState()._displayPanels).to.deep.eq(["chart"]);
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+		});
+
+		test("changing displayMode in compact switches the visible panel", () => {
+			resetLayout();
+			resizeGantt(400, { width: 0, height: 0 });
+			expect(store.getState()._compactMode).to.be.true;
+			expect(store.getState()._displayPanels).to.deep.eq(["grid"]);
+
+			store.init({
+				...getData(),
+				columns: subGridColumns,
+				displayMode: "chart",
+			});
+			vi.advanceTimersByTime(1);
+			expect(store.getState()._compactMode).to.be.true;
+			expect(store.getState().displayMode).to.deep.eq(["chart"]);
+			expect(store.getState()._displayPanels).to.deep.eq(["chart"]);
+		});
+
+		test("compact init keeps a single-panel displayMode", () => {
+			resetLayout({ displayMode: ["chart"] });
+			resizeGantt(400, { width: 0, height: 0 });
+			expect(store.getState()._compactMode).to.be.true;
+			expect(store.getState()._displayPanels).to.deep.eq(["chart"]);
+		});
+
+		test("set-display-mode opens subGrid by dropping chart in tight layout", () => {
+			resetLayout();
+			resizeGantt(690);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+			]);
+
+			store.in.exec("set-display-mode", {
+				mode: ["grid", "chart", "subGrid"],
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"subGrid",
+			]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"subGrid",
+			]);
+			expect(store.getState().gridWidth).to.eq(440);
+			expect(store.getState().subGridWidth).to.eq(226);
+		});
+
+		test("widening restores auto-hidden subGrid; grid resize does not pin preference", () => {
+			resetLayout();
+			resizeGantt(690);
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+			]);
+
+			store.in.exec("resize-grid", { width: 400 });
+			vi.advanceTimersByTime(1);
+
+			resizeGantt(1200);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+		});
+
+		test("explicitly closed subGrid stays closed after the window grows", () => {
+			resetLayout();
+			resizeGantt(1500);
+			store.in.exec("set-display-mode", { mode: ["grid", "chart"] });
+			vi.advanceTimersByTime(1);
+
+			resizeGantt(690);
+			resizeGantt(1500);
+			expect(store.getState().displayMode).to.deep.eq(["grid", "chart"]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+			]);
+			expect(store.getState().subGridWidth).to.eq(226);
+		});
+
+		test("set-display-mode drops subGrid when restoring chart in tight layout", () => {
+			resetLayout({
+				displayMode: ["grid", "subGrid"],
+				gridWidth: 400,
+				subGridWidth: 300,
+			});
+			resizeGantt(1000);
+			expect(store.getState()._compactMode).to.be.false;
+
+			store.in.exec("set-display-mode", {
+				mode: ["grid", "chart", "subGrid"],
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(store.getState().displayMode).to.deep.eq(["grid", "chart"]);
+			expect(store.getState().subGridWidth).to.eq(300);
+		});
+
+		test("reinit preserves dragged grid width when width prop is unset", () => {
+			const data = getData();
+			resetState({
+				...data,
+				gridWidth: 440,
+			});
+
+			resizeGantt(1000);
+			store.in.exec("resize-grid", { width: 600 });
+			vi.advanceTimersByTime(1);
+			expect(store.getState().gridWidth).to.eq(600);
+
+			store.init({ ...data, tasks: data.tasks });
+			vi.advanceTimersByTime(1);
+			expect(store.getState().gridWidth).to.eq(600);
+		});
+
+		test("reinit without displayMode keeps subGrid panels", () => {
+			resetLayout();
+			resizeGantt(1500, { width: 0, height: 0 });
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+
+			store.init({
+				...getData(),
+				columns: subGridColumns,
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(store.getState().displayMode).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
+			expect(store.getState()._displayPanels).to.deep.eq([
+				"grid",
+				"chart",
+				"subGrid",
+			]);
 		});
 	});
 
@@ -747,6 +1079,151 @@ describe("datastore", () => {
 			expect(task?.$y).to.be.a("number");
 			expect(task?.$w).to.be.gt(0);
 			expect(task?.$h).to.be.gt(0);
+		});
+
+		describe("events carry the full task as the store has it", () => {
+			const day = (d: number) => new Date(2024, 3, d);
+
+			// a debounced backend handler keeps only the last event of a task
+			function trackLast() {
+				const last: Record<string, ITask> = {};
+				store.in.setNext({
+					exec: (name: string, ev: any) => {
+						if (name === "update-task")
+							last[ev.id] = { ...ev.task };
+					},
+				} as any);
+				return last;
+			}
+
+			test("inactive state written down to a nested summary", () => {
+				resetState({
+					...getData(),
+					tasks: [
+						{ id: 1, type: "summary", text: "S1", start: day(1) },
+						{ id: 2, type: "summary", text: "S2", parent: 1 },
+						{
+							id: 3,
+							text: "A",
+							parent: 2,
+							start: day(1),
+							duration: 2,
+						},
+						{
+							id: 4,
+							text: "B",
+							parent: 2,
+							start: day(3),
+							duration: 2,
+						},
+					],
+					links: [],
+					inactiveTasks: true,
+					summary: { autoProgress: true },
+				});
+				const last = trackLast();
+
+				store.in.exec("update-task", {
+					id: 1,
+					task: { inactive: true },
+				});
+
+				expect(last[2].inactive).to.eq(true);
+				expect(last[2].text).to.eq("S2");
+				expect(last[2].parent).to.eq(1);
+			});
+
+			test("child text is kept when its summary moves", () => {
+				resetState({
+					...getData(),
+					tasks: [
+						{ id: 1, type: "summary", text: "S", start: day(1) },
+						{
+							id: 2,
+							text: "A",
+							parent: 1,
+							start: day(1),
+							duration: 2,
+						},
+						{
+							id: 3,
+							text: "B",
+							parent: 1,
+							start: day(3),
+							duration: 2,
+						},
+					],
+					links: [],
+				});
+				const last = trackLast();
+
+				store.in.exec("update-task", { id: 2, task: { text: "A2" } });
+				store.in.exec("update-task", { id: 1, task: {}, diff: 3 });
+
+				expect(last[2].text).to.eq("A2");
+				expect(last[2].parent).to.eq(1);
+				expect(last[2].start).to.deep.eq(day(4));
+			});
+
+			test("an edit leaves with the dates the scheduler set", () => {
+				resetState({
+					...getData(),
+					tasks: [
+						{ id: 1, text: "A", start: day(6), duration: 3 },
+						{ id: 2, text: "B", start: day(9), duration: 3 },
+					],
+					links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+					schedule: { auto: true },
+				});
+				vi.advanceTimersByTime(1);
+				const last = trackLast();
+
+				store.in.exec("update-task", {
+					id: 2,
+					task: { constraint: { type: "mso", date: day(20) } },
+				});
+
+				expect(store.getState().tasks.byId(2).start).to.deep.eq(
+					day(20)
+				);
+				expect(last[2].start).to.deep.eq(day(20));
+				expect(last[2].constraint.type).to.eq("mso");
+			});
+
+			test("a summary drag leaves with the dates the scheduler set", () => {
+				resetState({
+					...getData(),
+					tasks: [
+						{ id: 1, text: "X", start: day(1), duration: 3 },
+						{ id: 2, type: "summary", text: "S", start: day(4) },
+						{
+							id: 3,
+							text: "A",
+							parent: 2,
+							start: day(4),
+							duration: 2,
+						},
+						{
+							id: 4,
+							text: "B",
+							parent: 2,
+							start: day(6),
+							duration: 2,
+						},
+					],
+					links: [{ id: 1, source: 1, target: 3, type: "e2s" }],
+					schedule: { auto: true },
+				});
+				vi.advanceTimersByTime(1);
+				const last = trackLast();
+
+				store.in.exec("update-task", { id: 2, task: {}, diff: -2 });
+
+				const summary = store.getState().tasks.byId(2);
+				expect(summary.start).to.deep.eq(day(4));
+				expect(last[2].start).to.deep.eq(summary.start);
+				expect(last[2].end).to.deep.eq(summary.end);
+			});
 		});
 	});
 
@@ -2278,27 +2755,27 @@ describe("datastore", () => {
 			end: new Date(2024, 3, 4),
 		});
 
-		test("removes invalid e2s links on init, leaves s2s links untouched", () => {
+		test("removes invalid links on init, whatever their type", () => {
 			resetState({
 				...getData("autoScheduling"),
 				tasks: [task(1), task(2), task(3)],
 				links: [
 					{ id: 1, source: 1, target: 2, type: "e2s" }, // valid
-					{ id: 2, source: 3, target: 3, type: "e2s" }, // invalid - self-reference
-					{ id: 3, source: 3, target: 3, type: "s2s" }, // s2s - never scheduled
+					{ id: 2, source: 3, target: 3, type: "e2s" }, // self-reference
+					{ id: 3, source: 3, target: 3, type: "s2s" }, // self-reference
 				],
 				schedule: { auto: true },
 			});
 			vi.advanceTimersByTime(1);
 
-			// AutoScheduler feeds only e2s links to lib-schedule and deletes the
-			// ones it reports invalid. Links 2 and 3 are the same self-reference;
-			// only the e2s one is scheduled, so only it is removed.
+			// AutoScheduler feeds every link to lib-schedule and deletes the ones
+			// it reports invalid. Links 2 and 3 are both self-references — a
+			// self-loop on the task end node and on its start node — so both go.
 			const { links } = store.getState();
 			expect(links.byId(1).id).to.exist;
 			expect(links.byId(2)).to.be.undefined;
-			expect(links.byId(3).id).to.exist;
-			expect(links.map(l => l).length).to.eq(2);
+			expect(links.byId(3)).to.be.undefined;
+			expect(links.map(l => l).length).to.eq(1);
 		});
 		test("removes a link that becomes invalid after move-task", () => {
 			resetState({
@@ -2320,6 +2797,85 @@ describe("datastore", () => {
 
 			expect(store.getState().links.byId(1)).to.be.undefined;
 		});
+		test("ignores dangling links while filtering unscheduled tasks", async () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+				unscheduledTasks: true,
+			});
+
+			await store.in.exec("schedule-tasks", { id: 0 });
+
+			expect(store.getState().links.byId(1)).to.exist;
+		});
+		test("detaches move-task scheduling when auto-scheduling is disabled", () => {
+			const config = {
+				...getData("autoScheduling"),
+				tasks: [task(1, 0, "summary"), task(2, 1), task(3)],
+				links: [],
+				schedule: { auto: true },
+			};
+			resetState(config);
+
+			const scheduler = (store as any)._modules.get("autoScheduler");
+			const spy = vi.spyOn(scheduler, "schedule");
+
+			store.init({ ...config, schedule: { auto: false } });
+			spy.mockClear();
+			store.in.exec("move-task", { id: 2, target: 3, mode: "after" });
+
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+			expect(spy).not.toHaveBeenCalled();
+		});
+		test.each(["undo", "redo"] as const)(
+			"does not schedule during %s replay",
+			eventSource => {
+				resetState({
+					...getData("autoScheduling"),
+					tasks: [task(1, 0, "summary"), task(9, 1), task(2)],
+					links: [
+						{
+							id: 1,
+							source: 1,
+							target: 2,
+							type: "e2s",
+						},
+					],
+					schedule: { auto: true },
+				});
+				vi.advanceTimersByTime(1);
+
+				const scheduler = (store as any)._modules.get("autoScheduler");
+				const spy = vi
+					.spyOn(scheduler, "schedule")
+					.mockImplementation(() => {});
+
+				store.in.exec("move-task", {
+					id: 2,
+					target: 1,
+					mode: "child",
+					eventSource,
+				});
+				store.in.exec("update-link", {
+					id: 1,
+					link: {
+						source: 1,
+						target: 2,
+						type: "e2s",
+						lag: 1,
+					},
+					eventSource,
+				});
+				store.in.exec("delete-link", {
+					id: 1,
+					eventSource,
+				});
+
+				expect(spy).not.toHaveBeenCalled();
+			}
+		);
 		test("removes a link that becomes invalid after indent-task", () => {
 			resetState({
 				...getData("autoScheduling"),
@@ -2475,6 +3031,77 @@ describe("datastore", () => {
 			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 9));
 			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 11));
 		});
+		// a cleared lag is lag 0, a minimum: the successor keeps the gap the lag
+		// left, but the change still has to reach the scheduler
+		test("reschedules on a cleared lag and keeps the gap", () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("update-link", { id: 1, link: { lag: 2 } });
+			vi.advanceTimersByTime(20);
+			const { tasks } = store.getState();
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 6));
+
+			const scheduler = (store as any)._modules.get("autoScheduler");
+			const spy = vi.spyOn(scheduler, "schedule");
+
+			store.in.exec("update-link", { id: 1, link: { lag: "" as any } });
+			vi.advanceTimersByTime(20);
+
+			expect(spy).toHaveBeenCalledWith(1, { link: 1, joinUndo: true });
+			expect(store.getState().links.byId(1).lag).to.eq(0);
+			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 6));
+			expect(tasks.byId(2).end).to.deep.eq(new Date(2024, 3, 8));
+		});
+		test("does not reschedule when clearing a lag that was never set", () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			const scheduler = (store as any)._modules.get("autoScheduler");
+			const spy = vi.spyOn(scheduler, "schedule");
+
+			store.in.exec("update-link", { id: 1, link: { lag: "" as any } });
+			vi.advanceTimersByTime(20);
+
+			expect(spy).not.toHaveBeenCalled();
+		});
+		// a missing lag is stored as 0, so setting or clearing 0 is no change
+		test("does not reschedule or recalculate between absent and zero lag", () => {
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [task(1), task(2)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(1);
+
+			const scheduler = (store as any)._modules.get("autoScheduler");
+			const critical = (store as any)._modules.get("criticalPath");
+			const schedule = vi.spyOn(scheduler, "schedule");
+			const calculate = vi.spyOn(critical, "calculate");
+			expect(store.getState().links.byId(1).lag).to.eq(0);
+
+			store.in.exec("update-link", { id: 1, link: { lag: 0 } });
+			vi.advanceTimersByTime(20);
+
+			store.in.exec("update-link", { id: 1, link: { lag: "" as any } });
+			vi.advanceTimersByTime(20);
+			expect(store.getState().links.byId(1).lag).to.eq(0);
+
+			expect(schedule).not.toHaveBeenCalled();
+			expect(calculate).not.toHaveBeenCalled();
+		});
 		test("can reschedule tasks on delete-link", () => {
 			const initData = getData("autoScheduling");
 
@@ -2499,6 +3126,174 @@ describe("datastore", () => {
 			expect(tasks.byId(5).start).to.deep.eq(new Date(2024, 3, 7));
 			expect(tasks.byId(5).end).to.deep.eq(new Date(2024, 3, 9));
 		});
+
+		test("schedules a one-tick bulk of linked adds correctly", () => {
+			resetState({
+				...getData(),
+				tasks: [
+					{
+						id: 100,
+						text: "S",
+						type: "summary",
+						parent: 0,
+						open: true,
+					},
+					{
+						id: 1,
+						text: "T1",
+						type: "task",
+						parent: 100,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 5),
+					},
+				],
+				links: [],
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(1);
+
+			// add the chain without flushing derived state between synchronous schedules
+			for (let i = 2; i <= 4; i++) {
+				store.in.exec("add-task", {
+					task: {
+						id: i,
+						text: `T${i}`,
+						type: "task",
+						parent: 100,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+				});
+				store.in.exec("add-link", {
+					link: { id: i, source: i - 1, target: i, type: "e2s" },
+				});
+			}
+			vi.advanceTimersByTime(20);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(2).start).to.deep.eq(tasks.byId(1).end);
+			expect(tasks.byId(3).start).to.deep.eq(tasks.byId(2).end);
+			expect(tasks.byId(4).start).to.deep.eq(tasks.byId(3).end);
+		});
+
+		const bulkBase = () => ({
+			...getData(),
+			tasks: [
+				{ id: 100, text: "S", type: "summary", parent: 0, open: true },
+				{
+					id: 1,
+					text: "T1",
+					type: "task",
+					parent: 100,
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 5),
+				},
+			],
+			links: [],
+			schedule: { auto: true },
+		});
+		const addChild = (i: number) =>
+			store.in.exec("add-task", {
+				task: {
+					id: i,
+					text: `T${i}`,
+					type: "task",
+					parent: 100,
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 4),
+				},
+			});
+
+		test("same-tick bulk matches settled incremental scheduling", () => {
+			const dates = () =>
+				store
+					.getState()
+					.tasks.toArray()
+					.map(t => [t.id, +t.start!, +t.end!]);
+
+			// the reference path flushes derived state after each task and link
+			resetState(bulkBase());
+			vi.advanceTimersByTime(20);
+			for (let i = 2; i <= 5; i++) {
+				addChild(i);
+				store.in.exec("add-link", {
+					link: { id: i, source: i - 1, target: i, type: "e2s" },
+				});
+				vi.advanceTimersByTime(20);
+			}
+			const incremental = dates();
+
+			// the comparison path runs the same schedules before one state flush
+			resetState(bulkBase());
+			vi.advanceTimersByTime(20);
+			for (let i = 2; i <= 5; i++) {
+				addChild(i);
+				store.in.exec("add-link", {
+					link: { id: i, source: i - 1, target: i, type: "e2s" },
+				});
+			}
+			vi.advanceTimersByTime(20);
+
+			expect(dates()).to.deep.eq(incremental);
+		});
+
+		test("structural edits schedule synchronously", () => {
+			resetState(bulkBase());
+			vi.advanceTimersByTime(20);
+
+			const sched = (store as any)._modules.get("autoScheduler");
+			const spy = vi.spyOn(sched, "schedule");
+			for (let i = 2; i <= 6; i++) addChild(i);
+
+			expect(spy).toHaveBeenCalledTimes(5);
+			vi.advanceTimersByTime(20);
+			expect(spy).toHaveBeenCalledTimes(5);
+		});
+
+		test("keeps deadline geometry on tasks a schedule pass patches", () => {
+			const deadlined = (id: number, day: number): ITask => ({
+				id,
+				text: `T${id}`,
+				type: "task",
+				parent: 0,
+				start: new Date(2024, 3, day),
+				end: new Date(2024, 3, day + 2),
+				deadline: new Date(2024, 3, 9),
+			});
+			resetState({
+				...getData("autoScheduling"),
+				tasks: [deadlined(1, 2), deadlined(2, 4)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				schedule: { auto: true },
+				deadlines: true,
+				// fixed bounds keep the scale route quiet, so the pass can patch
+				autoScale: false,
+				start: new Date(2024, 3, 1),
+				end: new Date(2024, 3, 20),
+			});
+			vi.advanceTimersByTime(20);
+
+			const marker = () =>
+				store.getState()._tasks.find(t => t.id === 2)?.$x_deadline;
+			expect(marker()).to.be.a("number");
+
+			// a targeted schedule patches only the cascade it touched, so task 2
+			// is recomputed while the rest keeps its cached geometry
+			store.in.exec("update-task", {
+				id: 1,
+				task: {
+					start: new Date(2024, 3, 3),
+					end: new Date(2024, 3, 5),
+				},
+			});
+			vi.advanceTimersByTime(20);
+
+			expect(store.getState().tasks.byId(2).start).to.deep.eq(
+				new Date(2024, 3, 5)
+			);
+			expect(marker()).to.be.a("number");
+		});
+
 		test("does not reschedule after auto scheduling is turned off", () => {
 			resetState({
 				...getData("autoScheduling"),
@@ -2759,6 +3554,91 @@ describe("datastore", () => {
 				.map(l => l.id);
 			expect(critLinks).to.deep.eq([1, 2]);
 		});
+		// no calendar: the slack bar is measured in raw days, so a bar that is
+		// not clamped to the project end spans exactly the computed slack
+		test("visible slack equals total slack without calendars", () => {
+			resetState({
+				...getData("critical"),
+				calendars: [],
+				projectEnd: new Date(2030, 0, 1),
+				criticalPath: { type: "flexible" },
+				slack: true,
+			});
+			vi.advanceTimersByTime(20);
+
+			const { durationUnit, projectEnd } = store.getState();
+			const add = getAdder(durationUnit);
+			const unclamped = store
+				.getState()
+				._tasks.filter(
+					(t): t is IGanttTask & { $visibleSlack: number } =>
+						!!(t as IGanttTask).$visibleSlack &&
+						add(
+							(t as IGanttTask).end,
+							(t as IGanttTask).slack!.totalSlack
+						) <= projectEnd
+				);
+
+			expect(unclamped.length).to.be.greaterThan(0);
+			unclamped.forEach(t => {
+				expect(t.$visibleSlack).to.eq(t.slack!.totalSlack);
+			});
+		});
+
+		test("slack bar geometry stays in sync with slack values", () => {
+			resetState({
+				...getData("critical"),
+				criticalPath: { type: "flexible" },
+				slack: true,
+			});
+			vi.advanceTimersByTime(20);
+
+			const cw = store.getState().cellWidth!;
+			const check = () => {
+				const withSlack = store
+					.getState()
+					._tasks.filter(
+						(t): t is IGanttTask & { $visibleSlack: number } =>
+							!!(t as IGanttTask).$visibleSlack
+					);
+				expect(withSlack.length).to.be.greaterThan(0);
+				withSlack.forEach(g => {
+					expect(g.$w_slack).to.eq(g.$visibleSlack * cw);
+					expect(g.$x_slack).to.eq(g.$x + g.$w);
+				});
+			};
+
+			check();
+			store.in.exec("update-task", {
+				id: 20,
+				task: { start: new Date(2024, 3, 2), duration: 3 },
+			});
+			vi.advanceTimersByTime(20);
+			check();
+		});
+		test("clears published slack geometry after a link-only recalculation", () => {
+			resetState({
+				...getData("critical"),
+				criticalPath: { type: "flexible" },
+				slack: true,
+			});
+			vi.advanceTimersByTime(20);
+
+			const before = store.getState()._tasks.find(t => t.id === 30)!;
+			expect(before.$visibleSlack).to.be.a("number");
+			expect(before.$x_slack).to.be.a("number");
+			expect(before.$w_slack).to.be.a("number");
+
+			store.in.exec("add-link", {
+				link: { id: 5, source: 12, target: 30, type: "e2s" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const after = store.getState()._tasks.find(t => t.id === 30)!;
+			expect(after.$visibleSlack).to.be.undefined;
+			expect(after.$x_slack).to.be.undefined;
+			expect(after.$w_slack).to.be.undefined;
+		});
 		test("can calculate critical path on update-task", () => {
 			const initData = getData("critical");
 
@@ -2812,6 +3692,35 @@ describe("datastore", () => {
 				.filter(l => (l as IGanttLink).critical)
 				.map(l => l.id);
 			expect(critLinks).to.deep.eq([1, 2]);
+		});
+		test("critical path stays correct with auto-scheduling on", () => {
+			resetState({
+				...getData("critical"),
+				criticalPath: { type: "flexible" },
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(20);
+
+			store.in.exec("update-task", {
+				id: 20,
+				task: { start: new Date(2024, 3, 2), duration: 3 },
+			});
+			vi.advanceTimersByTime(20);
+
+			// shared filtering must preserve the critical set while scheduling is active
+			const { tasks, links } = store.getState();
+			expect(
+				tasks
+					.toArray()
+					.filter(t => t.critical)
+					.map(t => t.id)
+			).to.deep.eq([2, 20, 21, 22]);
+			expect(
+				links
+					.map(l => l)
+					.filter(l => (l as IGanttLink).critical)
+					.map(l => l.id)
+			).to.deep.eq([3, 4]);
 		});
 		test("can calculate critical path on delete-task", () => {
 			const initData = getData("critical");
@@ -2883,6 +3792,55 @@ describe("datastore", () => {
 				.map(t => t.id);
 			expect(critTasks).to.deep.eq([1, 10, 11, 12]);
 		});
+		test("critical path is correct after a one-tick bulk of adds", () => {
+			resetState({
+				...getData(),
+				tasks: [
+					{
+						id: 100,
+						text: "S",
+						type: "summary",
+						parent: 0,
+						open: true,
+					},
+					{
+						id: 1,
+						text: "T1",
+						type: "task",
+						parent: 100,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 5),
+					},
+				],
+				links: [],
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			// the critical-path debounce must observe the final synchronously scheduled positions
+			for (let i = 2; i <= 4; i++) {
+				store.in.exec("add-task", {
+					task: {
+						id: i,
+						text: `T${i}`,
+						type: "task",
+						parent: 100,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+				});
+				store.in.exec("add-link", {
+					link: { id: i, source: i - 1, target: i, type: "e2s" },
+				});
+			}
+			vi.advanceTimersByTime(20);
+
+			const { tasks } = store.getState();
+			[1, 2, 3, 4].forEach(id =>
+				expect(tasks.byId(id).critical, `task ${id}`).to.eq(true)
+			);
+		});
 		test("can calculate critical path on update-link", () => {
 			const initData = getData("critical");
 
@@ -2930,6 +3888,37 @@ describe("datastore", () => {
 				.filter(l => (l as IGanttLink).critical)
 				.map(l => l.id);
 			expect(critLinks).to.deep.eq([1, 2]);
+		});
+		test("recalculates slack when a link lag is cleared", () => {
+			const task = (id: number, day: number, duration: number) => ({
+				id,
+				text: `Task ${id}`,
+				type: "task",
+				parent: 0,
+				start: new Date(2026, 3, day),
+				duration,
+			});
+			resetState({
+				...getData(),
+				// C fixes the project end, A → B has slack to lose to a lag
+				tasks: [task(1, 6, 2), task(2, 8, 3), task(3, 6, 15)],
+				links: [{ id: 1, source: 1, target: 2, type: "e2s" }],
+				criticalPath: { type: "flexible" },
+				slack: true,
+				projectStart: new Date(2026, 3, 6),
+			});
+			vi.advanceTimersByTime(20);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(2).slack.totalSlack).to.eq(10);
+
+			store.in.exec("update-link", { id: 1, link: { lag: 2 } });
+			vi.advanceTimersByTime(20);
+			expect(tasks.byId(2).slack.totalSlack).to.eq(8);
+
+			store.in.exec("update-link", { id: 1, link: { lag: "" as any } });
+			vi.advanceTimersByTime(20);
+			expect(tasks.byId(2).slack.totalSlack).to.eq(10);
 		});
 		test("can calculate critical path on delete-link", () => {
 			const initData = getData("critical");
@@ -3105,6 +4094,184 @@ describe("datastore", () => {
 			expect(tasks.byId(31).slack.totalSlack).to.eq(4);
 			expect(tasks.byId(31).$visibleSlack).to.eq(2);
 		});
+
+		test("critical-path patch preserves _tasks geometry", () => {
+			const initData = getData("critical");
+
+			resetState({
+				...initData,
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+				slack: true,
+			});
+
+			vi.advanceTimersByTime(20);
+
+			const beforeX = (
+				store.getState()._tasks.find(t => t.id === 20) as IGanttTask
+			).$x;
+			expect(beforeX).to.be.a("number");
+
+			store.in.exec("update-task", {
+				id: 20,
+				task: { start: new Date(2024, 3, 15), duration: 3 },
+			});
+
+			vi.advanceTimersByTime(20);
+
+			const { _tasks } = store.getState();
+			const after = _tasks.find(t => t.id === 20) as IGanttTask;
+
+			expect(after.$x).to.be.a("number");
+			expect(after.$x).to.be.greaterThan(beforeX);
+			expect(after.$w).to.be.a("number");
+
+			expect(_tasks.some(t => t.critical)).to.eq(true);
+			expect(
+				(_tasks.find(t => t.id === 30) as IGanttTask).$visibleSlack
+			).to.be.a("number");
+		});
+
+		test("same-parent reorder skips scheduling and critical-path recalc", () => {
+			resetState({
+				...getData("critical"),
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const before = store
+				.getState()
+				.tasks.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+
+			const cp = (store as any)._modules.get("criticalPath");
+			const sched = (store as any)._modules.get("autoScheduler");
+			const cpSpy = vi.spyOn(cp, "calculate");
+			const schedSpy = vi.spyOn(sched, "schedule");
+
+			// all three tasks share a parent, so the move changes only row order
+			store.in.exec("move-task", { id: 20, target: 22, mode: "after" });
+			vi.advanceTimersByTime(20);
+
+			expect(cpSpy).not.toHaveBeenCalled();
+			expect(schedSpy).not.toHaveBeenCalled();
+
+			const after = store
+				.getState()
+				.tasks.toArray()
+				.filter(t => t.critical)
+				.map(t => t.id);
+			expect(after).to.deep.eq(before);
+		});
+
+		test("reparent still triggers scheduling and critical-path recalc", () => {
+			resetState({
+				...getData("critical"),
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const cp = (store as any)._modules.get("criticalPath");
+			const sched = (store as any)._modules.get("autoScheduler");
+			const cpSpy = vi.spyOn(cp, "calculate");
+			const schedSpy = vi.spyOn(sched, "schedule");
+
+			store.in.exec("move-task", { id: 20, target: 12, mode: "after" });
+			vi.advanceTimersByTime(20);
+
+			expect(store.getState().tasks.byId(20).parent).to.eq(1);
+			expect(schedSpy).toHaveBeenCalled();
+			expect(cpSpy).toHaveBeenCalled();
+		});
+
+		test("keyboard up/down within a parent skips recalc", () => {
+			resetState({
+				...getData("critical"),
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const cp = (store as any)._modules.get("criticalPath");
+			const sched = (store as any)._modules.get("autoScheduler");
+			const cpSpy = vi.spyOn(cp, "calculate");
+			const schedSpy = vi.spyOn(sched, "schedule");
+
+			store.in.exec("move-task", { id: 22, mode: "up" });
+			vi.advanceTimersByTime(20);
+
+			expect(store.getState().tasks.byId(22).parent).to.eq(2);
+			expect(cpSpy).not.toHaveBeenCalled();
+			expect(schedSpy).not.toHaveBeenCalled();
+		});
+
+		test("a link the scheduler removes skips critical-path recalc", () => {
+			resetState({
+				...getData("critical"),
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const linkIds = () => store.getState().links.map(l => l.id);
+			const before = linkIds();
+			const cp = (store as any)._modules.get("criticalPath");
+			const cpSpy = vi.spyOn(cp, "calculate");
+
+			store.in.exec("add-link", {
+				link: { source: 2, target: 22, type: "e2s" },
+			});
+			vi.advanceTimersByTime(20);
+
+			expect(linkIds()).to.deep.eq(before);
+			expect(cpSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test("same-parent skip is fail-safe under grouping", () => {
+			// grouped moves report a synthetic source, so they must bypass the same-parent skip
+			const mk = (id: number, s: Date, e: Date): ITask => ({
+				id,
+				text: `Task ${id}`,
+				type: "task",
+				parent: 0,
+				start: s,
+				end: e,
+				duration: 2,
+			});
+			const tasks = [
+				mk(1, new Date(2024, 3, 2), new Date(2024, 3, 4)),
+				mk(2, new Date(2024, 3, 4), new Date(2024, 3, 6)),
+				mk(3, new Date(2024, 3, 6), new Date(2024, 3, 8)),
+			];
+			resetState({
+				...getData(),
+				tasks,
+				links: [
+					{ id: 1, source: 1, target: 2, type: "e2s" },
+					{ id: 2, source: 2, target: 3, type: "e2s" },
+				],
+				schedule: { auto: true },
+				criticalPath: { type: "flexible" },
+				groupBy: { field: "duration" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const cp = (store as any)._modules.get("criticalPath");
+			const cpSpy = vi.spyOn(cp, "calculate");
+
+			store.in.exec("move-task", { id: 1, target: 3, mode: "after" });
+			vi.advanceTimersByTime(20);
+
+			expect(cpSpy).toHaveBeenCalled();
+			expect(store.getState().tasks.byId(1).parent).to.eq(0);
+			const s = (id: number) =>
+				store.getState().tasks.byId(id).start!.getTime();
+			expect(s(1)).to.be.lessThan(s(2));
+			expect(s(2)).to.be.lessThan(s(3));
+		});
 	});
 
 	describe("init re-init behavior", () => {
@@ -3194,6 +4361,207 @@ describe("datastore", () => {
 
 			ds.init(cfg([...tasks, extraTask()]));
 			expect(ds.getState()._sort).to.equal(null);
+		});
+	});
+
+	describe("partial geometry patch", () => {
+		const DAY = 86400000;
+		const geom = (s: DataStore) =>
+			new Map(
+				s.getState()._tasks.map(t => [t.id, `${t.$x}|${t.$w}|${t.$y}`])
+			);
+		const chain = (n: number) => {
+			const tasks: ITask[] = [];
+			const links: ILink[] = [];
+			let id = 1;
+			let lid = 1;
+			for (let c = 0; id <= n; c++) {
+				const sid = 900000 + c;
+				tasks.push({
+					id: sid,
+					text: `S${c}`,
+					type: "summary",
+					parent: 0,
+					open: true,
+				} as ITask);
+				let prev: number | null = null;
+				for (let k = 0; k < 12 && id <= n; k++, id++) {
+					const s = new Date(2024, 0, 1 + ((id * 3) % 200));
+					tasks.push({
+						id,
+						text: `T${id}`,
+						type: "task",
+						parent: sid,
+						start: s,
+						end: new Date(s.getTime() + 4 * DAY),
+						duration: 4,
+					} as ITask);
+					if (prev !== null)
+						links.push({
+							id: lid++,
+							source: prev,
+							target: id,
+							type: "e2s",
+						} as ILink);
+					prev = id;
+				}
+			}
+			return {
+				...getData(),
+				tasks,
+				links: normalizeLinks(links),
+				schedule: { auto: true },
+			} as any;
+		};
+
+		test("in-bounds edit matches a full rebuild", () => {
+			const a = new DataStore(writable);
+			a.init(chain(120));
+			vi.advanceTimersByTime(50);
+
+			// shift the chain head without changing the scale bounds
+			const t = a.getState().tasks.byId(1);
+			a.in.exec("update-task", {
+				id: 1,
+				task: {
+					start: new Date(t.start!.getTime() + 8 * DAY),
+					duration: 4,
+				},
+			});
+			vi.advanceTimersByTime(50);
+			const gA = geom(a);
+
+			// compare the patch against a fresh full rebuild of the same final state
+			const baked = a
+				.getState()
+				.tasks.serialize()
+				.map((x: any) => ({ ...x }));
+			const b = new DataStore(writable);
+			b.init({
+				...getData(),
+				tasks: baked,
+				links: a.getState().links.map((l: any) => ({ ...l })),
+				schedule: { auto: true },
+			});
+			vi.advanceTimersByTime(50);
+			const gB = geom(b);
+
+			gB.forEach((v, id) => expect(gA.get(id)).to.eq(v));
+		});
+
+		test("out-of-bounds edit falls back to full geometry", () => {
+			const a = new DataStore(writable);
+			a.init(chain(120));
+			vi.advanceTimersByTime(50);
+
+			// capture geometry outside the edited cascade
+			const farBefore = a.getState()._tasks.find(t => t.id === 60)!.$x;
+
+			const t = a.getState().tasks.byId(1);
+			a.in.exec("update-task", {
+				id: 1,
+				task: {
+					start: new Date(t.start!.getTime() + 4000 * DAY),
+					duration: 4,
+				},
+			});
+			vi.advanceTimersByTime(50);
+
+			// expanded scale bounds must reposition tasks outside the edited cascade
+			const farAfter = a.getState()._tasks.find(t => t.id === 60)!.$x;
+			expect(farAfter).to.not.eq(farBefore);
+		});
+
+		test("two same-tick edits both patch geometry", () => {
+			// the anchor keeps both edits in bounds so their dirty sets can accumulate
+			const mk = (id: number, s: Date, e: Date): ITask => ({
+				id,
+				text: `T${id}`,
+				type: "task",
+				parent: 0,
+				start: s,
+				end: e,
+			});
+			const data = () => ({
+				...getData(),
+				links: [],
+				tasks: [
+					mk(99, new Date(2024, 0, 1), new Date(2024, 6, 1)),
+					mk(1, new Date(2024, 1, 1), new Date(2024, 1, 3)),
+					mk(2, new Date(2024, 1, 1), new Date(2024, 1, 3)),
+				],
+			});
+			const a = new DataStore(writable);
+			a.init(data());
+			vi.advanceTimersByTime(50);
+
+			// both pending patches must survive until the shared route pass
+			a.in.exec("update-task", {
+				id: 1,
+				task: {
+					start: new Date(2024, 2, 1),
+					end: new Date(2024, 2, 3),
+				},
+			});
+			a.in.exec("update-task", {
+				id: 2,
+				task: {
+					start: new Date(2024, 3, 1),
+					end: new Date(2024, 3, 3),
+				},
+			});
+			vi.advanceTimersByTime(50);
+			const gA = geom(a);
+
+			// compare against a fresh full rebuild
+			const baked = a
+				.getState()
+				.tasks.serialize()
+				.map((x: any) => ({ ...x }));
+			const b = new DataStore(writable);
+			b.init({ ...getData(), links: [], tasks: baked });
+			vi.advanceTimersByTime(50);
+			const gB = geom(b);
+
+			gB.forEach((v, id) => expect(gA.get(id)).to.eq(v));
+		});
+
+		test("same-tick sorting invalidates the pending patch", () => {
+			const a = new DataStore(writable);
+			a.init(getData("critical"));
+			vi.advanceTimersByTime(20);
+
+			a.in.exec("update-task", {
+				id: 20,
+				task: {
+					start: new Date(2024, 3, 2),
+					duration: 3,
+				},
+			});
+			a.in.exec("sort-tasks", { key: "id", order: "desc" });
+
+			const immediate = [...geom(a)];
+			vi.advanceTimersByTime(1);
+			expect(immediate).to.deep.eq([...geom(a)]);
+		});
+
+		test("same-tick layout config invalidates the pending patch", () => {
+			const a = new DataStore(writable);
+			a.init(getData("critical"));
+			vi.advanceTimersByTime(20);
+
+			a.in.exec("update-task", {
+				id: 20,
+				task: {
+					start: new Date(2024, 3, 2),
+					duration: 3,
+				},
+			});
+			a.init({ cellHeight: 50 });
+
+			const immediate = [...geom(a)];
+			vi.advanceTimersByTime(1);
+			expect(immediate).to.deep.eq([...geom(a)]);
 		});
 	});
 });

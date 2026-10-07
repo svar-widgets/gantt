@@ -228,6 +228,7 @@ const tasks = [
 		details: "Onboard team members and align on goals.",
 		assigned: "",
 		priority: 1,
+		inactive: true,
 	},
 	{
 		id: 23,
@@ -682,12 +683,13 @@ const multiCalendarTasks = [
 		id: 13,
 		start: new Date(2026, 3, 11),
 		duration: 2,
-		text: "Prototyping",
+		text: "Prototyping (weekends, weekday resource)",
 		progress: 60,
 		parent: 1,
 		type: "task",
 		calendar: "weekends-only",
-		details: "Build and iterate on early-stage prototypes.",
+		details:
+			"Weekends-only task assigned to a weekday-only resource: no working time in common.",
 		assigned: "",
 		priority: 1,
 	},
@@ -1371,6 +1373,272 @@ export const assignments = [
 	{ id: 12, task: 41, resource: "r4" },
 ];
 
+export const backlogTasks = [
+	{ id: 901, text: "API review", duration: 2, type: "task" },
+	{ id: 902, text: "Design polish", duration: 3, type: "task" },
+	{ id: 903, text: "QA checklist", duration: 1, type: "task" },
+	{ id: 904, text: "Docs update", duration: 2, type: "task" },
+	{ id: 905, text: "Release preparation", type: "milestone" },
+];
+
+const resourceHistogramScales = [
+	{ unit: "week", step: 1, format: weekScaleTemplate },
+	{ unit: "day", step: 1, format: "%j", css: dayStyle },
+];
+
+const resourceHistogramCalendars = [
+	{
+		id: "standard",
+		weekHours: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 8,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+		rules: [
+			{
+				type: "date",
+				date: "2026-04-09",
+				hours: 12,
+			},
+			{
+				type: "date",
+				date: "2026-04-17",
+				hours: 4,
+			},
+		],
+	},
+	{
+		id: "part-time",
+		weekHours: {
+			monday: 4,
+			tuesday: 4,
+			wednesday: 4,
+			thursday: 4,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "variable",
+		weekHours: {
+			monday: 8,
+			tuesday: 6,
+			wednesday: 2,
+			thursday: 8,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+	},
+	{
+		id: "weekends",
+		weekHours: {
+			monday: 0,
+			tuesday: 0,
+			wednesday: 0,
+			thursday: 0,
+			friday: 0,
+			saturday: 6,
+			sunday: 6,
+		},
+	},
+];
+
+const resourceHistogramResources = [
+	{ id: "design", name: "Design Team", open: true },
+	{
+		id: "alex",
+		name: "Alex Chen",
+		role: "Lead Designer",
+		color: "#3983eb",
+		parent: "design",
+		calendar: "standard",
+	},
+	{
+		id: "sophie",
+		name: "Sophie Evans",
+		role: "UX Designer",
+		color: "#ad44ab",
+		parent: "design",
+		calendar: "part-time",
+	},
+	{ id: "eng", name: "Engineering", open: true },
+	{
+		id: "noor",
+		name: "Noor Patel",
+		role: "Frontend Engineer",
+		color: "#00ba94",
+		parent: "eng",
+		calendar: "variable",
+	},
+	{
+		id: "mika",
+		name: "Mika Stone",
+		role: "QA Engineer",
+		color: "#ff9800",
+		parent: "eng",
+		calendar: "standard",
+	},
+	{ id: "ops", name: "Operations", open: true },
+	{
+		id: "ivy",
+		name: "Ivy Morgan",
+		role: "Release Manager",
+		color: "#9fa1ae",
+		parent: "ops",
+		calendar: "weekends",
+	},
+];
+
+const resourceHistogramTasks = [
+	{
+		id: 1,
+		text: "Discovery",
+		type: "summary",
+		parent: 0,
+		open: true,
+	},
+	{
+		id: 11,
+		text: "Workshop",
+		type: "task",
+		parent: 1,
+		start: new Date(2026, 3, 6),
+		end: new Date(2026, 3, 8),
+		progress: 60,
+	},
+	{
+		id: 12,
+		text: "Persona review",
+		type: "task",
+		parent: 1,
+		start: new Date(2026, 3, 7),
+		end: new Date(2026, 3, 10),
+		progress: 35,
+	},
+	{
+		id: 13,
+		text: "Research synthesis",
+		type: "task",
+		parent: 1,
+		start: new Date(2026, 3, 9),
+		end: new Date(2026, 3, 11),
+		progress: 20,
+	},
+	{
+		id: 2,
+		text: "Build",
+		type: "summary",
+		parent: 0,
+		open: true,
+	},
+	{
+		id: 21,
+		text: "Prototype shell",
+		type: "task",
+		parent: 2,
+		start: new Date(2026, 3, 8),
+		end: new Date(2026, 3, 14),
+		progress: 40,
+	},
+	{
+		id: 22,
+		text: "Interaction model",
+		type: "task",
+		parent: 2,
+		start: new Date(2026, 3, 10),
+		end: new Date(2026, 3, 16),
+		progress: 25,
+	},
+	{
+		id: 23,
+		text: "Visual polish",
+		type: "task",
+		parent: 2,
+		start: new Date(2026, 3, 14),
+		end: new Date(2026, 3, 18),
+		progress: 10,
+	},
+	{
+		id: 3,
+		text: "Validation",
+		type: "summary",
+		parent: 0,
+		open: true,
+	},
+	{
+		id: 31,
+		text: "QA pass",
+		type: "task",
+		parent: 3,
+		start: new Date(2026, 3, 13),
+		end: new Date(2026, 3, 16),
+		progress: 15,
+	},
+	{
+		id: 32,
+		text: "Fix verification",
+		type: "task",
+		parent: 3,
+		start: new Date(2026, 3, 15),
+		end: new Date(2026, 3, 18),
+		progress: 0,
+	},
+	{
+		id: 33,
+		text: "Weekend release rehearsal",
+		type: "task",
+		parent: 3,
+		start: new Date(2026, 3, 18),
+		end: new Date(2026, 3, 20),
+		calendar: "weekends",
+		progress: 0,
+	},
+	{
+		id: 34,
+		text: "Release candidate",
+		type: "milestone",
+		parent: 3,
+		start: new Date(2026, 3, 20),
+		progress: 0,
+	},
+];
+
+const resourceHistogramLinks = [
+	{ id: 1, source: 11, target: 12, type: "e2s" },
+	{ id: 2, source: 12, target: 13, type: "e2s" },
+	{ id: 3, source: 13, target: 21, type: "e2s" },
+	{ id: 4, source: 21, target: 22, type: "s2s" },
+	{ id: 5, source: 22, target: 23, type: "e2s" },
+	{ id: 6, source: 23, target: 31, type: "e2s" },
+	{ id: 7, source: 31, target: 32, type: "s2s" },
+	{ id: 8, source: 33, target: 34, type: "e2s" },
+];
+
+const resourceHistogramAssignments = [
+	{ id: 1, task: 11, resource: "alex" },
+	{ id: 2, task: 11, resource: "sophie", units: 50 },
+	{ id: 3, task: 12, resource: "alex" },
+	{ id: 4, task: 12, resource: "sophie" },
+	{ id: 5, task: 13, resource: "sophie" },
+	{ id: 6, task: 21, resource: "noor" },
+	{ id: 7, task: 21, resource: "alex", units: 50 },
+	{ id: 8, task: 22, resource: "noor" },
+	{ id: 9, task: 22, resource: "mika", units: 50 },
+	{ id: 10, task: 23, resource: "noor", units: 50 },
+	{ id: 11, task: 23, resource: "alex" },
+	{ id: 12, task: 31, resource: "mika" },
+	{ id: 13, task: 32, resource: "mika" },
+	{ id: 14, task: 32, resource: "noor", units: 50 },
+	{ id: 15, task: 33, resource: "ivy" },
+	{ id: 16, task: 33, resource: "mika", units: 50 },
+];
+
 const calendars = [
 	{
 		id: "default",
@@ -1469,7 +1737,7 @@ function addDays(d, n) {
 }
 
 export function getData(name, config) {
-	const data = datasets[name || "day"];
+	let data = datasets[name || "day"];
 
 	if (config?.baselines) {
 		data.tasks = data.tasks.map(t => {
@@ -1499,9 +1767,67 @@ export function getData(name, config) {
 		];
 	}
 	if (config?.unscheduledTasks) {
-		const t = data.tasks.find(t => t.id === 22);
-		t.unscheduled = true;
-		t.end = new Date(2026, 3, 10);
+		data = {
+			...data,
+			tasks: data.tasks.map(t => {
+				if (t.id === 22) {
+					t = { ...t };
+					t.end = new Date(2026, 3, 10);
+					t.duration = 2;
+					delete t.start;
+				}
+				return t;
+			}),
+		};
+	}
+
+	if (config?.constraints) {
+		const constraints = {
+			20: { type: "snet", date: new Date(2026, 3, 2) },
+			31: { type: "mso", date: new Date(2026, 3, 17) },
+			5: { type: "mfo", date: new Date(2026, 4, 13) },
+			// a constraint the chain cannot meet: the link is reported
+			23: { type: "fnlt", date: new Date(2026, 3, 14) },
+			// a start ceiling the task meets exactly
+			21: { type: "snlt", date: new Date(2026, 3, 8) },
+			// a finish floor the task clears with days to spare
+			22: { type: "fnet", date: new Date(2026, 3, 9) },
+		};
+		data = {
+			...data,
+			tasks: data.tasks.map(t =>
+				constraints[t.id] ? { ...t, constraint: constraints[t.id] } : t
+			),
+		};
+	}
+
+	if (config?.linkTypes) {
+		const linkTypes = {
+			1: { type: "s2s", lag: 1 },
+			11: { type: "e2e" },
+			8: { type: "s2e", lag: 5 },
+		};
+		data = {
+			...data,
+			links: data.links.map(l =>
+				linkTypes[l.id] ? { ...l, ...linkTypes[l.id] } : l
+			),
+		};
+	}
+
+	if (config?.deadlines) {
+		const deadlines = {
+			20: new Date(2026, 3, 8),
+			// the task runs past it, so the bar reads as overdue
+			23: new Date(2026, 3, 11),
+			31: new Date(2026, 3, 24),
+		};
+		data = {
+			...data,
+			tasks: data.tasks.map(t =>
+				deadlines[t.id] ? { ...t, deadline: deadlines[t.id] } : t
+			),
+		};
 	}
 
 	if (name === "calendars") {
@@ -1541,6 +1867,14 @@ const datasets = {
 		links: multiCalendarLinks,
 		scales,
 		calendars,
+	},
+	"resource-histogram": {
+		tasks: resourceHistogramTasks,
+		links: resourceHistogramLinks,
+		scales: resourceHistogramScales,
+		calendars: resourceHistogramCalendars,
+		resources: resourceHistogramResources,
+		assignments: resourceHistogramAssignments,
 	},
 };
 

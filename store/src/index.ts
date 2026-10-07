@@ -10,8 +10,14 @@ export {
 	formatDay,
 	registerScaleUnit,
 } from "./time";
+export { toInclusiveTask, fromInclusiveTask } from "./inclusiveEnd";
 export { handleAction, isHandledAction } from "./helpers/actionHandlers";
 export { calculateArea } from "./helpers/area";
+export {
+	PLACEHOLDER_ROW_ID,
+	isPlaceholder,
+	getPlaceholderTask,
+} from "./placeholder";
 export {
 	defaultToolbarButtons,
 	getToolbarButtons,
@@ -23,18 +29,34 @@ export {
 	getEditorButtons,
 	filterEditorButtons,
 } from "./helpers/editorItems";
+export { getSegmentProgress } from "./helpers/progress";
+export { resolveSCurvePoint } from "./helpers/sCurve";
 export {
 	defaultColumns,
 	getDefaultColumns,
 	getDefaultGridWidth,
+	getHeaderLength,
 	getResourceColumns,
+	getDateEditorButtons,
 	normalizeResourceColumns,
 } from "./columns";
+export { toggleGridChart, toggleChartSubGrid } from "./layout/displayMode";
 export { defaultTaskTypes } from "./taskTypes";
-export { prepareEditTask, parseTaskDates } from "./normalizeDates";
-export { normalizeZoom } from "./scales";
-export { isSegmentMoveAllowed, extendDragOptions } from "./tasks";
-
+export { defaultConstraintTypes } from "./constraintTypes";
+export { prepareEditTask } from "./normalizeDates";
+export { normalizeZoom, calcScaleCellDate } from "./scales";
+export {
+	isSegmentMoveAllowed,
+	extendDragOptions,
+	setTaskResources,
+} from "./tasks";
+export {
+	getHistogramBars,
+	getHistogramCapacityPath,
+	getResourceLoadColumns,
+	getResourceHistogramColumns,
+	resolveResourceHistogramBar,
+} from "./resourceLoad";
 export type {
 	TID,
 	IApi,
@@ -46,6 +68,11 @@ export type {
 	IComputedResource,
 	IResourceLoad,
 	IResourceColumn,
+	IHistogramBar,
+	IHistogramColumn,
+	IHistogramColumnPosition,
+	IResourceHistogramConfig,
+	IResourceHistogramTooltip,
 	IConfig,
 	IZoomConfig,
 	IGanttColumn,
@@ -55,8 +82,23 @@ export type {
 	IScheduleConfig,
 	ICriticalPathConfig,
 	IScaleConfig,
+	ICalendar,
 	ICalendarRule,
 	CalendarConfig,
+	Constraint,
+	IConflict,
+	InvalidLinkReason,
+	TLinkDraft,
+	TLinkValidator,
+	ITaskCalendar,
+	IHistoryManager,
+	TDurationUnit,
+	TSCurveType,
+	TSCurveMetric,
+	TSCurveLine,
+	TSCurveConfig,
+	ISCurveTooltip,
+	ISCurveTooltipLine,
 } from "./types";
 
 import { CalendarConfig } from "./types";

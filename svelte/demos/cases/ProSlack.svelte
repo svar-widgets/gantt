@@ -20,7 +20,7 @@
 			header: "Earliest start",
 			align: "center",
 			width: 120,
-			getter: t => t.slack.earliestStart,
+			getter: t => t.slack?.earliestStart,
 			template: v => (v ? format(v, "dd-MM-yy") : "-"),
 		},
 		{
@@ -28,7 +28,7 @@
 			header: "Latest start",
 			align: "center",
 			width: 120,
-			getter: t => t.slack.latestStart,
+			getter: t => t.slack?.latestStart,
 			template: v => (v ? format(v, "dd-MM-yy") : "-"),
 		},
 		{
@@ -36,7 +36,7 @@
 			header: "Free slack",
 			align: "center",
 			width: 100,
-			getter: t => t.slack.freeSlack,
+			getter: t => t.slack?.freeSlack,
 			template: v => v ?? "-",
 		},
 		{
@@ -44,7 +44,7 @@
 			header: "Total slack",
 			align: "center",
 			width: 100,
-			getter: t => t.slack.totalSlack,
+			getter: t => t.slack?.totalSlack,
 		},
 	];
 </script>

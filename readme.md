@@ -20,7 +20,7 @@
 
 **SVAR Svelte Gantt** is a customizable, interactive Gantt chart component written in Svelte and designed for visualizing project timelines. It provides an intuitive interface for managing tasks and dependencies directly on the timeline through drag-and-drop scheduling or a customizable task edit form. Comes with full TypeScript support, developer-friendly API, and flexible CSS styling.
 
-The component can be easily integrated with SvelteKit apps - [check the demo](https://github.com/svar-widgets/gantt-demo-sveltekit) and [integration guide](https://docs.svar.dev/svelte/gantt/category/sveltekit/).
+The component can be easily integrated with SvelteKit apps - check the [Gantt demo with SvelteKit](https://github.com/svar-widgets/gantt-demo-sveltekit) and [integration guide](https://docs.svar.dev/svelte/gantt/integration-guides/sveltekit/).
 
 <div align="center">
 <img src="https://svar.dev/images/github/basic-gantt-react.gif" alt="SVAR Svelte Gantt UI">
@@ -28,21 +28,36 @@ The component can be easily integrated with SvelteKit apps - [check the demo](ht
 
 ### Key Features
 
+SVAR Svelte Gantt gives you a solid foundation for task management and flexible timelines, with a grid, backend support, and customization options built in.
+
+**Timeline**
 -   Interactive drag-and-drop interface
 -   Tasks and dependencies visualization
--   Intuitive and customizable task edit form
 -   Task progress shown on taskbars
 -   Configurable timeline with flexible time units
 -   Custom time scales: define custom periods like sprints or stages
 -   Weekends/holidays highlights
--   Toolbar and context menu
--   Tooltips for taskbars and links
+-   Zooming with scroll
+-   Drag tasks from a backlog
+
+**Grid**
 -   Sorting tasks in the grid
+-   Reorder tasks in the grid
 -   Filtering (including natural language search)
 -   Custom HTML in grid cells
--   Zooming with scroll
+-   In-cell editing of task details in grid
+
+**Task interaction**
+-   Intuitive and customizable task edit form
+-   Toolbar and context menu
+-   Tooltips for taskbars and links
 -   Hotkeys support for common actions
+
+**Backend & data**
 -   Virtualization for large data sets
+-   Real-time updates from the server
+
+**Customization**
 -   Localization
 -   Light and dark skins
 -   Full TypeScript support
@@ -51,21 +66,34 @@ The component can be easily integrated with SvelteKit apps - [check the demo](ht
 
 SVAR Svelte Gantt is available in open-source and [PRO editions](https://svar.dev/svelte/gantt/#pro). The PRO edition offers additional features and automation logic:
 
--   Work day calendars (including individual tasks and resources)
--   Resource planning
--   Resource workload visualization
--   Auto-scheduling (forward mode and Finish-to-Start dependencies)
--   Summary tasks automation
+**Scheduling & constraints**
+-   Auto-scheduling: FS, SS, FF, SF, and lag
+-   Constraints (6 types)
+-   Critical path and deadlines
+-   Manual and inactive tasks
+
+**Calendars & resources**
+-   Working-time calendars (including individual tasks and resources)
+-   Resource-driven scheduling
+-   Resource load chart and histogram
+-   Drag-and-drop resources assignment
+
+**Tracking**
+-   Baselines, progress line, and S-curve
+-   Slack (float) visualization
+
+**Advanced task management**
 -   Task grouping
--   Critical path
--   Slack visualization
--   Baselines
 -   Rollups
 -   Split tasks
--   Vertical markers
+-   Summary tasks automation
 -   Unscheduled tasks
 -   WBS codes support
+
+**Layout & data**
+-   Sub-grid panel and placeholder row
 -   Undo/redo
+-   Vertical markers
 -   Export to PDF, PNG, Excel
 -   MS Project import/export
 

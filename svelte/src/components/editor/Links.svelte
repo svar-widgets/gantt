@@ -10,19 +10,13 @@
 		api,
 		autoSave,
 		onextchange: onchange,
-		predecessors = null,
-		successors = null,
 		batch = "links",
+		edits = null,
 	} = $props();
 
-	const {
-		activeTask,
-		_activeTask,
-		links,
-		tasks,
-		schedule,
-		unscheduledTasks,
-	} = api.getReactiveState();
+	const { activeTask, links, tasks, schedule } = $derived(
+		api.getReactiveState()
+	);
 
 	let linksData = $state();
 	$effect(() => {
@@ -36,15 +30,35 @@
 		{ id: "s2e", label: _("Start-to-end") },
 	];
 
-	function lagEditorHandler(row) {
-		return row.type === "e2s"
-			? { type: "text", config: { type: "number" } }
-			: null;
+	function getTypeOptions(row) {
+		const link = $links.byId(row.id);
+		if (!link) return list;
+		const taken = getPairTypes(link, row.id);
+		const check = api.getLinkValidator();
+		return list.filter(
+			({ id: type }) =>
+				type === row.type ||
+				(!taken.has(type) && !check({ ...link, type }))
+		);
 	}
 
-	const isLagHidden = $derived(
-		!$schedule?.auto || ($unscheduledTasks && $_activeTask.unscheduled)
-	);
+	function getPairTypes(link, except) {
+		const out = new Set();
+		linksData.forEach(group =>
+			group.data.forEach(row => {
+				if (row.id === except) return;
+				const other = $links.byId(row.id);
+				if (
+					other?.source === link.source &&
+					other.target === link.target
+				)
+					out.add(row.type);
+			})
+		);
+		return out;
+	}
+
+	const isLagHidden = $derived(!$schedule?.auto);
 
 	function getColumns() {
 		return [
@@ -56,7 +70,7 @@
 			{
 				id: "lag",
 				header: _("Lag"),
-				editor: lagEditorHandler,
+				editor: { type: "text", config: { type: "number" } },
 				flexgrow: 1,
 				hidden: isLagHidden,
 			},
@@ -65,12 +79,13 @@
 				header: _("Type"),
 				width: 124,
 				options: list,
-				editor: {
+				editor: row => ({
 					type: "richselect",
 					config: {
 						cell: LinkTypeCell,
+						options: getTypeOptions(row),
 					},
-				},
+				}),
 				cell: LinkTypeCell,
 			},
 			{
@@ -84,57 +99,32 @@
 	}
 
 	function getLinksData() {
-		if ($activeTask) {
-			const il = [];
-			const ol = [];
-
-			if (!predecessors || !successors) {
-				$links.forEach(l => {
-					if (!predecessors && l.target === $activeTask) il.push(l);
-					if (!successors && l.source === $activeTask) ol.push(l);
-				});
-			}
-
-			const inLinks =
-				predecessors ||
-				il.map(link => {
-					const { id, lag, type, source } = link;
-					return {
-						id,
-						type,
-						lag,
-						taskText: $tasks.byId(source).text,
-					};
-				});
-
-			const outLinks =
-				successors ||
-				ol.map(link => {
-					const { id, lag, type, target } = link;
-					return {
-						id,
-						type,
-						lag,
-						taskText: $tasks.byId(target).text,
-					};
-				});
-
-			return [
-				{ title: _("Predecessors"), data: inLinks },
-				{ title: _("Successors"), data: outLinks },
-			];
-		}
+		if (!$activeTask) return;
+		const inLinks = [];
+		const outLinks = [];
+		const toRow = (link, other) => ({
+			id: link.id,
+			type: link.type,
+			lag: link.lag,
+			taskText: $tasks.byId(other).text,
+		});
+		$links.forEach(saved => {
+			const edit = edits?.get(saved.id);
+			if (edit?.action === "delete-link") return;
+			const link = edit ? { ...saved, ...edit.data.link } : saved;
+			if (link.target === $activeTask)
+				inLinks.push(toRow(link, link.source));
+			if (link.source === $activeTask)
+				outLinks.push(toRow(link, link.target));
+		});
+		return [
+			{ title: _("Predecessors"), data: inLinks },
+			{ title: _("Successors"), data: outLinks },
+		];
 	}
 
 	function getActionData(evData) {
-		return {
-			view: "links",
-			event: evData,
-			values: {
-				predecessors: linksData[0].data,
-				successors: linksData[1].data,
-			},
-		};
+		return { view: "links", event: evData };
 	}
 
 	function onDeleteAction(id) {
@@ -160,9 +150,6 @@
 		if (column === "lag" && value !== "") value = value * 1;
 
 		const update = { [column]: value };
-		if (column === "type" && $schedule?.auto) {
-			if (value !== "e2s") update.lag = "";
-		}
 
 		if (autoSave) {
 			api.exec("update-link", {

@@ -235,4 +235,150 @@ context("Resource chart", () => {
 		cy.get(".wx-tooltip").should("contain.text", "Name:");
 		cy.shot(`resource-chart-tooltip`);
 	});
+
+	context("Histogram mode", () => {
+		beforeEach(() => {
+			cy.visit("/index.html#/resource-histogram-aggregate");
+			cy.viewport(1300, 900);
+			cy.wxG("resource-load").should("be.visible");
+		});
+
+		it("renders daily load, overload, and exceptional capacity", () => {
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.should("have.length", 7)
+				.eq(2)
+				.find(".wx-histogram-load")
+				.should("have.class", "wx-histogram-overload")
+				.invoke("attr", "style")
+				.should("match", /height:\s*max\(100%, 3px\);/);
+
+			cy.wxG("resource-chart-row", "sophie")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.eq(1)
+				.find(".wx-histogram-load")
+				.invoke("attr", "style")
+				.should("match", /height:\s*max\(40%, 3px\);/);
+
+			cy.wxG("resource-chart-row", "exception")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.eq(3)
+				.find(".wx-histogram-load")
+				.should("not.have.class", "wx-histogram-overload")
+				.invoke("attr", "style")
+				.should("match", /height:\s*max\(53.33%, 3px\);/);
+
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.eq(0)
+				.find(".wx-histogram-label")
+				.should("not.exist");
+
+			cy.get(".wx-histogram-capacity-path").should($paths => {
+				expect($paths.length).to.be.greaterThan(0);
+			});
+
+			cy.shot("resource-histogram-daily");
+		});
+
+		it("switches to one aggregated bar per week", () => {
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.should("have.length", 7);
+
+			cy.contains(".controls .wx-button", "Aggregate").click();
+
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.should("have.length", 1)
+				.find(".wx-histogram-load")
+				.invoke("attr", "style")
+				.should("match", /height:\s*max\(82.86%, 3px\);/);
+
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-label")
+				.should("have.text", "58/44");
+
+			cy.shot("resource-histogram-weekly");
+		});
+
+		it("resolves tooltip metrics for a rendered bar", () => {
+			cy.get(".wx-tooltip-area").trigger("mouseleave");
+			cy.get(".wx-tooltip").should("not.exist");
+
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-bar")
+				.eq(2)
+				.find(".wx-histogram-load")
+				.trigger("mousemove", { force: true });
+
+			cy.get(".wx-tooltip")
+				.should("be.visible")
+				.and("contain.text", "Name:")
+				.and("contain.text", "Alex Chen")
+				.and("contain.text", "Range:")
+				.and("contain.text", "Apr 7, 2026")
+				.and("contain.text", "Load:")
+				.and("contain.text", "16h")
+				.and("contain.text", "Capacity:")
+				.and("contain.text", "8h")
+				.and("contain.text", "Utilization:")
+				.and("contain.text", "200%");
+
+			cy.shot("resource-histogram-tooltip");
+		});
+
+		it("resolves tooltip metrics for an aggregated bar", () => {
+			cy.contains(".controls .wx-button", "Aggregate").click();
+			cy.get(".wx-tooltip-area").trigger("mouseleave");
+			cy.get(".wx-tooltip").should("not.exist");
+
+			cy.wxG("resource-chart-row", "alex")
+				.wxG("resource-chart-cell-id", "2026-04-05")
+				.find(".wx-histogram-load")
+				.trigger("mousemove", { force: true });
+
+			cy.get(".wx-tooltip")
+				.should("be.visible")
+				.and("contain.text", "Name:")
+				.and("contain.text", "Alex Chen")
+				.and("contain.text", "Range:")
+				.and("contain.text", "Apr 5, 2026 - Apr 11, 2026")
+				.and("contain.text", "Load:")
+				.and("contain.text", "58h")
+				.and("contain.text", "Capacity:")
+				.and("contain.text", "44h")
+				.and("contain.text", "Utilization:")
+				.and("contain.text", "132%");
+
+			cy.shot("resource-histogram-aggregate-tooltip");
+		});
+
+		it("keeps capacity paths in sync with horizontal and vertical scrolling", () => {
+			cy.wxG("resource-chart").find(".wx-scroll").scrollTo(300, 0);
+			cy.get(".wx-histogram-capacity-overlay svg")
+				.should("have.attr", "style")
+				.and("contain", "translate(-300px, 0px)");
+			cy.get(".wx-histogram-capacity-path").should($paths => {
+				expect($paths.length).to.be.greaterThan(0);
+			});
+			cy.shot("resource-histogram-horizontal-scroll");
+
+			cy.wxG("resource-chart").find(".wx-scroll").scrollTo("bottom");
+			cy.wxG("resource-chart-row", "overflow-12").should("be.visible");
+			cy.get(".wx-histogram-capacity-path").should($paths => {
+				expect($paths.length).to.be.lessThan(22);
+			});
+
+			cy.shot("resource-histogram-vertical-scroll");
+		});
+	});
 });

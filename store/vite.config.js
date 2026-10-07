@@ -1,6 +1,6 @@
 // vite.config.ts
 import { resolve } from "path";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, rmSync, writeFileSync } from "fs";
 import { defineConfig, loadEnv } from "vite";
 import dts from "vite-plugin-dts";
 import conditionalCompile from "vite-plugin-conditional-compile";
@@ -20,7 +20,7 @@ const minify = {
 
 export default function ({ mode }) {
 	process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "WX") };
-	const trial = !!process.env.WX_TRIAL_PACKAGE;
+	const trial = process.env.WX_PACKAGE_TYPE == "trial";
 	const open = process.env.WX_PACKAGE_TYPE == "open";
 	const isProduction = mode !== "development" && mode !== "test";
 
@@ -77,6 +77,12 @@ export default function ({ mode }) {
 		config.plugins.push(
 			dts({
 				outDir: resolve(__dirname, "dist/types"),
+				afterBuild: () => {
+					rmSync(resolve(__dirname, "dist/types/pro"), {
+						recursive: true,
+						force: true,
+					});
+				},
 				exclude: ["src/pro/**"],
 			})
 		);

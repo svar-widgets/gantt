@@ -12,7 +12,7 @@
 	import { GitHubLogoIcon, LogoIcon } from "../assets/icons/index";
 
 	const { publicName, skins, productTag, productLink } = $props();
-	let skin = $state(skins[0].id);
+	let skin = $derived(skins[0].id);
 	let title = $state("");
 	let link = $state("");
 	let show = $state(true);

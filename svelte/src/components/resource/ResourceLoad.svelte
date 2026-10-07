@@ -3,7 +3,11 @@
 	import { locateID } from "@svar-ui/lib-dom";
 	import {
 		getResourceColumns,
+		getResourceLoadColumns,
+		getResourceHistogramColumns,
 		normalizeResourceColumns,
+		getHeaderLength,
+		toggleGridChart,
 	} from "@svar-ui/gantt-store";
 	import { locale } from "@svar-ui/lib-dom";
 	import { en } from "@svar-ui/gantt-locales";
@@ -16,6 +20,8 @@
 	import NameCell from "./NameCell.svelte";
 	import NameCellCompact from "./NameCellCompact.svelte";
 	import LoadCell from "./LoadCell.svelte";
+	import HistogramCell from "./HistogramCell.svelte";
+	import HistogramCapacityOverlay from "./HistogramCapacityOverlay.svelte";
 
 	import {
 		getFlexBasis,
@@ -23,18 +29,23 @@
 		getFillColumn,
 		getColumnsWidth,
 		getSortMarks,
-		getResourceLoadColumns,
 		getScrollbarWidth,
 		getColumnStyle,
 	} from "../../helpers/grid";
+	import { getResizerUi } from "../../helpers/resizer.js";
 	import { createZoomWheelHandler } from "../../helpers/zoom";
 
 	let {
 		api,
 		columns = getResourceColumns(),
-		mode = "grid", // "grid" | "chart"
+		mode = "utilization", // "utilization" | "histogram"
 		template,
+		histogram,
+		draggableRows = false,
 	} = $props();
+
+	const overloadHeadroom = $derived(histogram?.overloadHeadroom);
+	const capacityLine = $derived(histogram?.capacityLine ?? true);
 
 	// detect scrollbar width that may differ in browsers
 	let scrollbarWidth = $state(17);
@@ -49,16 +60,16 @@
 		_scales: rScales,
 		_resourceSort: rResourceSort,
 		cellHeight,
-		columns: ganttColumns,
+		_columns: ganttColumns,
 		scrollLeft,
 		gridWidth,
-		displayMode,
-		_headerLength,
+		_displayPanels,
 		highlightTime,
 		_columnsWidth,
 		_gridCollapseThreshold,
 		cellBorders,
 		zoom,
+		_compactMode,
 	} = $derived(state ?? {});
 
 	let l = getContext("wx-i18n");
@@ -68,10 +79,42 @@
 	}
 	const _ = l.getGroup("gantt");
 
+	let drag = $state(null);
+	const layoutPanels = $derived(drag?.panels ?? $_displayPanels);
+	const hasGrid = $derived(!!$_displayPanels?.includes("grid"));
+	const chartVisible = $derived(!!$_displayPanels?.includes("chart"));
+
+	const gridChartResizerUi = $derived(
+		getResizerUi("gridChart", layoutPanels ?? [], $_compactMode)
+	);
+
+	function startDrag() {
+		drag = { panels: [...$_displayPanels] };
+	}
+
+	// the store fits the width to the gantt layout, incl. its subGrid
+	function resizeGrid(width, commit) {
+		api.exec("resize-grid", { width, inProgress: !commit });
+		if (commit) drag = null;
+	}
+
+	const onExpandStart = () => {
+		api.exec("set-display-mode", {
+			mode: toggleGridChart($_displayPanels, "start", $_compactMode),
+		});
+	};
+	const onExpandEnd = () => {
+		api.exec("set-display-mode", {
+			mode: toggleGridChart($_displayPanels, "end", $_compactMode),
+		});
+	};
+
 	let containerWidth = $state(0);
 	let chartContainer = $state();
 	let scalesDiv = $state();
 	let rightContainerHeight = $state(0);
+	let rightContainerWidth = $state(0);
+	let rightScrollTop = $state(0);
 	let leftApi;
 	let rightApi;
 
@@ -95,8 +138,8 @@
 			if (cols[ni].cell) cols[ni]._cell = cols[ni].cell;
 			cols[ni] = {
 				...cols[ni],
-				header: $displayMode === "chart" ? "" : cols[ni].header,
-				cell: $displayMode === "chart" ? NameCellCompact : NameCell,
+				header: hasGrid ? cols[ni].header : "",
+				cell: hasGrid ? NameCell : NameCellCompact,
 			};
 		}
 
@@ -112,21 +155,26 @@
 	$effect.pre(() => {
 		let width;
 		if ($_columnsWidth) width = $_columnsWidth;
-		else if ($displayMode === "chart") width = $_gridCollapseThreshold || 0;
-		else width = $gridWidth;
+		else if (hasGrid) width = $gridWidth;
+		else width = $_gridCollapseThreshold || 0;
 		columnWidth = width;
 	});
 
 	const fitColumns = $derived(
-		getFitColumns(finalColumns, $displayMode, "name")
+		getFitColumns(finalColumns, $_displayPanels, "grid", "name")
 	);
+	const visibleHeaderLength = $derived(getHeaderLength(fitColumns));
 
 	const rightColumns = $derived(
-		getResourceLoadColumns($rScales, LoadCell, template)
+		mode === "histogram"
+			? getResourceHistogramColumns($rScales, HistogramCell, {
+					overloadHeadroom,
+				})
+			: getResourceLoadColumns($rScales, LoadCell, template)
 	);
 
 	const flexBasis = $derived(
-		getFlexBasis($ganttColumns, $displayMode, $gridWidth)
+		getFlexBasis($ganttColumns, $_displayPanels, $gridWidth)
 	);
 
 	// right grid V-scroll eats one scrollbar width on the right; timescales
@@ -220,13 +268,14 @@
 					top: ev.top,
 					rSync: true,
 				});
+			if (ev.top !== undefined) rightScrollTop = ev.top;
 		});
 	}
 
 	function getCellStyle(row, col) {
-		const value = getValue(row, col);
-		if (value) {
-			return value.percent > 100 ? " wx-overload" : " wx-normal";
+		if (mode !== "histogram") {
+			const value = getValue(row, col);
+			if (value) return value.percent > 100 ? "wx-overload" : "wx-normal";
 		}
 
 		if (col.unit !== "day" && col.unit !== "hour") return "";
@@ -277,22 +326,37 @@
 								sizes={{
 									rowHeight: $cellHeight,
 									headerHeight:
-										$rScales.height / $_headerLength,
+										$rScales.height / visibleHeaderLength,
 								}}
 								columnStyle={getColumnStyle}
 								data={$rResources}
 								columns={fitColumns}
 								{sortMarks}
 								{selectedRows}
+								{draggableRows}
 							/>
 						</div>
 					</div>
 				</div>
 
-				<Resizer {containerWidth} {api} />
+				<Resizer
+					side="left"
+					panelWidth={$gridWidth}
+					{...gridChartResizerUi}
+					onResizeStart={startDrag}
+					onResize={width => resizeGrid(width)}
+					onResizeEnd={width => resizeGrid(width, true)}
+					{onExpandStart}
+					{onExpandEnd}
+				/>
 			{/if}
 
-			<div class="wx-chart" bind:this={chartContainer} onwheel={onWheel}>
+			<div
+				class="wx-chart"
+				class:wx-chart-collapsed={!chartVisible}
+				bind:this={chartContainer}
+				onwheel={onWheel}
+			>
 				<div
 					class="wx-timescale-viewport"
 					class:wx-v-scroll-reserve={rightHasVScroll}
@@ -300,28 +364,39 @@
 				>
 					<TimeScales {api} />
 				</div>
-				{#if mode === "grid"}
-					<div
-						class="wx-grid-scale-container"
-						bind:clientHeight={rightContainerHeight}
-					>
-						<Grid
-							init={initRight}
+				<div
+					class="wx-grid-scale-container"
+					class:wx-histogram-grid={mode === "histogram"}
+					bind:clientHeight={rightContainerHeight}
+					bind:clientWidth={rightContainerWidth}
+				>
+					<Grid
+						init={initRight}
+						columns={rightColumns}
+						data={$rResources}
+						sizes={{
+							rowHeight: $cellHeight,
+							headerHeight: 0,
+						}}
+						{selectedRows}
+						rowStyle={() =>
+							$cellBorders === "column" ? "wx-column-border" : ""}
+						cellStyle={getCellStyle}
+					/>
+					{#if mode === "histogram" && capacityLine}
+						<HistogramCapacityOverlay
+							rows={$rResources}
 							columns={rightColumns}
-							data={$rResources}
-							sizes={{
-								rowHeight: $cellHeight,
-								headerHeight: 0,
-							}}
-							{selectedRows}
-							rowStyle={() =>
-								$cellBorders === "column"
-									? "wx-column-border"
-									: ""}
-							cellStyle={getCellStyle}
+							cellHeight={$cellHeight}
+							viewportHeight={rightContainerHeight}
+							viewportWidth={rightContainerWidth}
+							rightInset={rightHasVScroll ? scrollbarWidth : 0}
+							bottomInset={rightHasHScroll ? scrollbarWidth : 0}
+							scrollLeft={$scrollLeft}
+							scrollTop={rightScrollTop}
 						/>
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -350,6 +425,12 @@
 		flex-direction: column;
 		overflow: hidden;
 		outline: none;
+	}
+
+	.wx-chart-collapsed {
+		flex: 0 0 0;
+		width: 0;
+		min-width: 0;
 	}
 
 	.wx-timescale-viewport {
@@ -500,11 +581,29 @@
 	.wx-grid-scale-container :global(.wx-grid .wx-cell.wx-normal) {
 		background: var(--wx-gantt-load-normal-color);
 	}
+	.wx-grid-scale-container :global(.wx-grid .wx-cell.wx-normal:hover) {
+		background: var(--wx-gantt-load-normal-hover-color);
+	}
 	.wx-grid-scale-container :global(.wx-grid .wx-cell.wx-overload) {
 		background: var(--wx-gantt-load-danger-color);
 	}
+	.wx-grid-scale-container :global(.wx-grid .wx-cell.wx-overload:hover) {
+		background: var(--wx-gantt-load-danger-hover-color);
+	}
+	.wx-grid-scale-container.wx-histogram-grid :global(.wx-grid .wx-cell) {
+		padding: 0;
+	}
+	.wx-grid-scale-container.wx-histogram-grid
+		:global(.wx-grid .wx-cell[tabindex="0"]:focus) {
+		outline: none;
+	}
 	/* override load cell background for selected rows */
-	.wx-grid-scale-container :global(.wx-grid .wx-row.wx-selected .wx-cell) {
+	.wx-grid-scale-container
+		:global(
+			.wx-grid
+				.wx-row.wx-selected
+				.wx-cell:not(.wx-normal):not(.wx-overload)
+		) {
 		background: var(--wx-table-select-background);
 	}
 </style>

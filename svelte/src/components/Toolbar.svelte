@@ -5,6 +5,7 @@
 		handleAction,
 		getToolbarButtons,
 		isHandledAction,
+		isPlaceholder,
 	} from "@svar-ui/gantt-store";
 
 	import { locale } from "@svar-ui/lib-dom";
@@ -21,23 +22,40 @@
 	const _ = l.getGroup("gantt");
 
 	let state = $derived(api?.getReactiveState());
-	let { _selected, undo, history, splitTasks, groupBy } = $derived(
-		state || {}
-	);
+	let {
+		_selected,
+		undo,
+		history,
+		splitTasks,
+		groupBy,
+		conflicts,
+		showConflicts,
+		schedule,
+	} = $derived(state || {});
 
 	const historyActions = ["undo", "redo"];
 
 	const finalItems = $derived.by(() => {
-		const fullButtons = getToolbarButtons({ undo: true, splitTasks: true });
+		const fullButtons = getToolbarButtons({
+			undo: true,
+			splitTasks: true,
+			conflicts: true,
+		});
 		const buttons = items.length
 			? items
 			: getToolbarButtons({
 					undo: $undo,
 					splitTasks: $splitTasks,
 					group: !!$groupBy?.field,
+					conflicts: $schedule?.auto,
 				});
 		return buttons.map(b => {
 			b = { ...b, disabled: false };
+			if (b.id === "show-conflicts") {
+				if ($conflicts?.length)
+					b.css = b.css ? `${b.css} wx-conflicts` : "wx-conflicts";
+				if ($showConflicts) b.type = "pressed";
+			}
 			b.handler = isHandledAction(fullButtons, b.id)
 				? item => handleAction(api, item.id, null, _)
 				: b.handler;
@@ -53,8 +71,14 @@
 			const action = item.id;
 
 			if (action === "add-task" || !historyActions.includes(action)) {
-				if (!$_selected?.length || !api) {
-					if (action !== "add-task") return;
+				if (
+					!$_selected?.length ||
+					($_selected?.length === 1 &&
+						isPlaceholder($_selected[0].id)) ||
+					!api
+				) {
+					if (action !== "add-task" && action !== "show-conflicts")
+						return;
 					finalButtons.push(item);
 				} else {
 					finalButtons.push({
@@ -94,3 +118,29 @@
 </script>
 
 <Toolbar items={buttons} />
+
+<style>
+	/* Orange corner dot when the graph has conflicts. */
+	:global(.wx-button.wx-conflicts),
+	:global(i.wx-conflicts) {
+		position: relative;
+	}
+	:global(.wx-button.wx-conflicts::after),
+	:global(i.wx-conflicts::after) {
+		content: "";
+		position: absolute;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--wx-gantt-constraint-violation-color);
+		pointer-events: none;
+	}
+	:global(.wx-button.wx-conflicts::after) {
+		top: 2px;
+		right: 2px;
+	}
+	:global(i.wx-conflicts::after) {
+		top: 0;
+		right: -2px;
+	}
+</style>

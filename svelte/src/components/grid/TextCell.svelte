@@ -1,7 +1,10 @@
 <script>
+	import { getContext } from "svelte";
 	import GroupCellText from "./GroupCellText.svelte";
 
 	let { row, column } = $props();
+
+	const _ = getContext("wx-i18n").getGroup("gantt");
 
 	function getStyle(row, col) {
 		return `justify-content:${col.align};padding-left: ${
@@ -22,6 +25,8 @@
 			<column._cell {row} {column} />
 		{:else if row.$group}
 			<GroupCellText {row} />
+		{:else if row.$placeholder && !row.text}
+			<span class="wx-hint">{_("New task")}</span>
 		{:else}
 			{row.text}
 		{/if}
@@ -59,5 +64,9 @@
 		text-overflow: ellipsis;
 		overflow: hidden;
 		white-space: nowrap;
+	}
+
+	.wx-hint {
+		color: var(--wx-color-font-disabled);
 	}
 </style>

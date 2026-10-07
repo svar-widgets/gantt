@@ -217,7 +217,16 @@ test("correctly resets new parent summary task after all tasks are moved out one
 });
 
 test("sets summary dates only for scheduled children, Default set", () => {
-	const store = getDataStore(getData("summaries"));
+	const data = { ...getData("summaries") };
+	data.tasks = data.tasks.map(t => {
+		t = { ...t };
+		if (t.id === 151 || t.id === 16) delete t.start;
+		return t;
+	});
+	const store = getDataStore({
+		...data,
+		unscheduledTasks: true,
+	});
 	const { tasks } = store.getState();
 
 	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 14));
@@ -225,7 +234,7 @@ test("sets summary dates only for scheduled children, Default set", () => {
 
 	store.in.exec("update-task", {
 		id: 15,
-		task: { unscheduled: true },
+		task: { start: null },
 	});
 	expect(tasks.byId(15).unscheduled).to.eq(true);
 
@@ -234,23 +243,29 @@ test("sets summary dates only for scheduled children, Default set", () => {
 
 	store.in.exec("update-task", {
 		id: 15,
-		task: { unscheduled: false },
+		task: { start: new Date(2024, 5, 15) },
 	});
 	expect(tasks.byId(15).unscheduled).to.eq(false);
 
 	store.in.exec("update-task", {
 		id: 152,
-		task: { unscheduled: true },
+		task: { start: null },
 	});
 	expect(tasks.byId(152).unscheduled).to.eq(true);
 
-	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 14));
+	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 15));
 	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
 });
 
 test("check dates of summary task if all kids are unscheduled, Default set", () => {
+	const data = { ...getData("summaries") };
+	data.tasks = data.tasks.map(t => {
+		t = { ...t };
+		if (t.id === 151 || t.id === 16) delete t.start;
+		return t;
+	});
 	const store = getDataStore({
-		...getData("summaries"),
+		...data,
 		unscheduledTasks: true,
 	});
 	const { tasks } = store.getState();
@@ -260,6 +275,7 @@ test("check dates of summary task if all kids are unscheduled, Default set", () 
 	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
 
 	store.in.exec("delete-task", { id: 17 });
+	// todo, there is no summary task, onlu one child is left and it is unscheduled
 	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 21));
 	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
 });
@@ -502,6 +518,168 @@ test("supports inProgress move-task operation and resets related summary task da
 	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 13));
 });
 
+test("a reorder drag keeps summary updates in progress until drop", () => {
+	const store = getDataStore(getData("summaries"));
+	const { tasks } = store.getState();
+	const updates: any[] = [];
+	store.in.on("update-task", (ev: any) => updates.push(ev));
+
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 3,
+		inProgress: true,
+	});
+	expect(tasks.byId(4).parent).to.eq(7);
+	expect(updates.length).to.be.greaterThan(0);
+	updates.forEach(ev => {
+		expect(ev.inProgress).to.eq(true);
+		expect(ev.skipProvider).to.eq(true);
+	});
+
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 5,
+		inProgress: true,
+	});
+	expect(tasks.byId(4).parent).to.eq(11);
+	updates.forEach(ev => {
+		expect(ev.inProgress).to.eq(true);
+		expect(ev.skipProvider).to.eq(true);
+	});
+
+	updates.length = 0;
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 5,
+		inProgress: false,
+	});
+
+	// 7 and 8 changed during the drag but are back to their original dates
+	expect(updates.map(ev => ev.id)).toEqual([11]);
+	updates.forEach(ev => {
+		expect(ev.inProgress).to.eq(undefined);
+		expect(ev.skipProvider).to.eq(undefined);
+		expect(ev.eventSource).to.eq("move-task");
+		expect(ev.joinUndo).to.eq(true);
+		expect(ev.skipUndo).to.eq(true);
+		expect(ev.task.start).toEqual(tasks.byId(ev.id).start);
+		expect(ev.task.end).toEqual(tasks.byId(ev.id).end);
+	});
+	expect(tasks.byId(11).start).toEqual(new Date(2024, 5, 13));
+	expect(tasks.byId(11).end).toEqual(new Date(2024, 5, 21));
+	[1, 7, 8].forEach(id => {
+		expect(tasks.byId(id).start).toEqual(summaryDates[id].start);
+		expect(tasks.byId(id).end).toEqual(summaryDates[id].end);
+	});
+});
+
+test("a reorder drag dropped back where it started sends no summary updates", () => {
+	const store = getDataStore(getData("summaries"));
+	const { tasks } = store.getState();
+	const updates: any[] = [];
+	store.in.on("update-task", (ev: any) => updates.push(ev));
+
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 3,
+		inProgress: true,
+	});
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 10,
+		inProgress: true,
+	});
+
+	updates.length = 0;
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 10,
+		inProgress: false,
+	});
+
+	expect(tasks.byId(4).parent).to.eq(8);
+	expect(updates).toEqual([]);
+	[1, 7, 8].forEach(id => {
+		expect(tasks.byId(id).start).toEqual(summaryDates[id].start);
+		expect(tasks.byId(id).end).toEqual(summaryDates[id].end);
+	});
+});
+
+test("a reorder drag among siblings sends no summary updates", () => {
+	const store = getDataStore(getData("summaries"));
+	const updates: any[] = [];
+	store.in.on("update-task", (ev: any) => updates.push(ev));
+
+	store.in.exec("move-task", {
+		id: 9,
+		mode: "before",
+		target: 3,
+		inProgress: true,
+	});
+	store.in.exec("move-task", {
+		id: 9,
+		mode: "before",
+		target: 3,
+		inProgress: false,
+	});
+
+	expect(store.getState().tasks.byId(9).parent).to.eq(7);
+	expect(updates).toEqual([]);
+});
+
+test("drag-time summary progress updates skip the provider too", () => {
+	const store = getDataStore({
+		...getData("summaries"),
+		summary: { autoProgress: true },
+	});
+	const updates: any[] = [];
+	store.in.on("update-task", (ev: any) => updates.push(ev));
+
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 15,
+		inProgress: true,
+	});
+	expect(updates.some(ev => ev.id === 1 && "progress" in ev.task)).to.eq(
+		true
+	);
+	updates.forEach(ev => {
+		expect(ev.inProgress).to.eq(true);
+		expect(ev.skipProvider).to.eq(true);
+	});
+
+	updates.length = 0;
+	store.in.exec("move-task", {
+		id: 4,
+		mode: "before",
+		target: 15,
+		inProgress: false,
+	});
+	expect(updates.length).to.be.greaterThan(0);
+	updates.forEach(ev => {
+		expect(ev.inProgress).to.eq(undefined);
+		expect(ev.skipProvider).to.eq(undefined);
+	});
+});
+
+test("a move that is not a drag sends summary updates without inProgress", () => {
+	const store = getDataStore(getData("summaries"));
+	const updates: any[] = [];
+	store.in.on("update-task", (ev: any) => updates.push(ev));
+
+	store.in.exec("move-task", { id: 4, mode: "before", target: 1 });
+
+	expect(updates.map(ev => ev.id)).toEqual([8, 1]);
+	updates.forEach(ev => expect(ev.inProgress).to.eq(undefined));
+});
+
 test("supports drag-task operation and resets related summary task dates, Default set", () => {
 	const store = getDataStore({ ...getData("summaries"), cellWidth: 30 });
 	const { tasks, cellWidth } = store.getState();
@@ -737,4 +915,67 @@ test("auto schedule + autoProgress does not loop", () => {
 	} as any);
 
 	expect(scheduleRuns).toBeLessThan(10);
+});
+
+test("sets summary dates from all children when unscheduledTasks is disabled, Default set", () => {
+	const store = getDataStore({
+		...getData(),
+		unscheduledTasks: false,
+		tasks: [
+			{
+				id: 1,
+				text: "Summary",
+				type: "summary",
+				parent: 0,
+				open: true,
+			},
+			{
+				id: 2,
+				text: "Scheduled kid",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 5, 14),
+				end: new Date(2024, 5, 16),
+				duration: 2,
+			},
+			{
+				id: 3,
+				text: "Kid with unscheduled flag",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 5, 10),
+				end: new Date(2024, 5, 12),
+				duration: 2,
+				unscheduled: true, // this kid should not be ignored as unscheduledTasks is false
+			},
+		],
+		links: [],
+	});
+	const { tasks } = store.getState();
+
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 10));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 16));
+});
+
+test("ignores a summary's own duration when its dates come from kids, Default set", () => {
+	const store = getDataStore({
+		...getData(),
+		tasks: [
+			{ id: 1, text: "Summary", type: "summary", duration: 5 },
+			{
+				id: 2,
+				text: "Kid",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 5, 10),
+				end: new Date(2024, 5, 12),
+			},
+		],
+		links: [],
+	});
+	const { tasks } = store.getState();
+
+	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 10));
+	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 12));
+	expect(tasks.byId(1).duration).toEqual(2);
 });

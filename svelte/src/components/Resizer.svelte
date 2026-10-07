@@ -1,50 +1,39 @@
 <script>
+	import { onDestroy } from "svelte";
+
 	let {
-		api,
-		position = "after",
-		size = 4,
-		dir = "x",
-		onmove,
-		containerWidth = 0,
-		rightThreshold = 50,
+		side = "left",
+		layout = "both",
+		draggable = false,
+		hideButtonsUntilHover = false,
+		startButton = null,
+		endButton = null,
+		panelWidth = 0,
+		resizeInvert = false,
+		onResize,
+		onResizeStart,
+		onResizeEnd,
+		onExpandStart,
+		onExpandEnd,
 	} = $props();
 
-	const { gridWidth, displayMode, _gridCollapseThreshold, _compactMode } =
-		api.getReactiveState();
+	const cursor = $derived(draggable ? "ew-resize" : "auto");
 
-	function getBox(value) {
-		let offset = 0;
-		if (position === "center") offset = size / 2;
-		else if (position === "before") offset = size;
+	let start = 0;
+	let pos;
+	let width = null; // last dragged width, null when not dragging
 
-		const box = {
-			size: [size + "px", "auto"],
-			p: [value - offset + "px", "0px"],
-			p2: ["auto", "0px"],
-		};
-
-		if (dir !== "x") for (let name in box) box[name] = box[name].reverse();
-		return box;
+	function widthAt(ev) {
+		const delta = ev.clientX - start;
+		return resizeInvert ? pos - delta : pos + delta;
 	}
 
-	let start = 0,
-		pos;
-
-	function getEventPos(ev) {
-		return dir === "x" ? ev.clientX : ev.clientY;
-	}
 	function down(ev) {
-		// Prevent dragging when in normal mode and only one view is visible
-		if (
-			$_compactMode ||
-			$displayMode === "grid" ||
-			$displayMode === "chart"
-		) {
-			return;
-		}
+		if (!draggable) return;
 
-		start = getEventPos(ev);
-		pos = $gridWidth;
+		start = ev.clientX;
+		pos = width = panelWidth;
+		onResizeStart?.();
 
 		document.body.style.cursor = cursor;
 		document.body.style.userSelect = "none";
@@ -52,92 +41,93 @@
 		window.addEventListener("mousemove", move);
 		window.addEventListener("mouseup", up);
 	}
-	let timeout;
+
 	function move(ev) {
-		const newPos = pos + getEventPos(ev) - start;
-
-		api.exec("resize-grid", {
-			width: newPos,
-		});
-		let nextDisplay;
-
-		if (newPos <= $_gridCollapseThreshold) {
-			nextDisplay = "chart";
-		} else if (containerWidth - newPos <= rightThreshold) {
-			nextDisplay = "grid";
-		} else {
-			nextDisplay = "all";
-		}
-
-		if ($displayMode !== nextDisplay) {
-			api.exec("set-display-mode", {
-				mode: nextDisplay,
-			});
-		}
-
-		if (timeout) clearTimeout(timeout);
-		timeout = setTimeout(() => onmove && onmove(newPos), 100);
+		width = widthAt(ev);
+		onResize?.(width);
 	}
 
-	function up() {
+	function stop() {
 		document.body.style.cursor = "";
 		document.body.style.userSelect = "";
 		window.removeEventListener("mousemove", move);
 		window.removeEventListener("mouseup", up);
 	}
 
-	function handleExpand(direction) {
-		let mode;
-		if ($_compactMode) {
-			mode = $displayMode === "chart" ? "grid" : "chart";
-		} else {
-			if ($displayMode === "grid" || $displayMode === "chart") {
-				mode = "all";
-			} else mode = direction === "left" ? "chart" : "grid";
-		}
-
-		api.exec("set-display-mode", { mode });
+	function end(endWidth) {
+		width = null;
+		stop();
+		onResizeEnd?.(endWidth);
 	}
 
-	function handleExpandLeft() {
-		handleExpand("left");
+	function up(ev) {
+		end(widthAt(ev));
 	}
 
-	function handleExpandRight() {
-		handleExpand("right");
-	}
-
-	const b = $derived(getBox($gridWidth));
-	const cursor = $derived(
-		$displayMode !== "all"
-			? "auto"
-			: dir === "x"
-				? "ew-resize"
-				: "ns-resize"
-	);
+	// unmounted mid-drag: still commit, so the store drops its drag snapshot
+	onDestroy(() => {
+		if (width != null) end(width);
+		else stop();
+	});
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	class="wx-resizer wx-resizer-{dir} wx-resizer-display-{$displayMode}"
+	class="wx-resizer wx-resizer-{side} wx-resizer-layout-{layout}"
+	class:wx-resizer-grip-hover={hideButtonsUntilHover}
 	onmousedown={down}
-	style="width:{b.size[0]}; height: {b.size[1]}; cursor:{cursor};"
+	style="cursor:{cursor};"
 >
 	<div class="wx-button-expand-box">
-		<div class="wx-button-expand-content wx-button-expand-left">
-			<i class="wxi-menu-left" onclick={handleExpandLeft}></i>
-		</div>
-		<div class="wx-button-expand-content wx-button-expand-right">
-			<i class="wxi-menu-right" onclick={handleExpandRight}></i>
-		</div>
+		{#if startButton?.visible}
+			<div
+				class="wx-button-expand-content wx-button-expand-{startButton.side}"
+			>
+				<i class="wxi-menu-{startButton.icon}" onclick={onExpandStart}
+				></i>
+			</div>
+		{/if}
+		{#if endButton?.visible}
+			<div
+				class="wx-button-expand-content wx-button-expand-{endButton.side}"
+			>
+				<i class="wxi-menu-{endButton.icon}" onclick={onExpandEnd}></i>
+			</div>
+		{/if}
 	</div>
-	<div class="wx-resizer-line"></div>
 </div>
 
 <style>
-	.wx-resizer.wx-resizer-display-all:hover::before,
-	.wx-resizer.wx-resizer-display-all:hover::after,
+	.wx-resizer {
+		position: relative;
+		display: flex;
+		flex: 0 0 auto;
+		width: 4px;
+		align-items: center;
+		justify-content: center;
+		background-color: var(--wx-gantt-border-color);
+	}
+
+	.wx-resizer-left {
+		z-index: 12;
+	}
+
+	.wx-resizer-right {
+		z-index: 11;
+	}
+
+	.wx-resizer-right.wx-resizer-layout-collapsed {
+		overflow: visible;
+	}
+
+	.wx-resizer-grip-hover:not(:hover) .wx-button-expand-content {
+		opacity: 0;
+	}
+
+	/* drag grip lines */
+	.wx-resizer-grip-hover:hover::before,
+	.wx-resizer-grip-hover:hover::after,
 	.wx-button-expand-content::before,
 	.wx-button-expand-content::after {
 		content: "";
@@ -145,59 +135,51 @@
 		background-color: var(--wx-gantt-border-color);
 	}
 
-	.wx-resizer {
-		position: relative;
-		z-index: 10;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: var(--wx-gantt-border-color);
-	}
-	.wx-resizer:hover .wx-button-expand-content {
-		opacity: 1;
-	}
-
-	.wx-resizer.wx-resizer-display-all:hover::before,
-	.wx-resizer.wx-resizer-display-all:hover::after {
+	.wx-resizer-grip-hover:hover::before,
+	.wx-resizer-grip-hover:hover::after {
 		top: 0;
 		width: 2px;
 		height: 100%;
 	}
 
-	.wx-resizer.wx-resizer-display-all:hover::before {
+	.wx-resizer-grip-hover.wx-resizer-left:hover::before {
 		left: -3px;
 	}
 
-	.wx-resizer.wx-resizer-display-all:hover::after {
+	.wx-resizer-grip-hover.wx-resizer-left:hover::after {
 		right: -2px;
 	}
 
-	.wx-resizer-display-chart .wx-button-expand-left {
-		display: none;
+	.wx-resizer-grip-hover.wx-resizer-right:hover::before {
+		left: -2px;
 	}
 
-	.wx-resizer-display-grid .wx-button-expand-right {
-		display: none;
+	.wx-resizer-grip-hover.wx-resizer-right:hover::after {
+		right: -3px;
 	}
 
-	.wx-resizer-display-all {
-		.wx-button-expand-content {
-			opacity: 0;
-		}
-	}
-
-	.wx-resizer-display-all .wx-button-expand-box,
-	.wx-resizer-display-chart .wx-button-expand-box {
+	/* expand box offset toward the adjacent panel */
+	.wx-resizer-layout-both .wx-button-expand-box,
+	.wx-resizer-layout-end .wx-button-expand-box {
 		left: 12px;
 	}
 
-	.wx-resizer-display-grid .wx-button-expand-left {
+	.wx-resizer-right.wx-resizer-layout-collapsed .wx-button-expand-box {
+		left: -12px;
+	}
+
+	/* expand button position within the box */
+	.wx-resizer-layout-both .wx-button-expand-left {
+		right: 5px;
+	}
+
+	.wx-resizer-layout-start .wx-button-expand-left {
 		right: -6px;
 	}
 
-	.wx-resizer-display-chart .wx-button-expand-left,
-	.wx-resizer-display-all .wx-button-expand-left {
-		right: 5px;
+	.wx-resizer-right.wx-resizer-layout-collapsed .wx-button-expand-left {
+		left: 5px;
+		right: auto;
 	}
 
 	.wx-button-expand-box {
@@ -207,6 +189,7 @@
 
 	.wx-button-expand-content {
 		position: absolute;
+		top: 4px;
 		transform: translate(-50%, -50%);
 		width: 20px;
 
@@ -229,7 +212,6 @@
 	}
 
 	.wx-button-expand-right {
-		top: 4px;
 		left: 1px;
 
 		&::before {
@@ -252,12 +234,6 @@
 	}
 
 	.wx-button-expand-left {
-		top: 4px;
-		i {
-			border-top-left-radius: 4px;
-			border-bottom-left-radius: 4px;
-		}
-
 		&::before {
 			top: -3.6px;
 			left: 3px;
@@ -271,6 +247,11 @@
 			width: 17px;
 			height: 4px;
 			clip-path: polygon(0 0, 100% 100%, 100% 0);
+		}
+
+		i {
+			border-top-left-radius: 4px;
+			border-bottom-left-radius: 4px;
 		}
 	}
 </style>

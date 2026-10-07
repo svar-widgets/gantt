@@ -7,7 +7,21 @@ import type {
 	IResource,
 	IAssignment,
 	IResourceLoad,
+	IComputedResource,
+	GanttCalendarConfig,
 } from "../src/types";
+
+type TCalendarFixture = "standard" | "part-time" | "wednesday-off";
+type TWeekHours = Record<
+	| "monday"
+	| "tuesday"
+	| "wednesday"
+	| "thursday"
+	| "friday"
+	| "saturday"
+	| "sunday",
+	number
+>;
 
 let store: DataStore;
 
@@ -30,6 +44,50 @@ function initStore(extra?: Partial<IDataConfig>) {
 	const data = getData();
 	store = new DataStore(writable);
 	store.init({ ...data, ...extra });
+}
+
+function getFlatComputedResource(id: string): IComputedResource {
+	const resource = store
+		.getState()
+		._resources!.find(resource => resource.id === id);
+
+	if (!resource) throw new Error(`Expected resource ${id} to exist`);
+
+	return resource;
+}
+
+function getCalendarConfig(id: TCalendarFixture): GanttCalendarConfig {
+	const weekHoursByCalendar: Record<TCalendarFixture, TWeekHours> = {
+		standard: {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 8,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+		"part-time": {
+			monday: 4,
+			tuesday: 4,
+			wednesday: 4,
+			thursday: 4,
+			friday: 4,
+			saturday: 0,
+			sunday: 0,
+		},
+		"wednesday-off": {
+			monday: 8,
+			tuesday: 8,
+			wednesday: 0,
+			thursday: 8,
+			friday: 8,
+			saturday: 0,
+			sunday: 0,
+		},
+	};
+
+	return { id, weekHours: { ...weekHoursByCalendar[id] } };
 }
 
 beforeEach(() => {
@@ -280,7 +338,443 @@ describe("resources", () => {
 		});
 	});
 
-	describe("resource loads computation", () => {
+	describe("resource metrics computation", () => {
+		// no calendars: every leaf falls back to the default day, and a parent's
+		// capacity is the sum over its leaf descendants
+		test("rolls parent capacity up from leaves without calendars", () => {
+			initStore({
+				calendars: [],
+				resources: [
+					{ id: "dev", name: "Development Team" },
+					{ id: "r1", name: "Alex", parent: "dev" },
+					{ id: "r2", name: "Sophie", parent: "dev" },
+				],
+				assignments: [
+					{ id: 1, task: 1, resource: "r1" },
+					{ id: 2, task: 1, resource: "r2", units: 50 },
+				],
+				tasks: [
+					{
+						id: 1,
+						text: "A",
+						type: "task",
+						parent: 0,
+						start: new Date(2026, 3, 6),
+						duration: 1,
+					},
+				],
+				links: [],
+				start: new Date(2026, 3, 6),
+				end: new Date(2026, 3, 8),
+				autoScale: false,
+			});
+
+			const dev = store.getState().resources!.byId("dev");
+			const day = dev.$load["2026-04-06"] as IResourceLoad;
+
+			// 8h (Alex, 100%) + 4h (Sophie, 50%) against 2 leaves x 8h
+			expect(day.hours).toBe(12);
+			expect(day.percent).toBe(75);
+			expect(dev.$capacity["2026-04-06"]).toBe(16);
+		});
+
+		test("computes fallback capacity without assignments", () => {
+			initStore({
+				resources: [{ id: "r1", name: "Alex" }],
+				assignments: [],
+				calendars: [],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 8),
+				autoScale: false,
+			});
+
+			const alex = store.getState().resources!.byId("r1");
+
+			expect(alex.$load).toEqual({});
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 8,
+				"2026-04-06": 8,
+				"2026-04-07": 8,
+			});
+			expect(alex.$fullDay).toBe(8);
+		});
+
+		test("uses resource calendar and records non-working days as zero", () => {
+			initStore({
+				resources: [
+					{
+						id: "r1",
+						name: "Alex",
+						calendar: "part-time",
+					},
+				],
+				assignments: [],
+				calendars: [getCalendarConfig("part-time")],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 12),
+				autoScale: false,
+			});
+
+			const alex = store.getState().resources!.byId("r1");
+
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 0,
+				"2026-04-06": 4,
+				"2026-04-07": 4,
+				"2026-04-08": 4,
+				"2026-04-09": 4,
+				"2026-04-10": 4,
+				"2026-04-11": 0,
+			});
+			expect(alex.$fullDay).toBe(4);
+		});
+
+		test("computes full day from week hours and ignores calendar rules", () => {
+			initStore({
+				resources: [
+					{
+						id: "r1",
+						name: "Alex",
+						calendar: "overtime",
+					},
+				],
+				assignments: [],
+				calendars: [
+					{
+						id: "overtime",
+						weekHours: {
+							monday: 4,
+							tuesday: 4,
+							wednesday: 4,
+							thursday: 4,
+							friday: 4,
+							saturday: 0,
+							sunday: 0,
+						},
+						rules: [
+							{
+								type: "date",
+								date: "2026-04-06",
+								hours: 12,
+							},
+						],
+					},
+				],
+				start: new Date(2026, 3, 6),
+				end: new Date(2026, 3, 7),
+				autoScale: false,
+			});
+
+			const alex = store.getState().resources!.byId("r1");
+
+			expect(alex.$capacity["2026-04-06"]).toBe(12);
+			expect(alex.$fullDay).toBe(4);
+		});
+
+		test("keeps a zero full day with an exceptional available day", () => {
+			initStore({
+				resources: [
+					{
+						id: "r1",
+						name: "Alex",
+						calendar: "unavailable",
+					},
+				],
+				assignments: [],
+				calendars: [
+					{
+						id: "unavailable",
+						weekHours: {
+							monday: 0,
+							tuesday: 0,
+							wednesday: 0,
+							thursday: 0,
+							friday: 0,
+							saturday: 0,
+							sunday: 0,
+						},
+						rules: [
+							{
+								type: "date",
+								date: "2026-04-06",
+								hours: 12,
+							},
+						],
+					},
+				],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 8),
+				autoScale: false,
+			});
+
+			const alex = store.getState().resources!.byId("r1");
+
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 0,
+				"2026-04-06": 12,
+				"2026-04-07": 0,
+			});
+			expect(alex.$fullDay).toBe(0);
+		});
+
+		test("aggregates parent capacity and full day from leaf resources", () => {
+			initStore({
+				resources: [
+					{ id: "team", name: "Team" },
+					{
+						id: "r1",
+						name: "Alex",
+						parent: "team",
+						calendar: "standard",
+					},
+					{
+						id: "r2",
+						name: "Sophie",
+						parent: "team",
+						calendar: "part-time",
+					},
+				],
+				assignments: [],
+				calendars: [
+					getCalendarConfig("standard"),
+					getCalendarConfig("part-time"),
+				],
+				calendar: "standard",
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 12),
+				autoScale: false,
+			});
+
+			const team = store.getState().resources!.byId("team");
+
+			expect(team.$capacity).toEqual({
+				"2026-04-05": 0,
+				"2026-04-06": 12,
+				"2026-04-07": 12,
+				"2026-04-08": 12,
+				"2026-04-09": 12,
+				"2026-04-10": 12,
+				"2026-04-11": 0,
+			});
+			expect(team.$fullDay).toBe(12);
+		});
+
+		test("recomputes capacity when scale range changes", () => {
+			initStore({
+				resources: [{ id: "r1", name: "Alex" }],
+				assignments: [],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 8),
+				autoScale: false,
+			});
+
+			let alex = store.getState().resources!.byId("r1");
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 8,
+				"2026-04-06": 8,
+				"2026-04-07": 8,
+			});
+
+			store.setState({ end: new Date(2026, 3, 10) });
+
+			alex = store.getState().resources!.byId("r1");
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 8,
+				"2026-04-06": 8,
+				"2026-04-07": 8,
+				"2026-04-08": 8,
+				"2026-04-09": 8,
+			});
+		});
+
+		test("keeps capacity independent from task calendars", () => {
+			const tasks = [
+				{
+					id: 1,
+					text: "Task 1",
+					type: "task",
+					parent: 0,
+					start: new Date(2026, 3, 6),
+					end: new Date(2026, 3, 7),
+					calendar: "part-time",
+				},
+			];
+
+			initStore({
+				tasks,
+				resources: [
+					{
+						id: "r1",
+						name: "Alex",
+						calendar: "standard",
+					},
+				],
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+				calendars: [
+					getCalendarConfig("standard"),
+					getCalendarConfig("part-time"),
+				],
+				calendar: "standard",
+				start: new Date(2026, 3, 6),
+				end: new Date(2026, 3, 7),
+				autoScale: false,
+			});
+
+			const alex = store.getState().resources!.byId("r1");
+
+			expect(alex.$load["2026-04-06"]).toEqual({
+				hours: 4,
+				percent: 100,
+			});
+			expect(alex.$capacity["2026-04-06"]).toBe(8);
+		});
+
+		test("computes unit capacity and unit load percent against full unit capacity", () => {
+			const tasks = [
+				{
+					id: 1,
+					text: "Task 1",
+					type: "task",
+					parent: 0,
+					start: new Date(2026, 3, 6),
+					end: new Date(2026, 3, 7),
+				},
+			];
+
+			initStore({
+				tasks,
+				resources: [{ id: "r1", name: "Alex" }],
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+				calendar: true,
+				scales: [{ unit: "week", step: 1, format: "" }],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 12),
+				autoScale: false,
+			});
+
+			const alex = getFlatComputedResource("r1");
+
+			expect(alex.$capacity).toEqual({
+				"2026-04-05": 0,
+				"2026-04-06": 8,
+				"2026-04-07": 8,
+				"2026-04-08": 8,
+				"2026-04-09": 8,
+				"2026-04-10": 8,
+				"2026-04-11": 0,
+			});
+			expect(alex.$unitCapacity).toEqual({ "2026-04-05": 40 });
+			expect(alex.$unitLoad).toEqual({
+				"2026-04-05": { hours: 8, percent: 20 },
+			});
+		});
+
+		test("recomputes unit aggregates when scale unit changes", () => {
+			const tasks = [
+				{
+					id: 1,
+					text: "Task 1",
+					type: "task",
+					parent: 0,
+					start: new Date(2026, 3, 6),
+					end: new Date(2026, 3, 7),
+				},
+			];
+
+			initStore({
+				tasks,
+				resources: [{ id: "r1", name: "Alex" }],
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+				calendar: true,
+				scales: [{ unit: "day", step: 1, format: "" }],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 12),
+				autoScale: false,
+			});
+
+			let alex = getFlatComputedResource("r1");
+			expect(alex.$unitCapacity).toBeUndefined();
+			expect(alex.$unitLoad).toBeUndefined();
+
+			store.setState({
+				scales: [{ unit: "week", step: 1, format: "" }],
+			});
+
+			alex = getFlatComputedResource("r1");
+			expect(alex.$unitCapacity).toEqual({ "2026-04-05": 40 });
+			expect(alex.$unitLoad).toEqual({
+				"2026-04-05": { hours: 8, percent: 20 },
+			});
+
+			store.setState({
+				scales: [{ unit: "day", step: 1, format: "" }],
+			});
+
+			alex = getFlatComputedResource("r1");
+			expect(alex.$unitCapacity).toBeUndefined();
+			expect(alex.$unitLoad).toBeUndefined();
+		});
+
+		test("rounds derived resource metrics with decimal inputs", () => {
+			const tasks = [
+				{
+					id: 1,
+					text: "Task 1",
+					type: "task",
+					parent: 0,
+					start: new Date(2026, 3, 6),
+					end: new Date(2026, 3, 9),
+				},
+			];
+
+			initStore({
+				tasks,
+				resources: [
+					{
+						id: "r1",
+						name: "Alex",
+						calendar: "decimal",
+					},
+				],
+				assignments: [
+					{ id: 1, task: 1, resource: "r1", units: 33.333 },
+				],
+				calendars: [
+					{
+						id: "decimal",
+						weekHours: {
+							monday: 7.333,
+							tuesday: 7.333,
+							wednesday: 7.333,
+							thursday: 7.333,
+							friday: 7.333,
+							saturday: 0,
+							sunday: 0,
+						},
+					},
+				],
+				scales: [{ unit: "week", step: 1, format: "" }],
+				start: new Date(2026, 3, 5),
+				end: new Date(2026, 3, 12),
+				autoScale: false,
+			});
+
+			const alex = getFlatComputedResource("r1");
+
+			expect(alex.$fullDay).toBe(7.33);
+			expect(alex.$capacity["2026-04-06"]).toBe(7.33);
+			expect(alex.$capacityTotal).toBe(36.65);
+			expect(alex.$load["2026-04-06"]).toEqual({
+				percent: 33.333,
+				hours: 2.44,
+			});
+			expect(alex.$total).toBe(7.32);
+			expect(alex.$unitCapacity).toEqual({ "2026-04-05": 36.65 });
+			expect(alex.$unitLoad).toEqual({
+				"2026-04-05": { hours: 7.32, percent: 20 },
+			});
+		});
+
 		test("computes loads and total for each resource", () => {
 			initStore({ resources, assignments });
 
@@ -336,7 +830,7 @@ describe("resources", () => {
 			expect(qaTeam.$overloaded).toBe(false);
 		});
 
-		test("computes loads and total for each resource with splited tasks", () => {
+		test("computes loads and total for each resource with split tasks", () => {
 			const tasks = [
 				{
 					id: 1,
@@ -445,6 +939,53 @@ describe("resources", () => {
 			expect(qaTeam.$overloaded).toBe(false);
 		});
 
+		test("recomputes load when splitTasks is toggled", () => {
+			const tasks = [
+				{
+					id: 1,
+					text: "Task 1",
+					type: "task",
+					parent: 0,
+					start: new Date(2026, 3, 6), // monday
+					end: new Date(2026, 3, 16),
+					segments: [
+						{ start: new Date(2026, 3, 6), duration: 2 },
+						{ start: new Date(2026, 3, 14), duration: 2 },
+					],
+				},
+			];
+			initStore({
+				tasks,
+				resources,
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+				splitTasks: true,
+			});
+
+			// the gaps between segments carry no load
+			expect(store.getState().resources!.byId("r1").$total).toBe(32);
+
+			store.init({ splitTasks: false });
+
+			// the whole span does
+			expect(store.getState().resources!.byId("r1").$total).toBe(80);
+		});
+
+		test("an unscheduled task carries no load", () => {
+			const tasks = [{ id: 1, text: "Task 1", type: "task", parent: 0 }];
+			initStore({
+				tasks,
+				resources,
+				assignments: [{ id: 1, task: 1, resource: "r1" }],
+				unscheduledTasks: true,
+			});
+
+			expect(store.getState().tasks.byId(1).unscheduled).toBe(true);
+
+			const alex = store.getState().resources!.byId("r1");
+			expect(alex.$total).toBe(0);
+			expect(alex.$load).toEqual({});
+		});
+
 		test("computes loads and total for each resource when gantt has (default) calendar", () => {
 			const tasks = [
 				{
@@ -550,18 +1091,7 @@ describe("resources", () => {
 					end: new Date(2026, 3, 16),
 				},
 			];
-			const calendar = {
-				id: "part-time",
-				weekHours: {
-					monday: 4,
-					tuesday: 4,
-					wednesday: 4,
-					thursday: 4,
-					friday: 4,
-					saturday: 0,
-					sunday: 0,
-				},
-			};
+			const calendar = getCalendarConfig("part-time");
 			initStore({ tasks, resources, assignments, calendar });
 
 			const state = store.getState();
@@ -653,30 +1183,8 @@ describe("resources", () => {
 				},
 			];
 			const calendars = [
-				{
-					id: "part-time",
-					weekHours: {
-						monday: 4,
-						tuesday: 4,
-						wednesday: 4,
-						thursday: 4,
-						friday: 4,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
-				{
-					id: "wednesday-off",
-					weekHours: {
-						monday: 8,
-						tuesday: 8,
-						wednesday: 0,
-						thursday: 8,
-						friday: 8,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
+				getCalendarConfig("part-time"),
+				getCalendarConfig("wednesday-off"),
 			];
 			initStore({ tasks, resources, assignments, calendars });
 
@@ -778,30 +1286,8 @@ describe("resources", () => {
 				return { ...r };
 			});
 			const calendars = [
-				{
-					id: "part-time",
-					weekHours: {
-						monday: 4,
-						tuesday: 4,
-						wednesday: 4,
-						thursday: 4,
-						friday: 4,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
-				{
-					id: "wednesday-off",
-					weekHours: {
-						monday: 8,
-						tuesday: 8,
-						wednesday: 0,
-						thursday: 8,
-						friday: 8,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
+				getCalendarConfig("part-time"),
+				getCalendarConfig("wednesday-off"),
 			];
 			initStore({ tasks, resources: cResources, assignments, calendars });
 
@@ -901,30 +1387,8 @@ describe("resources", () => {
 				return { ...r };
 			});
 			const calendars = [
-				{
-					id: "part-time",
-					weekHours: {
-						monday: 4,
-						tuesday: 4,
-						wednesday: 4,
-						thursday: 4,
-						friday: 4,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
-				{
-					id: "wednesday-off",
-					weekHours: {
-						monday: 8,
-						tuesday: 8,
-						wednesday: 0,
-						thursday: 8,
-						friday: 8,
-						saturday: 0,
-						sunday: 0,
-					},
-				},
+				getCalendarConfig("part-time"),
+				getCalendarConfig("wednesday-off"),
 			];
 			initStore({ tasks, resources: cResources, assignments, calendars });
 

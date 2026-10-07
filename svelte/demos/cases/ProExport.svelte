@@ -1,5 +1,6 @@
 <script>
-	import { getData } from "../data";
+	import { subDays } from "date-fns";
+	import { getData, resources, assignments } from "../data";
 	import { Gantt, version } from "../../src";
 	import { Toolbar, registerToolbarItem } from "@svar-ui/svelte-toolbar";
 	import { Switch, RichSelect, Segmented } from "@svar-ui/svelte-core";
@@ -13,11 +14,15 @@
 	const data = getData(null, {
 		splitTasks: true,
 		baselines: true,
-		unscheduledTasks: true,
+		constraints: true,
+		deadlines: true,
 	});
 
 	let size = $state("auto");
 	let fit = $state(true);
+	let api = $state();
+	let config = $state("basic");
+	let tasks = $state(data.tasks);
 
 	const items = $derived([
 		{ text: "Page size" },
@@ -88,9 +93,6 @@
 
 	const calendar = true;
 
-	let api = $state();
-	let config = $state("basic");
-
 	function handleClick({ item }) {
 		const parts = item.id.split("-");
 		if (parts[0] === "export") {
@@ -115,8 +117,65 @@
 								header: "Task name",
 								width: 200,
 							},
+							{
+								id: "deadline",
+								header: "Deadline",
+								width: 110,
+								type: "date",
+							},
+							{
+								id: "constraint_type",
+								header: "Constraint",
+								width: 110,
+								type: "string",
+							},
+							{
+								id: "constraint_date",
+								header: "Constraint date",
+								width: 130,
+								type: "date",
+							},
 						]
-					: null,
+					: [
+							{ id: "id", header: "ID", width: 60 },
+							{ id: "text", header: "Task name", width: 200 },
+							{
+								id: "start",
+								header: "Start",
+								width: 110,
+								type: "date",
+							},
+							{
+								id: "end",
+								header: "End",
+								width: 110,
+								type: "date",
+							},
+							{
+								id: "duration",
+								header: "Duration",
+								width: 80,
+								type: "number",
+							},
+							{
+								id: "deadline",
+								header: "Deadline",
+								width: 110,
+								type: "date",
+							},
+							{
+								id: "constraint_type",
+								header: "Constraint",
+								width: 110,
+								type: "string",
+							},
+							{
+								id: "constraint_date",
+								header: "Constraint date",
+								width: 130,
+								type: "date",
+							},
+						],
 				sheetNames: ["Tasks", "Links"],
 				dateFormat: "yyyy-mmm-dd",
 				visual,
@@ -141,10 +200,33 @@
 			},
 		});
 	}
+
+	function applyConfigTasks(config) {
+		const serialized = api.serialize();
+		return serialized.map(t => {
+			if (t.id !== 22) return t;
+			if (config === "advanced") {
+				const copy = { ...t };
+				delete copy.start;
+				return copy;
+			}
+			if (!t.start && t.end && t.duration) {
+				return {
+					...t,
+					start: subDays(t.end, t.duration),
+				};
+			}
+			return t;
+		});
+	}
+
 	function handleChange({ item, value }) {
 		if (item.id === "size") size = value;
 		else if (item.id === "fit") fit = value;
-		else if (item.id === "config") config = value;
+		else if (item.id === "config") {
+			tasks = applyConfigTasks(value);
+			config = value;
+		}
 	}
 </script>
 
@@ -154,7 +236,7 @@
 		<Gantt
 			bind:this={api}
 			{...skinSettings}
-			tasks={data.tasks}
+			{tasks}
 			links={data.links}
 			scales={data.scales}
 		/>
@@ -164,12 +246,16 @@
 			baselines={true}
 			splitTasks={true}
 			unscheduledTasks={true}
+			deadlines={true}
+			schedule={{ auto: true }}
 			{markers}
 			{calendar}
 			{...skinSettings}
-			tasks={data.tasks}
+			{tasks}
 			links={data.links}
 			scales={data.scales}
+			{resources}
+			{assignments}
 		/>
 	{/if}
 </div>

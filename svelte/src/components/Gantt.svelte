@@ -13,7 +13,6 @@
 	import {
 		DataStore,
 		getDefaultColumns,
-		getDefaultGridWidth,
 		defaultTaskTypes,
 		normalizeZoom,
 	} from "@svar-ui/gantt-store";
@@ -49,10 +48,12 @@
 		end = null,
 		lengthUnit = "day",
 		durationUnit = "day",
+		inclusiveEnd = false,
 		cellWidth = 100,
 		cellHeight = 38,
 		scaleHeight = 36,
 		gridWidth = null,
+		subGridWidth = null,
 		displayMode = "all",
 		readonly = false,
 		cellBorders = "full",
@@ -63,6 +64,8 @@
 		init = null,
 		autoScale = true,
 		unscheduledTasks = false,
+		inactiveTasks = false,
+		placeholderRow = false,
 		criticalPath = null,
 		schedule = { type: "forward" },
 		projectStart = null,
@@ -75,6 +78,9 @@
 		slack = false,
 		groupBy = null,
 		wbs = false,
+		deadlines = false,
+		progressLine = false,
+		sCurve = false,
 		...restProps
 	} = $props();
 
@@ -92,13 +98,9 @@
 	// prepare configuration objects
 	const { calendar: lCalendar } = locale.getRaw();
 
-	// default column set (incl. auto-added resources/wbs columns) drives the
-	// default grid width when none is provided by the user
+	// default column set (incl. auto-added resources/wbs columns)
 	let defaultGridColumns = $derived(
 		getDefaultColumns({ resources: !!resources, wbs })
-	);
-	let resolvedGridWidth = $derived(
-		gridWidth ?? getDefaultGridWidth(defaultGridColumns)
 	);
 
 	let normalizedConfig = $derived.by(() => {
@@ -136,9 +138,7 @@
 	firstInRoute.setNext(lastInRoute);
 
 	let tableAPI = $state();
-	let ganttWidth = $state();
-	const COMPACT_WIDTH = 650;
-	let compactMode = $derived(ganttWidth <= COMPACT_WIDTH);
+	let subGridTableAPI = $state();
 
 	// public API
 	export const // state
@@ -155,17 +155,21 @@
 		getTask = id => dataStore.getTask(id),
 		getResource = id => dataStore.getResource(id),
 		serialize = config => dataStore.serialize(config),
-		getTable = waitRender =>
-			waitRender
-				? new Promise(res => setTimeout(() => res(tableAPI), 1))
-				: tableAPI,
+		getTable = (waitRender, section = "grid") => {
+			const getTableAPI = () =>
+				section === "subGrid" ? subGridTableAPI : tableAPI;
+			return waitRender
+				? new Promise(res => setTimeout(() => res(getTableAPI()), 1))
+				: getTableAPI();
+		},
 		getHistory = () => dataStore.getHistory(),
 		getCalendar = id => dataStore.getCalendar(id),
 		getTaskCalendar = task => dataStore.getTaskCalendar(task),
 		getResourceCalendar = resource =>
 			dataStore.getResourceCalendar(resource),
 		getTaskResources = id => dataStore.getTaskResources(id),
-		getResourceTasks = id => dataStore.getResourceTasks(id);
+		getResourceTasks = id => dataStore.getResourceTasks(id),
+		getLinkValidator = () => dataStore.getLinkValidator();
 
 	const api = {
 		getState,
@@ -185,6 +189,8 @@
 		getTaskResources,
 		getResourceTasks,
 		getTaskCalendar,
+		getResourceCalendar,
+		getLinkValidator,
 	};
 
 	// common API available in components
@@ -192,12 +198,15 @@
 		getReactiveState: dataStore.getReactive.bind(dataStore),
 		getState: dataStore.getState.bind(dataStore),
 		exec: firstInRoute.exec.bind(firstInRoute),
+		on: firstInRoute.on.bind(firstInRoute),
+		detach: firstInRoute.detach.bind(firstInRoute),
 		getTask: dataStore.getTask.bind(dataStore),
 		getTaskCalendar: dataStore.getTaskCalendar.bind(dataStore),
 		getResourceCalendar: dataStore.getResourceCalendar.bind(dataStore),
 		getCalendar: dataStore.getCalendar.bind(dataStore),
 		getTaskResources: dataStore.getTaskResources.bind(dataStore),
 		getHistory: dataStore.getHistory.bind(dataStore),
+		getLinkValidator: dataStore.getLinkValidator.bind(dataStore),
 	});
 
 	let init_once = true;
@@ -223,8 +232,11 @@
 			rollups: rollups === true ? { type: "closest" } : rollups,
 			autoScale,
 			unscheduledTasks,
+			inactiveTasks,
+			placeholderRow: placeholderRow && !readonly,
 			markers,
 			durationUnit,
+			inclusiveEnd,
 			criticalPath,
 			schedule,
 			projectStart,
@@ -235,14 +247,17 @@
 			undo,
 			_weekStart: lCalendar.weekStart,
 			splitTasks,
+			deadlines,
 			summary,
 			groupBy,
 			highlightTime,
 			wbs,
-			displayMode,
-			gridWidth: resolvedGridWidth,
+			progressLine,
 			cellBorders,
-			_compactMode: compactMode,
+			sCurve,
+			displayMode,
+			...(gridWidth != null ? { gridWidth } : {}),
+			...(subGridWidth != null ? { subGridWidth } : {}),
 		});
 
 		if (init_once && init) {
@@ -255,4 +270,4 @@
 	$effect(reinitStore);
 </script>
 
-<Layout {taskTemplate} {readonly} bind:tableAPI bind:ganttWidth />
+<Layout {taskTemplate} {readonly} bind:tableAPI bind:subGridTableAPI />

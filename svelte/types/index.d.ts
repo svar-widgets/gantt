@@ -18,10 +18,29 @@ import type {
 	IGanttColumn,
 	IResourceColumn,
 	IResourceLoad,
+	IResourceHistogramConfig,
+	IResourceHistogramTooltip,
+	ISCurveTooltip,
+	TID,
 } from "@svar-ui/gantt-store";
 
 export * from "@svar-ui/gantt-store";
 export { registerEditorItem } from "@svar-ui/svelte-editor";
+
+export declare const version: string;
+
+export interface ILocatedTask {
+	id: TID;
+	node: Element;
+}
+
+export declare function locateTask(
+	ev:
+		| MouseEvent
+		| DragEvent
+		| { target?: EventTarget | null; clientY?: number },
+	api?: IApi
+): ILocatedTask | null;
 
 export interface IColumnConfig extends Omit<IGanttColumn, "header"> {
 	cell?: ITableColumn["cell"];
@@ -42,8 +61,9 @@ export declare const Gantt: Component<
 		}>;
 		readonly?: boolean;
 		init?: (api: IApi) => void;
-	} & IConfig &
-		GanttActions<TMethodsConfig>
+	} & Omit<IConfig, "columns"> &
+		GanttActions<TMethodsConfig>,
+	IApi
 >;
 
 export declare const HeaderMenu: Component<
@@ -55,7 +75,8 @@ export declare const HeaderMenu: Component<
 export declare const ContextMenu: Component<
 	ComponentProps<typeof BaseContextMenu> & {
 		api?: IApi;
-	}
+	},
+	{ show: (ev?: MouseEvent | null, obj?: any) => void }
 >;
 
 export declare const Toolbar: Component<
@@ -71,10 +92,14 @@ export declare const Editor: Component<
 >;
 
 type TooltipContentData =
-	| { task: ITask; segmentIndex: number | null }
+	| { task: ITask; segmentIndex: number | null; violated?: boolean }
+	| { constraint: ITask; violated?: boolean }
 	| { link: ILink }
 	| { rollup: ITask }
-	| { resource: IResource };
+	| { resource: IResource }
+	| { histogram: IResourceHistogramTooltip }
+	| { sCurve: ISCurveTooltip }
+	| { deadline: ITask };
 
 export declare const Tooltip: Component<
 	Omit<ComponentProps<typeof BaseTooltip>, "content"> & {
@@ -89,9 +114,16 @@ export declare const Tooltip: Component<
 
 export declare const ResourceLoad: Component<{
 	api?: IApi;
-	columns?: IResourceColumn[];
-	mode?: "grid" | "chart";
+	columns?: false | IResourceColumn[];
+	mode?: "utilization" | "histogram";
+	histogram?: IResourceHistogramConfig;
 	template?: (load: IResourceLoad) => string;
+	draggableRows?: boolean | ((row: IResource) => boolean);
+}>;
+
+export declare const ConflictReport: Component<{
+	api?: IApi;
+	onclose?: () => void;
 }>;
 
 export declare const Material: Component<{

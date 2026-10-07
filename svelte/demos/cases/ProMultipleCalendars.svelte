@@ -37,6 +37,7 @@
 			{links}
 			{scales}
 			cellWidth={60}
+			unscheduledTasks
 		/>
 		<Editor {api} />
 	</div>
