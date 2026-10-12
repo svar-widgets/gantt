@@ -1,5 +1,11 @@
 <script>
-	import { Gantt, ContextMenu, Tooltip, Editor } from "@svar-ui/svelte-gantt";
+	import {
+		Gantt,
+		ContextMenu,
+		Tooltip,
+		Editor,
+		ConflictReport,
+	} from "@svar-ui/svelte-gantt";
 	import { getData } from "../data/index";
 	import TooltipContent from "./TooltipContent.svelte";
 
@@ -25,24 +31,27 @@
 </script>
 
 <div class="box">
-	<ContextMenu {api}>
-		<Tooltip {api} content={TooltipContent}>
-			<Gantt
-				bind:this={api}
-				calendar={true}
-				schedule={{ auto: true }}
-				criticalPath={{ type: "flexible" }}
-				summary={{ autoProgress: true }}
-				{markers}
-				splitTasks
-				zoom
-				cellWidth={80}
-				scales={data.scales}
-				tasks={data.tasks}
-				links={data.links}
-			/>
-		</Tooltip>
-	</ContextMenu>
+	<Tooltip {api} content={TooltipContent}>
+		<div class="gantt">
+			<ContextMenu {api}>
+				<Gantt
+					bind:this={api}
+					calendar={true}
+					schedule={{ auto: true }}
+					criticalPath={{ type: "flexible" }}
+					summary={{ autoProgress: true }}
+					{markers}
+					splitTasks
+					zoom
+					cellWidth={80}
+					scales={data.scales}
+					tasks={data.tasks}
+					links={data.links}
+				/>
+			</ContextMenu>
+		</div>
+		<ConflictReport {api} />
+	</Tooltip>
 	<Editor {api} />
 </div>
 
@@ -51,6 +60,23 @@
 		width: 100%;
 		height: 100%;
 		border: var(--wx-gantt-border);
+		display: flex;
+		overflow: hidden;
+	}
+
+	.box :global(.wx-tooltip-area) {
+		display: flex;
+		flex: 1;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.gantt {
+		position: relative;
+		flex: 1;
+		min-width: 0;
+		height: 100%;
+		overflow: hidden;
 	}
 
 	:global(.wx-willow-theme .myMiddleClass),

@@ -28,6 +28,7 @@ const tasks = [
 		progress: 52,
 		parent: 1,
 		type: "task",
+		constraint: { type: "snet", date: new Date(2026, 3, 1) },
 		details: "Analyze market trends and competitors.",
 	},
 	{
@@ -136,6 +137,7 @@ const tasks = [
 		progress: 10,
 		parent: 2,
 		type: "task",
+		constraint: { type: "fnlt", date: new Date(2026, 3, 17) },
 	},
 
 	{
@@ -174,11 +176,12 @@ const tasks = [
 		progress: 0,
 		parent: 3,
 		type: "task",
+		constraint: { type: "fnlt", date: new Date(2026, 4, 15) },
 	},
 
 	{
 		id: 4,
-		start: new Date(2026, 3, 6),
+		start: new Date(2026, 3, 3),
 		end: new Date(2026, 4, 20),
 		text: "Testing",
 		progress: 3,
@@ -188,8 +191,8 @@ const tasks = [
 	},
 	{
 		id: 40,
-		start: new Date(2026, 3, 6),
-		end: new Date(2026, 3, 10),
+		start: new Date(2026, 3, 3),
+		end: new Date(2026, 3, 7),
 		text: "Testing prototype",
 		progress: 3,
 		parent: 4,
@@ -221,6 +224,7 @@ const tasks = [
 		progress: 0,
 		parent: 4,
 		type: "task",
+		constraint: { type: "snet", date: new Date(2026, 4, 12) },
 		details:
 			"Comprehensive testing of the beta version before the final release.",
 	},
@@ -232,6 +236,7 @@ const tasks = [
 		progress: 0,
 		parent: 0,
 		type: "milestone",
+		constraint: { type: "snlt", date: new Date(2026, 4, 22) },
 		details: "Official release of version 1.0.0 to the public.",
 	},
 ];
@@ -270,6 +275,24 @@ const links = [
 		id: 7,
 		source: 42,
 		target: 5,
+		type: "e2s",
+	},
+	{
+		id: 8,
+		source: 30,
+		target: 40,
+		type: "s2s",
+	},
+	{
+		id: 9,
+		source: 30,
+		target: 31,
+		type: "e2s",
+	},
+	{
+		id: 10,
+		source: 40,
+		target: 41,
 		type: "e2s",
 	},
 ];

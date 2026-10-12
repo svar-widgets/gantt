@@ -1,3 +1,12 @@
+## 2.8.1
+
+### Fixes
+
+-   Editing a task outside the scheduling graph reschedules the project from its start
+-   Undo after dragging a summary task does not restore its subtasks
+-   The "Show conflicts" toolbar button is visible when there are no conflicts
+-   Community version throws an error due to progress line undefined state
+
 ## 2.8.0
 
 ### New features

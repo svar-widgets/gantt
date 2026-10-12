@@ -4,6 +4,7 @@
 		popupContainer,
 		Button,
 		Segmented,
+		Text,
 	} from "@svar-ui/svelte-core";
 
 	import Router from "./Router.svelte";
@@ -19,6 +20,26 @@
 	let innerWidth = $state(0);
 
 	const links = getLinks();
+	let search = $state("");
+
+	const filteredLinks = $derived.by(() => {
+		const query = search.trim().toLowerCase();
+		if (!query) return links;
+
+		const result = [];
+		let group = null;
+		links.forEach(data => {
+			if (!Array.isArray(data)) group = data;
+			else if (data[1].toLowerCase().includes(query)) {
+				if (group) {
+					result.push(group);
+					group = null;
+				}
+				result.push(data);
+			}
+		});
+		return result;
+	});
 
 	const MOBILE_BREAKPOINT = 767;
 
@@ -68,39 +89,49 @@
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
 	<div class="sidebar" class:active={show} role="tabpanel">
 		<div class="sidebar-content">
-			<div class="sidebar-header">
-				<div class="box-title">
-					<a
-						href="https://svar.dev/svelte/"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						<img
-							src={LogoIcon}
-							alt="Logo icon"
-							class="box-title-img"
-						/></a
-					>
-					<div class="separator"></div>
-					<a
-						href={`https://svar.dev/svelte/${productLink}/`}
-						target="_blank"
-						rel="noopener noreferrer"
-						><h1 class="title">Svelte {publicName}</h1></a
-					>
+			<div class="sidebar-top">
+				<div class="sidebar-header">
+					<div class="box-title">
+						<a
+							href="https://svar.dev/svelte/"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<img
+								src={LogoIcon}
+								alt="Logo icon"
+								class="box-title-img"
+							/></a
+						>
+						<div class="separator"></div>
+						<a
+							href={`https://svar.dev/svelte/${productLink}/`}
+							target="_blank"
+							rel="noopener noreferrer"
+							><h1 class="title">Svelte {publicName}</h1></a
+						>
+					</div>
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="btn-box">
+						<Button
+							type="secondary"
+							icon="wxi-angle-left"
+							css="toggle-btn"
+							onclick={toggleSidebar}
+						/>
+					</div>
 				</div>
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="btn-box">
-					<Button
-						type="secondary"
-						icon="wxi-angle-left"
-						css="toggle-btn"
-						onclick={toggleSidebar}
+				<div class="box-search">
+					<Text
+						bind:value={search}
+						placeholder="Search demos"
+						icon="wxi-search"
+						clear
 					/>
 				</div>
 			</div>
 			<div class="box-links">
-				{#each links as data, i (Array.isArray(data) ? data[0] : `group-${i}`)}
+				{#each filteredLinks as data (Array.isArray(data) ? data[0] : `group-${data.group}`)}
 					{#if Array.isArray(data)}
 						<Link
 							{data}
@@ -327,14 +358,19 @@
 		transition: none;
 	}
 
+	.sidebar-top {
+		position: sticky;
+		top: 0px;
+		z-index: 1;
+		padding-bottom: 12px;
+		background-color: var(--demo-bg);
+	}
+
 	.sidebar-header {
 		height: 60px;
 		display: flex;
 		justify-content: space-between;
-		position: sticky;
-		top: 0px;
 		padding: 14px 16px 14px 18px;
-		background-color: var(--demo-bg);
 	}
 
 	.box-title {
@@ -508,6 +544,11 @@
 			padding-bottom: 4px;
 			white-space: nowrap;
 		}
+	}
+
+	.box-search {
+		padding: 0 16px;
+		--wx-input-width: 100%;
 	}
 
 	.box-links {

@@ -1643,6 +1643,154 @@ describe("history", () => {
 		});
 	});
 
+	describe("summary drag", () => {
+		const day = (d: number) => new Date(2024, 0, d);
+
+		// B starts first and snaps off a Wednesday, so the drop also moves
+		// the summary start away from the dragged distance
+		function project(nested: boolean, config: any = {}) {
+			const parent = nested ? 200 : 100;
+			const tasks: any[] = [
+				{ id: 100, text: "S", type: "summary", parent: 0, open: true },
+				{ id: 1, text: "A", parent: 100, start: day(16), duration: 2 },
+				...(nested
+					? [
+							{
+								id: 200,
+								text: "N",
+								type: "summary",
+								parent: 100,
+								open: true,
+							},
+						]
+					: []),
+				{
+					id: 2,
+					text: "B",
+					parent,
+					start: day(15),
+					duration: 2,
+					calendar: "wednesday-off",
+				},
+				{ id: 3, text: "C", parent, start: day(17), duration: 1 },
+			];
+			resetState({
+				...getData(),
+				...config,
+				tasks,
+				links: [],
+				undo: true,
+			});
+			vi.advanceTimersByTime(1);
+		}
+
+		function spans() {
+			return store
+				.getState()
+				.tasks.toArray()
+				.map(
+					(t: IParsedTask) =>
+						`${t.id}:${t.start?.valueOf()}..${t.end?.valueOf()}`
+				)
+				.join(" ");
+		}
+
+		function drag(id: TID, diff: number) {
+			const { start, end } = store.getState().tasks.byId(id);
+			store.in.exec("update-task", { id, diff, task: { start, end } });
+			vi.advanceTimersByTime(1);
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test.each([
+			["flat, no global calendar", false, {}],
+			["flat, global calendar", false, { calendar: "default" }],
+			["nested, no global calendar", true, {}],
+			["nested, global calendar", true, { calendar: "default" }],
+			[
+				"nested, global calendar, auto scheduling",
+				true,
+				{ calendar: "default", schedule: { auto: true } },
+			],
+		])("undo/redo restores snapped subtasks: %s", (_, nested, config) => {
+			project(nested, config);
+			const before = spans();
+
+			drag(100, 2);
+			// B lands on its day off and moves to Thursday
+			expect(store.getState().tasks.byId(2).start).to.deep.eq(day(18));
+			const after = spans();
+
+			store.in.exec("undo");
+			vi.advanceTimersByTime(1);
+			expect(spans()).to.eq(before);
+
+			store.in.exec("redo");
+			vi.advanceTimersByTime(1);
+			expect(spans()).to.eq(after);
+		});
+
+		test("undo after a remote change of a subtask invents no dates", () => {
+			resetState({
+				...getData(),
+				links: [],
+				undo: true,
+				tasks: [
+					{
+						id: 1,
+						text: "Release",
+						type: "summary",
+						parent: 0,
+						open: true,
+					},
+					{
+						id: 2,
+						text: "QA",
+						parent: 1,
+						start: day(1),
+						duration: 2,
+					},
+					{
+						id: 3,
+						text: "Regression",
+						parent: 1,
+						start: day(3),
+						duration: 2,
+					},
+				],
+			});
+			vi.advanceTimersByTime(1);
+			const { tasks } = store.getState();
+
+			drag(1, 2);
+			store.in.exec("update-task", {
+				id: 2,
+				task: { start: day(10), end: day(12), duration: 2 },
+				eventSource: "remote",
+			});
+			store.in.exec("update-task", {
+				id: 1,
+				task: { start: day(5), end: day(12), duration: 7 },
+				eventSource: "remote",
+			});
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("undo");
+			vi.advanceTimersByTime(1);
+			// QA takes back the local user's value over the remote one
+			expect(tasks.byId(2).start).to.deep.eq(day(1));
+			expect(tasks.byId(3).start).to.deep.eq(day(3));
+			expect(tasks.byId(1).start).to.deep.eq(day(1));
+			expect(tasks.byId(1).end).to.deep.eq(day(5));
+		});
+	});
+
 	describe("combination of actions", () => {
 		test("can undo/redo after combination of task actions", () => {
 			const initData = getData();

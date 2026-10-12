@@ -364,6 +364,41 @@ describe("scheduling flags", () => {
 			expect(byId(store, "C").start).to.deep.eq(day(7));
 		});
 
+		test("editing an inactive task does not move other tasks", () => {
+			// the early task is added after load: the opening pass would
+			// already have pulled it up to the project start
+			const store = getStore(
+				[{ id: "A", start: day(12), duration: 1, inactive: true }],
+				{
+					inactiveTasks: true,
+					projectStart: day(10),
+					projectEnd: day(20),
+					links: [],
+				}
+			);
+
+			store.in.exec("add-task", {
+				task: {
+					id: "E",
+					text: "Early",
+					type: "task",
+					start: day(1),
+					duration: 1,
+				},
+			});
+			vi.advanceTimersByTime(1);
+			expect(byId(store, "E").start).to.deep.eq(day(1));
+
+			store.in.exec("update-task", {
+				id: "A",
+				task: { start: day(14), duration: 1 },
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(byId(store, "A").start).to.deep.eq(day(14));
+			expect(byId(store, "E").start).to.deep.eq(day(1));
+		});
+
 		test("deactivating takes it and its links out of the plan", () => {
 			const store = getStore(
 				[

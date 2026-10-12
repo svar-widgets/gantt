@@ -1264,7 +1264,7 @@ export default class DataStore extends Store<IData> {
 					!isEqual(task.start, t.start) ||
 					!isEqual(task.end, t.end)
 				) {
-					if (isSummary && hasKids && !manualSummary) {
+					if (isSummary && hasKids && !manualSummary && !replay) {
 						let shift = diff || differ(task.start, t.start);
 						if (calendar) {
 							//recalculate real diff
@@ -2097,6 +2097,8 @@ export default class DataStore extends Store<IData> {
 			state.groupBy = null;
 			state.wbs = null;
 			state.progressLine = null;
+			state._progressLine = null;
+			state._progressLinePoints = null;
 			state.deadlines = false;
 			state.sCurve = null;
 			state._sCurve = null;
@@ -2578,7 +2580,6 @@ export default class DataStore extends Store<IData> {
 					task: { start: move(kid.start, kid) },
 					eventSource,
 					joinUndo: true,
-					skipUndo: true,
 				});
 			}
 
