@@ -123,13 +123,23 @@ export function resetScales(
 		const add = getAdder(line.unit);
 
 		let date = getUnitStart(line.unit, start, _weekStart);
+		let cumulativeWidth = 0;
 		while (date < end) {
 			const next = add(date, line.step);
 
 			const cellStart = date < start ? start : date;
 			const cellEnd = next > end ? end : next;
 
-			const cellWidth = diff(cellEnd, cellStart, "", true) * width;
+			// Compute each cell's width as the delta between cumulative
+			// snapped widths (measured from the row's fixed start) rather
+			// than independently flooring/ceiling every cell's own
+			// start/end. Otherwise a minUnit that straddles a cell
+			// boundary (e.g. a week spanning two months) gets rounded
+			// into both neighboring cells, and the row's total width
+			// drifts away from the other scale rows' exact totals.
+			const cumulativeAtCellEnd = diff(cellEnd, start, "", true) * width;
+			const cellWidth = cumulativeAtCellEnd - cumulativeWidth;
+			cumulativeWidth = cumulativeAtCellEnd;
 
 			const value =
 				typeof line.format === "function"
