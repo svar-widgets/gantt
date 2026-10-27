@@ -143,21 +143,23 @@ export default class RestDataProvider extends Rest<TMethodsConfig> {
 		options?: {
 			resources?: boolean;
 			assignments?: boolean;
+			nested?: boolean;
 		}
 	): Promise<TProviderData> {
 		const tempId = id;
 		id = this.getQueue().getId(id);
+		const query = id && options?.nested ? "?nested=true" : "";
 
 		const [tasksResponse, links, resources, assignments] =
 			await Promise.all([
-				this.send<ITask[]>(id ? `tasks/${id}` : "tasks", "GET"),
-				this.send<ILink[]>(id ? `links/${id}` : "links", "GET"),
+				this.send<ITask[]>(id ? `tasks/${id}${query}` : "tasks", "GET"),
+				this.send<ILink[]>(id ? `links/${id}${query}` : "links", "GET"),
 				!id && options?.resources
 					? this.send<IResource[]>("resources", "GET")
 					: undefined,
 				options?.assignments
 					? this.send<IAssignment[]>(
-							id ? `assignments/${id}` : "assignments",
+							id ? `assignments/${id}${query}` : "assignments",
 							"GET"
 						)
 					: undefined,

@@ -122,7 +122,9 @@
 		return (
 			$unscheduledTasks &&
 			task.unscheduled &&
-			(task.type === "task" || task.type === "milestone") &&
+			(task.type === "task" ||
+				task.type === "milestone" ||
+				(task.type === "summary" && $schedule?.auto && task.manual)) &&
 			!task.$group
 		);
 	}
@@ -443,8 +445,8 @@
 						...dates,
 						text: _("New task"),
 						type: "task",
-						eventSource: "placeholder",
 					},
+					eventSource: "placeholder",
 				});
 			} else api.exec("update-task", { id: task.id, task: dates });
 

@@ -33,16 +33,20 @@ export function dragSummaryKids(
 	task: IParsedTask,
 	dx: number,
 	rollups: boolean,
-	holdManual?: boolean
+	holdManual?: boolean,
+	slack?: boolean
 ) {
 	if (task.open || task.type !== "summary" || rollups) {
 		task.data?.forEach(kid => {
 			if (holdManual && kid.manual) return;
 			kid.$x += dx;
-			if (kid.$x_rollup) {
+			if (typeof kid.$x_rollup === "number") {
 				kid.$x_rollup += dx;
 			}
-			dragSummaryKids(kid, dx, rollups, holdManual);
+			if (slack && typeof kid.$x_slack === "number") {
+				kid.$x_slack += dx;
+			}
+			dragSummaryKids(kid, dx, rollups, holdManual, slack);
 		});
 	}
 }
@@ -51,7 +55,8 @@ export function dragSummary(
 	tasks: GanttDataTree,
 	task: IParsedTask,
 	inactiveTasks?: boolean,
-	autoSchedule?: boolean
+	autoSchedule?: boolean,
+	unscheduledTasks?: boolean
 ) {
 	const summary = tasks.getSummaryId(task.id);
 	if (summary) {
@@ -62,22 +67,31 @@ export function dragSummary(
 			xMin: Infinity,
 			xMax: 0,
 		};
-		getSummaryBarSize(pobj, coords, !!inactiveTasks && !pobj.inactive);
+		getSummaryBarSize(
+			pobj,
+			coords,
+			!!inactiveTasks && !pobj.inactive,
+			!!unscheduledTasks
+		);
 		if (Number.isFinite(coords.xMin)) {
 			pobj.$x = coords.xMin;
 			pobj.$w = coords.xMax - coords.xMin;
 		}
-		dragSummary(tasks, pobj, inactiveTasks, autoSchedule);
+		dragSummary(tasks, pobj, inactiveTasks, autoSchedule, unscheduledTasks);
 	}
 }
 
 function getSummaryBarSize(
 	task: IParsedTask,
 	coords: { xMin: number; xMax: number },
-	excludeInactive?: boolean
+	excludeInactive?: boolean,
+	excludeUnscheduled?: boolean
 ) {
 	task.data?.forEach(kid => {
-		if (!kid.unscheduled && !(excludeInactive && kid.inactive)) {
+		if (
+			!(excludeUnscheduled && kid.unscheduled) &&
+			!(excludeInactive && kid.inactive)
+		) {
 			const mD = kid.type === "milestone" && kid.$h ? kid.$h / 2 : 0;
 			if (coords.xMin > kid.$x + mD) {
 				coords.xMin = kid.$x + mD;
@@ -89,7 +103,7 @@ function getSummaryBarSize(
 		}
 
 		if (kid.type !== "summary")
-			getSummaryBarSize(kid, coords, excludeInactive);
+			getSummaryBarSize(kid, coords, excludeInactive, excludeUnscheduled);
 	});
 }
 
@@ -278,7 +292,6 @@ export function extendDragOptions(task: ITask, options: IDataHash) {
 type TResourceHistory = {
 	startBatch(): void;
 	endBatch(): void;
-	isBatching(): boolean;
 } | null;
 
 export function setTaskResources(
@@ -289,8 +302,6 @@ export function setTaskResources(
 		getState: () => Partial<IData>;
 		getHistory: () => TResourceHistory | null;
 		eventSource?: string;
-		skipUndo?: boolean;
-		joinUndo?: boolean;
 	}
 ) {
 }

@@ -172,3 +172,132 @@ describe("link validation", () => {
 		expect(store.getLinkValidator()(cycle)).toBe("cycle");
 	});
 });
+
+describe("links of a closed branch", () => {
+	beforeEach(() => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test("replacing tasks with open:false drops child links", () => {
+		const store = makeStore(
+			[
+				task({
+					id: 10,
+					text: "S",
+					type: "summary",
+					open: true,
+					start: new Date(2026, 3, 10),
+					end: new Date(2026, 3, 20),
+				}),
+				task({ id: 1, parent: 10 }),
+				task({
+					id: 2,
+					parent: 10,
+					start: new Date(2026, 3, 16),
+					end: new Date(2026, 3, 20),
+				}),
+			],
+			[{ id: 1, source: 1, target: 2, type: "e2s" }],
+			{ schedule: {} }
+		);
+
+		expect(store.getState()._links.some((l: any) => l.$p)).to.eq(true);
+
+		const { tasks: tree, links } = store.getState();
+		const nextTasks = tree.serialize().map((item: any) => {
+			const copy = { ...item };
+			delete copy.data;
+			if (item.type === "summary") copy.open = false;
+			return copy;
+		});
+		store.init({
+			tasks: nextTasks,
+			links: links.map((l: any) => ({ ...l })),
+		});
+		vi.advanceTimersByTime(10);
+
+		const state = store.getState();
+		expect(state.tasks.toArray().map((item: any) => item.id)).to.deep.eq([
+			10,
+		]);
+		expect(state.tasks.byId(1).$y).to.not.be.ok;
+		expect(state._links.some((l: any) => l.$p)).to.eq(false);
+
+		store.in.exec("open-task", { id: 10, mode: true });
+		vi.advanceTimersByTime(10);
+		expect(store.getState()._links.some((l: any) => l.$p)).to.eq(true);
+	});
+
+	test("open-task mode false drops child links", () => {
+		const store = makeStore(
+			[
+				task({
+					id: 10,
+					text: "S",
+					type: "summary",
+					open: true,
+					start: new Date(2026, 3, 10),
+					end: new Date(2026, 3, 20),
+				}),
+				task({ id: 1, parent: 10 }),
+				task({
+					id: 2,
+					parent: 10,
+					start: new Date(2026, 3, 16),
+					end: new Date(2026, 3, 20),
+				}),
+			],
+			[{ id: 1, source: 1, target: 2, type: "e2s" }],
+			{ schedule: {} }
+		);
+
+		store.in.exec("open-task", { id: 10, mode: false });
+		vi.advanceTimersByTime(10);
+
+		const state = store.getState();
+		expect(state.tasks.byId(1).$y).to.not.be.ok;
+		expect(state._links.some((l: any) => l.$p)).to.eq(false);
+	});
+
+	test("a recorded close drops child links", () => {
+		const store = makeStore(
+			[
+				task({
+					id: 10,
+					text: "S",
+					type: "summary",
+					open: true,
+					start: new Date(2026, 3, 10),
+					end: new Date(2026, 3, 20),
+				}),
+				task({ id: 1, parent: 10 }),
+				task({
+					id: 2,
+					parent: 10,
+					start: new Date(2026, 3, 16),
+					end: new Date(2026, 3, 20),
+				}),
+			],
+			[{ id: 1, source: 1, target: 2, type: "e2s" }],
+			{ schedule: {} }
+		);
+
+		expect(store.getState()._links.some((l: any) => l.$p)).to.eq(true);
+
+		store.in.exec("open-task", {
+			id: 10,
+			mode: false,
+			eventSource: "undo",
+		});
+		vi.advanceTimersByTime(10);
+
+		const state = store.getState();
+		expect(state.tasks.byId(10).open).to.eq(false);
+		expect(state.tasks.byId(10).$y).to.be.ok;
+		expect(state.tasks.byId(1).$y).to.not.be.ok;
+		expect(state._links.some((l: any) => l.$p)).to.eq(false);
+	});
+});

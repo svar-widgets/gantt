@@ -275,9 +275,10 @@ test("check dates of summary task if all kids are unscheduled, Default set", () 
 	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
 
 	store.in.exec("delete-task", { id: 17 });
-	// todo, there is no summary task, onlu one child is left and it is unscheduled
-	expect(tasks.byId(14).start).toEqual(new Date(2024, 5, 21));
-	expect(tasks.byId(14).end).toEqual(new Date(2024, 5, 21));
+	expect(tasks.byId(14).start).to.eq(null);
+	expect(tasks.byId(14).end).to.eq(null);
+	expect(tasks.byId(14).duration).to.eq(null);
+	expect(tasks.byId(14).unscheduled).to.eq(true);
 });
 
 test("correctly resets new parent summary task after all tasks are moved out one by one, Pretty set", () => {
@@ -563,8 +564,7 @@ test("a reorder drag keeps summary updates in progress until drop", () => {
 		expect(ev.inProgress).to.eq(undefined);
 		expect(ev.skipProvider).to.eq(undefined);
 		expect(ev.eventSource).to.eq("move-task");
-		expect(ev.joinUndo).to.eq(true);
-		expect(ev.skipUndo).to.eq(true);
+		expect(ev.skipUndo).to.eq(undefined);
 		expect(ev.task.start).toEqual(tasks.byId(ev.id).start);
 		expect(ev.task.end).toEqual(tasks.byId(ev.id).end);
 	});
@@ -917,6 +917,45 @@ test("auto schedule + autoProgress does not loop", () => {
 	expect(scheduleRuns).toBeLessThan(10);
 });
 
+test("toggling inactiveTasks rolls up every summary without an undo step", () => {
+	const config = {
+		...getData(),
+		undo: true,
+		summary: { autoProgress: true },
+		tasks: [
+			{ id: 1, text: "Release", type: "summary", parent: 0, open: true },
+			{
+				id: 2,
+				text: "QA",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 3, 1),
+				duration: 2,
+				progress: 50,
+			},
+			{
+				id: 3,
+				text: "Regression",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 3, 3),
+				duration: 2,
+				progress: 100,
+				inactive: true,
+			},
+		],
+		links: [],
+	};
+	const store = getDataStore(config);
+
+	store.init({ ...config, inactiveTasks: true });
+	expect(store.getState().tasks.byId(1).progress).to.eq(50);
+
+	store.init({ ...config, inactiveTasks: false });
+	expect(store.getState().tasks.byId(1).progress).to.eq(75);
+	expect(store.getState().history).to.deep.eq({ undo: 0, redo: 0 });
+});
+
 test("sets summary dates from all children when unscheduledTasks is disabled, Default set", () => {
 	const store = getDataStore({
 		...getData(),
@@ -978,4 +1017,92 @@ test("ignores a summary's own duration when its dates come from kids, Default se
 	expect(tasks.byId(1).start).toEqual(new Date(2024, 5, 10));
 	expect(tasks.byId(1).end).toEqual(new Date(2024, 5, 12));
 	expect(tasks.byId(1).duration).toEqual(2);
+});
+
+test("autoConvert turns an emptied summary back into a task when its last child moves inside another task", () => {
+	const store = getDataStore({
+		...getData(),
+		summary: { autoConvert: true },
+		tasks: [
+			{
+				id: 1,
+				text: "QA",
+				type: "summary",
+				parent: 0,
+				open: true,
+				start: new Date(2024, 3, 2),
+				end: new Date(2024, 3, 4),
+				duration: 2,
+			},
+			{
+				id: 2,
+				text: "Regression",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 3, 2),
+				end: new Date(2024, 3, 4),
+				duration: 2,
+			},
+			{
+				id: 3,
+				text: "Build",
+				type: "task",
+				parent: 0,
+				start: new Date(2024, 3, 6),
+				end: new Date(2024, 3, 8),
+				duration: 2,
+			},
+		],
+		links: [],
+	});
+	store.in.exec("move-task", { id: 2, target: 3, mode: "child" });
+	const tasks = store.getState().tasks;
+	expect(tasks.byId(2).parent).to.eq(3);
+	expect(tasks.byId(3).type).to.eq("summary");
+	expect(tasks.byId(1).type).to.eq("task");
+});
+
+test("toggling inactiveTasks publishes the rolled-up summary progress", () => {
+	const data = {
+		...getData(),
+		summary: { autoProgress: true },
+		inactiveTasks: false,
+		tasks: [
+			{
+				id: 1,
+				text: "Release",
+				type: "summary",
+				parent: 0,
+				open: true,
+				progress: 50,
+			},
+			{
+				id: 2,
+				text: "QA",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 3, 2),
+				duration: 2,
+				progress: 0,
+			},
+			{
+				id: 3,
+				text: "Regression",
+				type: "task",
+				parent: 1,
+				start: new Date(2024, 3, 4),
+				duration: 2,
+				progress: 100,
+				inactive: true,
+			},
+		],
+		links: [],
+	};
+	const store = getDataStore(data);
+
+	store.init({ ...data, inactiveTasks: true });
+
+	// bars read _tasks, which stays at 50 until the new progress is published
+	const rows = store.getState()._tasks;
+	expect(rows.find(task => task.id === 1).progress).to.eq(0);
 });

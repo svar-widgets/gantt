@@ -64,8 +64,10 @@
 		end(widthAt(ev));
 	}
 
-	// unmounted mid-drag: still commit, so the store drops its drag snapshot
 	onDestroy(() => {
+		// onDestroy also runs on the server, where stop() cannot touch document
+		if (typeof document === "undefined") return;
+		// unmounted mid-drag: still commit, so the store drops its drag snapshot
 		if (width != null) end(width);
 		else stop();
 	});

@@ -499,7 +499,7 @@ describe("history", () => {
 			});
 
 			store.in.exec("undo");
-			expect(tasks.byId(1).start).to.be.undefined;
+			expect(tasks.byId(1).start).to.eq(null);
 			expect(tasks.byId(1).duration).to.eq(2);
 			expect(tasks.byId(1).unscheduled).to.eq(true);
 
@@ -509,7 +509,7 @@ describe("history", () => {
 			expect(tasks.byId(1).unscheduled).to.eq(false);
 
 			store.in.exec("undo");
-			expect(tasks.byId(1).start).to.be.undefined;
+			expect(tasks.byId(1).start).to.eq(null);
 			expect(tasks.byId(1).duration).to.eq(2);
 			expect(tasks.byId(1).unscheduled).to.eq(true);
 
@@ -665,13 +665,13 @@ describe("history", () => {
 			});
 
 			expect(tasks.byId(5).unscheduled).to.eq(true);
-			expect(tasks.byId(5).start).to.be.undefined;
+			expect(tasks.byId(5).start).to.eq(null);
 
 			store.in.exec("undo");
 			store.in.exec("redo");
 
 			expect(tasks.byId(5).unscheduled).to.eq(true);
-			expect(tasks.byId(5).start).to.be.undefined;
+			expect(tasks.byId(5).start).to.eq(null);
 		});
 	});
 
@@ -986,6 +986,52 @@ describe("history", () => {
 			expect(tasks.byId(copyId).text).to.eq("Task 1");
 		});
 
+		test("can undo/redo after copy task with assignments", () => {
+			vi.useFakeTimers();
+			const initData = getData("full");
+			resetState({
+				...initData,
+				resources: [
+					{ id: "r1", name: "Alex" },
+					{ id: "r2", name: "Sophie" },
+				],
+				assignments: [
+					{ id: 1, task: 11, resource: "r1" },
+					{ id: 2, task: 110, resource: "r1" },
+					{ id: 3, task: 112, resource: "r2" },
+				],
+				undo: true,
+			});
+
+			const ev: any = { id: 11, target: 2 };
+			store.in.exec("copy-task", ev);
+			vi.advanceTimersByTime(1);
+			const copyIds = [
+				ev.id,
+				...store
+					.getState()
+					.tasks.byId(ev.id)
+					.data!.map(t => t.id),
+			];
+			const copied = () =>
+				store
+					.getState()
+					.assignments!.map(a => a)
+					.filter(a => copyIds.includes(a.task))
+					.map(a => a.resource)
+					.sort();
+			expect(copied()).to.deep.eq(["r1", "r1", "r2"]);
+
+			store.in.exec("undo");
+			vi.advanceTimersByTime(1);
+			expect(copied()).to.deep.eq([]);
+
+			store.in.exec("redo");
+			vi.advanceTimersByTime(1);
+			expect(copied()).to.deep.eq(["r1", "r1", "r2"]);
+			vi.useRealTimers();
+		});
+
 		test("can undo/redo after copy task (summary tasks)", () => {
 			const initData = getData("summaries");
 			resetState({
@@ -1279,8 +1325,9 @@ describe("history", () => {
 				.exec("move-task", { id: 110, mode: "after", target: 112 })
 				.catch((e: any) => (err = e));
 
-			// the snapshot bails instead of dereferencing the deleted task
-			expect(err?.stack).not.to.contain("HistoryManager");
+			// the snapshot bails instead of dereferencing the deleted task;
+			// the step wrapper is on every stack, so look at the throwing frame
+			expect(err?.stack?.split("\n")[1]).not.to.contain("HistoryManager");
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 		});
 	});
@@ -2240,7 +2287,7 @@ describe("history", () => {
 			expect(tasks.byId(1).start).to.deep.eq(day(10));
 		});
 
-		test("eventSource does not decide undo step boundaries", () => {
+		test("an eventSource naming a store action joins the open step", () => {
 			resetState({ ...getData(), undo: true });
 
 			const tasks = () => store.getState().tasks;
@@ -2248,19 +2295,27 @@ describe("history", () => {
 			store.in.exec("update-task", { id: 1, task: { text: "one" } });
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
-			// eventSource is public metadata, whatever it holds, so it must
-			// not decide where one undo step ends and the next begins
 			store.in.exec("update-task", {
 				id: 2,
 				task: { text: "two" },
 				eventSource: "update-task",
 			});
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("update-task", {
+				id: 1,
+				task: { text: "three" },
+				eventSource: "placeholder",
+			});
 			expect(store.getState().history).to.deep.eq({ undo: 2, redo: 0 });
 
 			store.in.exec("undo");
-
-			expect(tasks().byId(2).text).to.eq("Task 2");
 			expect(tasks().byId(1).text).to.eq("one");
+			expect(tasks().byId(2).text).to.eq("two");
+
+			store.in.exec("undo");
+			expect(tasks().byId(2).text).to.eq("Task 2");
+			expect(tasks().byId(1).text).to.eq("Task 1");
 		});
 
 		test("a split after an edit is a step of its own", () => {
@@ -4055,13 +4110,11 @@ describe("history", () => {
 		function watchDeletes() {
 			const deleted: {
 				id: TID;
-				joinUndo?: boolean;
 				eventSource?: string;
 			}[] = [];
 			store.in.on("delete-assignment", ev => {
 				deleted.push({
 					id: ev.id,
-					joinUndo: ev.joinUndo,
 					eventSource: ev.eventSource,
 				});
 			});
@@ -4087,9 +4140,7 @@ describe("history", () => {
 
 			expect(store.getState().tasks.byId(1).type).to.eq("summary");
 			expect(assignmentIds()).to.deep.eq([]);
-			expect(deleted).to.deep.eq([
-				{ id: 1, joinUndo: true, eventSource: "update-task" },
-			]);
+			expect(deleted).to.deep.eq([{ id: 1, eventSource: "update-task" }]);
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
 			vi.advanceTimersByTime(1);
@@ -4124,12 +4175,9 @@ describe("history", () => {
 
 			expect(assignmentIds()).to.deep.eq([]);
 			expect(deleted.map(ev => ev.id).sort()).to.deep.eq([1, 2]);
-			expect(
-				deleted.every(
-					ev =>
-						ev.joinUndo === true && ev.eventSource === "update-task"
-				)
-			).to.eq(true);
+			expect(deleted.every(ev => ev.eventSource === "update-task")).to.eq(
+				true
+			);
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
 			vi.advanceTimersByTime(1);
@@ -4195,9 +4243,7 @@ describe("history", () => {
 			expect(store.getState().tasks.byId(1).type).to.eq("summary");
 			expect(store.getState().tasks.byId(2).parent).to.eq(1);
 			expect(assignmentIds()).to.deep.eq([]);
-			expect(deleted).to.deep.eq([
-				{ id: 1, joinUndo: true, eventSource: "update-task" },
-			]);
+			expect(deleted).to.deep.eq([{ id: 1, eventSource: "update-task" }]);
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
 			vi.advanceTimersByTime(1);
@@ -4255,9 +4301,7 @@ describe("history", () => {
 			expect(store.getState().tasks.byId(1).type).to.eq("summary");
 			expect(store.getState().tasks.byId(2).parent).to.eq(1);
 			expect(assignmentIds()).to.deep.eq([]);
-			expect(deleted).to.deep.eq([
-				{ id: 1, joinUndo: true, eventSource: "update-task" },
-			]);
+			expect(deleted).to.deep.eq([{ id: 1, eventSource: "update-task" }]);
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
 			vi.advanceTimersByTime(1);
@@ -4327,7 +4371,7 @@ describe("history", () => {
 			expect(store.getState().tasks.byId(1).type).to.eq("task");
 			expect(store.getState().tasks.byId(2).parent).to.eq(0);
 			expect(typeChanges).to.deep.eq([
-				{ id: 1, type: "task", eventSource: undefined },
+				{ id: 1, type: "task", eventSource: "move-task" },
 			]);
 			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
 
@@ -4337,11 +4381,9 @@ describe("history", () => {
 
 			expect(store.getState().tasks.byId(1).type).to.eq("summary");
 			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			// history restores the recorded type, nothing is re-derived
 			expect(typeChanges).to.deep.eq([
-				// history restores the recorded type
 				{ id: 1, type: "summary", eventSource: "undo" },
-				// child is back, so the summary span is re-derived
-				{ id: 1, type: "summary", eventSource: "move-task" },
 			]);
 			expect(store.getState().history).to.deep.eq({ undo: 0, redo: 1 });
 
@@ -4378,6 +4420,557 @@ describe("history", () => {
 
 			expect(assignmentIds()).to.deep.eq([]);
 			expect(store.getState().history).to.deep.eq({ undo: 0, redo: 0 });
+		});
+	});
+
+	describe("a step captures the whole action", () => {
+		const day = (n: number) => new Date(2024, 3, n);
+
+		function summaryTasks(extra?: any) {
+			return {
+				...getData(),
+				tasks: [
+					{
+						id: 10,
+						text: "S",
+						type: "summary",
+						parent: 0,
+						open: true,
+					},
+					{
+						id: 1,
+						text: "A",
+						type: "task",
+						parent: 10,
+						start: day(2),
+						end: day(4),
+						duration: 2,
+						progress: 0,
+					},
+					{
+						id: 2,
+						text: "B",
+						type: "task",
+						parent: 10,
+						start: day(2),
+						end: day(4),
+						duration: 2,
+						progress: 0,
+					},
+					{
+						id: 3,
+						text: "C",
+						type: "task",
+						parent: 0,
+						start: day(4),
+						end: day(6),
+						duration: 2,
+						progress: 0,
+					},
+				],
+				links: [{ id: 1, source: 1, target: 3, type: "e2s" }],
+				summary: { autoProgress: true },
+				undo: true,
+				...extra,
+			};
+		}
+
+		function snapshot() {
+			return store
+				.getState()
+				.tasks.toArray(true)
+				.map((t: IParsedTask) => ({
+					id: t.id,
+					parent: t.parent,
+					start: t.start,
+					end: t.end,
+					progress: t.progress,
+				}));
+		}
+
+		test("an app handler's exec joins the step when it names its cause", () => {
+			resetState(summaryTasks());
+			const { tasks } = store.getState();
+
+			store.in.on("update-task", ev => {
+				if (ev.id === 3 && !ev.eventSource)
+					store.in.exec("update-task", {
+						id: 2,
+						task: { text: "follow-up" },
+						eventSource: "update-task",
+					});
+			});
+
+			store.in.exec("update-task", { id: 3, task: { text: "renamed" } });
+			expect(tasks.byId(2).text).to.eq("follow-up");
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(tasks.byId(3).text).to.eq("C");
+			expect(tasks.byId(2).text).to.eq("B");
+		});
+
+		test("an app handler's exec without a cause is a step of its own", () => {
+			resetState(summaryTasks());
+			const { tasks } = store.getState();
+
+			store.in.on("update-task", ev => {
+				if (ev.id === 3 && !ev.eventSource)
+					store.in.exec("update-task", {
+						id: 2,
+						task: { text: "follow-up" },
+					});
+			});
+
+			store.in.exec("update-task", { id: 3, task: { text: "renamed" } });
+			expect(store.getState().history).to.deep.eq({ undo: 2, redo: 0 });
+
+			store.in.exec("undo");
+			expect(tasks.byId(2).text).to.eq("B");
+			expect(tasks.byId(3).text).to.eq("renamed");
+		});
+
+		test("an async interceptor delays the step, not its recording", async () => {
+			resetState(summaryTasks());
+			const { tasks } = store.getState();
+
+			store.in.intercept("update-task", async () => {
+				await new Promise(r => setTimeout(r, 5));
+			});
+
+			await store.in.exec("update-task", {
+				id: 1,
+				task: { start: day(2), end: day(10), duration: 8 },
+			});
+			// the summary update it causes passes the interceptor too
+			await new Promise(r => setTimeout(r, 20));
+
+			expect(tasks.byId(10).end).to.deep.eq(day(10));
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			await new Promise(r => setTimeout(r, 20));
+			expect(tasks.byId(1).end).to.deep.eq(day(4));
+			expect(tasks.byId(10).end).to.deep.eq(day(4));
+		});
+
+		test("a blocked action closes its step", () => {
+			resetState(summaryTasks());
+			const { tasks } = store.getState();
+
+			store.in.intercept("update-task", ev => ev.id !== 3);
+
+			store.in.exec("update-task", { id: 3, task: { text: "blocked" } });
+			expect(tasks.byId(3).text).to.eq("C");
+			expect(store.getState().history).to.deep.eq({ undo: 0, redo: 0 });
+
+			store.in.exec("update-task", { id: 2, task: { text: "next" } });
+			store.in.exec("update-task", { id: 2, task: { text: "last" } });
+			expect(store.getState().history).to.deep.eq({ undo: 2, redo: 0 });
+
+			store.in.exec("undo");
+			expect(tasks.byId(2).text).to.eq("next");
+		});
+
+		test("turning history off and on again records one step per root", () => {
+			resetState(summaryTasks());
+			store.init(summaryTasks({ undo: false }));
+			store.in.exec("update-task", {
+				id: 2,
+				task: { text: "untracked" },
+			});
+			store.init(summaryTasks());
+
+			const { tasks } = store.getState();
+			store.in.exec("update-task", { id: 2, task: { text: "one" } });
+			store.in.exec("update-task", { id: 2, task: { text: "two" } });
+			expect(store.getState().history).to.deep.eq({ undo: 2, redo: 0 });
+
+			store.in.exec("undo");
+			expect(tasks.byId(2).text).to.eq("one");
+		});
+
+		test("undo and redo write the records back without calculating", () => {
+			resetState(summaryTasks({ schedule: { auto: true } }));
+			vi.useFakeTimers();
+			const before = snapshot();
+
+			store.in.exec("update-task", {
+				id: 1,
+				task: {
+					start: day(8),
+					end: day(10),
+					duration: 2,
+					progress: 50,
+				},
+			});
+			const after = snapshot();
+			// the pass moved C, the summary span and progress followed
+			expect(store.getState().tasks.byId(3).start).to.deep.eq(day(10));
+			expect(store.getState().tasks.byId(10).progress).to.eq(25);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			const calculated: string[] = [];
+			store.in.on("schedule-tasks", () => calculated.push("pass"));
+			store.in.on("update-task", ev => {
+				if (ev.eventSource !== "undo" && ev.eventSource !== "redo")
+					calculated.push(`update ${ev.id}`);
+			});
+
+			store.in.exec("undo");
+			expect(snapshot()).to.deep.eq(before);
+			store.in.exec("redo");
+			expect(snapshot()).to.deep.eq(after);
+
+			vi.advanceTimersByTime(20);
+			expect(calculated).to.deep.eq([]);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+			vi.useRealTimers();
+		});
+
+		test("a progress drag undoes the summary progress with it", () => {
+			resetState(summaryTasks());
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", {
+				id: 1,
+				task: { progress: 40 },
+				inProgress: true,
+			});
+			store.in.exec("update-task", {
+				id: 1,
+				task: { progress: 70 },
+				inProgress: true,
+			});
+			expect(store.getState().history).to.deep.eq({ undo: 0, redo: 0 });
+
+			store.in.exec("update-task", {
+				id: 1,
+				task: { progress: 70 },
+				inProgress: false,
+			});
+			expect(tasks.byId(10).progress).to.eq(35);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(tasks.byId(1).progress).to.eq(0);
+			expect(tasks.byId(10).progress).to.eq(0);
+
+			store.in.exec("redo");
+			expect(tasks.byId(1).progress).to.eq(70);
+			expect(tasks.byId(10).progress).to.eq(35);
+		});
+
+		test("a reorder drag undoes the summaries it re-derived", () => {
+			resetState({ ...getData("summaries"), undo: true });
+			const before = snapshot();
+
+			store.in.exec("move-task", {
+				id: 4,
+				mode: "before",
+				target: 3,
+				inProgress: true,
+			});
+			store.in.exec("move-task", {
+				id: 4,
+				mode: "before",
+				target: 5,
+				inProgress: true,
+			});
+			store.in.exec("move-task", {
+				id: 4,
+				mode: "before",
+				target: 5,
+				inProgress: false,
+			});
+			const after = snapshot();
+			expect(after).not.to.deep.eq(before);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(snapshot()).to.deep.eq(before);
+			store.in.exec("redo");
+			expect(snapshot()).to.deep.eq(after);
+		});
+
+		test("a pass after a scheduling setting changes is not recorded", () => {
+			const config = summaryTasks();
+			// C starts before A ends, the first pass moves it
+			config.tasks[3] = {
+				...config.tasks[3],
+				start: day(3),
+				end: day(5),
+			};
+			resetState(config);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { text: "renamed" } });
+			store.init({ ...config, schedule: { auto: true } });
+			expect(store.getState().tasks.byId(3).start).to.deep.eq(day(4));
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).text).to.eq("B");
+			expect(store.getState().tasks.byId(3).start).to.deep.eq(day(4));
+			expect(tasks).to.eq(store.getState().tasks);
+		});
+
+		test("a remote event opens no step, nor do its follow-ups", () => {
+			resetState(summaryTasks());
+
+			store.in.exec("update-task", { id: 2, task: { text: "renamed" } });
+			store.in.exec("update-task", {
+				id: 1,
+				task: { progress: 60 },
+				eventSource: "remote",
+			});
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).text).to.eq("B");
+			expect(store.getState().tasks.byId(1).progress).to.eq(60);
+		});
+	});
+
+	describe("expand/collapse", () => {
+		const day = (d: number) => new Date(2024, 0, d);
+
+		beforeEach(() => {
+			resetState({
+				...getData(),
+				tasks: [
+					{
+						id: 1,
+						text: "A",
+						type: "task",
+						parent: 0,
+						start: day(2),
+						duration: 2,
+					},
+					{
+						id: 2,
+						text: "X",
+						type: "task",
+						parent: 0,
+						start: day(2),
+						duration: 2,
+					},
+				],
+				links: [],
+				undo: true,
+			});
+		});
+
+		const isOpen = (id: TID) => !!store.getState().tasks.byId(id).open;
+
+		test("the parent an add-task opens is closed on undo and reopened on redo", () => {
+			store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				task: { text: "B" },
+				show: true,
+			});
+			expect(isOpen(1)).to.eq(true);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			expect(isOpen(1)).to.eq(false);
+
+			store.in.exec("redo");
+			expect(isOpen(1)).to.eq(true);
+		});
+
+		test("the target a move-task opens is closed on undo and reopened on redo", () => {
+			store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				task: { text: "B" },
+			});
+			store.in.exec("move-task", { id: 2, target: 1, mode: "child" });
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("undo");
+			expect(isOpen(1)).to.eq(false);
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+
+			store.in.exec("redo");
+			expect(isOpen(1)).to.eq(true);
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+		});
+
+		test("an open made while dragging is not recorded", () => {
+			store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				task: { text: "B" },
+			});
+			expect(isOpen(1)).to.eq(false);
+			const { history } = store.getState();
+
+			store.in.exec("move-task", {
+				id: 2,
+				target: 1,
+				mode: "child",
+				inProgress: true,
+			});
+			expect(isOpen(1)).to.eq(true);
+			expect(store.getState().history).to.deep.eq(history);
+
+			store.in.exec("move-task", {
+				id: 2,
+				target: 1,
+				mode: "child",
+				inProgress: false,
+			});
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(store.getState().history).to.deep.eq({
+				undo: history.undo + 1,
+				redo: 0,
+			});
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("redo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(true);
+		});
+
+		test("a user toggle is not recorded and survives an update-task replay", () => {
+			store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				task: { text: "B" },
+				show: true,
+			});
+			store.in.exec("update-task", { id: 1, task: { text: "A2" } });
+			const { history } = store.getState();
+
+			store.in.exec("open-task", { id: 1, mode: false });
+			expect(store.getState().history).to.deep.eq(history);
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(1).text).to.eq("A");
+			expect(isOpen(1)).to.eq(false);
+
+			store.in.exec("redo");
+			expect(store.getState().tasks.byId(1).text).to.eq("A2");
+			expect(isOpen(1)).to.eq(false);
+		});
+
+		test("an open branch emptied by outdent is reopened on undo", () => {
+			store.in.exec("indent-task", { id: 2, mode: true });
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("indent-task", { id: 2, mode: false });
+			expect(store.getState().tasks.byId(1).data).to.eq(null);
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("redo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+			expect(isOpen(1)).to.eq(false);
+
+			store.in.exec("undo");
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+			expect(isOpen(1)).to.eq(false);
+		});
+
+		test("an open branch emptied by delete is reopened on undo", () => {
+			store.in.exec("move-task", { id: 2, target: 1, mode: "child" });
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("delete-task", { id: 2 });
+			expect(store.getState().tasks.byId(1).data).to.eq(null);
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("redo");
+			expect(store.getState().tasks.byId(2)).to.eq(undefined);
+			expect(isOpen(1)).to.eq(false);
+		});
+
+		test("an open recorded before grouping replays on the saved tree", () => {
+			vi.useFakeTimers();
+			resetState({
+				...getData(),
+				tasks: store.getState().tasks.toArray(),
+				links: [],
+				resources: [{ id: "r1", name: "R" }],
+				assignments: [{ id: 1, task: 2, resource: "r1" }],
+				undo: true,
+			});
+			store.in.exec("indent-task", { id: 2, mode: true });
+			expect(isOpen(1)).to.eq(true);
+
+			store.in.exec("group-tasks", { field: "resource" });
+			vi.advanceTimersByTime(1);
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(0);
+			expect(isOpen(1)).to.eq(false);
+
+			store.in.exec("redo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(true);
+			vi.useRealTimers();
+		});
+
+		test("an open branch emptied by delete while grouped is reopened on undo", () => {
+			vi.useFakeTimers();
+			resetState({
+				...getData(),
+				tasks: [
+					...store.getState().tasks.toArray(),
+					{
+						id: 11,
+						text: "B",
+						type: "task",
+						parent: 1,
+						start: day(2),
+						duration: 2,
+					},
+				].map(t => (t.id === 1 ? { ...t, open: true } : t)),
+				links: [],
+				resources: [{ id: "r1", name: "R" }],
+				assignments: [{ id: 1, task: 11, resource: "r1" }],
+				groupBy: { field: "resource" },
+				undo: true,
+			});
+			vi.advanceTimersByTime(1);
+			expect(isOpen(1)).to.eq(true);
+
+			const row = store
+				.getState()
+				.tree.toArray()
+				.find(r => r.$id === 11);
+			store.in.exec("delete-task", { id: row.id });
+			vi.advanceTimersByTime(1);
+			expect(store.getState().tasks.byId(1).data).to.eq(null);
+
+			store.in.exec("undo");
+			vi.advanceTimersByTime(1);
+			expect(store.getState().tasks.byId(11).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(true);
+			vi.useRealTimers();
+		});
+
+		test("a closed branch emptied by outdent stays closed on undo", () => {
+			store.in.exec("move-task", { id: 2, target: 1, mode: "child" });
+			store.in.exec("open-task", { id: 1, mode: false });
+
+			store.in.exec("indent-task", { id: 2, mode: false });
+			expect(store.getState().tasks.byId(1).data).to.eq(null);
+
+			store.in.exec("undo");
+			expect(store.getState().tasks.byId(2).parent).to.eq(1);
+			expect(isOpen(1)).to.eq(false);
 		});
 	});
 });

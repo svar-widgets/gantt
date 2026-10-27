@@ -574,7 +574,7 @@ describe("groupBy and group-tasks", () => {
 			expect(taskAssignments).toEqual(["r1", "r2"]);
 		});
 
-		test("a skipUndo add-task does not put its assignment in the previous step", () => {
+		test("a skipUndo add-task records nothing, its assignment included", () => {
 			initStore({ groupBy: { field: "resource" }, undo: true });
 			delay();
 
@@ -596,22 +596,19 @@ describe("groupBy and group-tasks", () => {
 			delay();
 
 			const newTaskId = store.getState().tasks.toArray().slice(-1)[0].id;
-			expect(
-				(store.getState()._assignments.byTask[newTaskId] || []).map(
+			const resourcesOf = (id: TID) =>
+				(store.getState()._assignments.byTask[id] || []).map(
 					(a: IAssignment) => a.resource
-				)
-			).toEqual(["r1"]);
+				);
+			expect(resourcesOf(newTaskId)).toEqual(["r1"]);
+			expect(store.getState().history).toEqual({ undo: 1, redo: 0 });
 
 			store.in.exec("undo");
 			delay();
 
 			expect(store.getState().tasks.byId(2).text).to.eq("Task 2");
 			expect(store.getState().tasks.byId(newTaskId)).toBeDefined();
-			expect(
-				(store.getState()._assignments.byTask[newTaskId] || []).map(
-					(a: IAssignment) => a.resource
-				)
-			).toEqual(["r1"]);
+			expect(resourcesOf(newTaskId)).toEqual(["r1"]);
 		});
 
 		test("can undo/redo add-task and grouped move without duplicate assignments", () => {

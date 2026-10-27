@@ -264,6 +264,7 @@
 					{tasks}
 					links={data.links}
 					scales={data.scales}
+					summary={{ autoConvert: true }}
 					{calendar}
 					calendars={calendarsList}
 					{resources}

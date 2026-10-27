@@ -8,7 +8,7 @@ import type {
 	TID,
 } from "./types";
 import { getDiffer, getAdder } from "./time";
-import { setSummaryDates } from "./tasks";
+import { isManualSummary, setSummaryDates } from "./tasks";
 
 const unitAdd = (unit: TDurationUnit, calendar?: ICalendar) =>
 	getAdder(unit, calendar);
@@ -29,8 +29,10 @@ export function parseTreeDates(
 			normalizeDates(task, state, calendarGetter(task));
 			if (task.type !== "summary") return;
 
-			// a supplied value is kept, a missing one is derived
-			const datesMissing = !(task.start && task.end);
+			// a supplied value is kept, a missing one is derived,
+			// except a manual summary's, whose dates are its own
+			const datesMissing =
+				!(task.start && task.end) && !isManualSummary(task, state);
 			const flagMissing =
 				state.inactiveTasks && task.inactive === undefined;
 			if (!datesMissing && !flagMissing) return;
@@ -62,10 +64,6 @@ const effective = (
 ) => (key in task ? task[key] : prev?.[key]);
 
 export function deriveUnscheduled(task: Partial<ITask>, prev?: Partial<ITask>) {
-	if (effective(task, prev, "type") === "summary") {
-		task.unscheduled = false;
-		return;
-	}
 	task.unscheduled = !effective(task, prev, "start");
 }
 
@@ -90,6 +88,11 @@ export function normalizeDates(
 ) {
 	if (prev) fillDateFields(task, prev, state.unscheduledTasks);
 	if (task.start) calcDates(task, state, calendar, false);
+	else if (state.unscheduledTasks) {
+		task.start = null;
+		task.end = null;
+		if (task.type === "summary") task.duration = null;
+	}
 	if (state.unscheduledTasks) deriveUnscheduled(task, prev);
 	if (task.base_start) calcDates(task, state, calendar, true);
 }

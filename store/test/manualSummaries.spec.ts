@@ -61,14 +61,6 @@ describe("manual summaries", () => {
 			expect(byId(store, "M").inactive).to.eq(true);
 			expect(span(store, "M")).to.deep.eq([day(1), day(10)]);
 		});
-
-		test("a manual summary without dates is dated from its members on load", () => {
-			const store = getStore(
-				plan({ start: undefined, end: undefined }, {})
-			);
-
-			expect(span(store, "M")).to.deep.eq([day(2), day(5)]);
-		});
 	});
 
 	describe("members", () => {

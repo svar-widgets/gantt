@@ -48,6 +48,7 @@
 			scales={data.scales}
 			schedule={{ auto: true }}
 			inactiveTasks
+			unscheduledTasks
 			{columns}
 		/>
 	</ContextMenu>

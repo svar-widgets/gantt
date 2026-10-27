@@ -126,7 +126,6 @@ export default class GanttDataTree extends DataTree<IParsedTask> {
 			type,
 			details,
 		};
-		if (task.segments) res.segments = task.segments.map(s => ({ ...s }));
 
 		if (task.segments) res.segments = task.segments.map(s => ({ ...s }));
 

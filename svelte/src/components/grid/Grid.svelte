@@ -166,10 +166,24 @@
 			if (task.$group || task.data) return false;
 		}
 
-		if (api.getTask(id).open) api.exec("open-task", { id, mode: false });
+		// a branch is dragged as one row and reopened on drop
+		if (api.getTask(id).open) {
+			collapsedId = id;
+			api.exec("open-task", { id, mode: false });
+		}
 
 		dragTask = tasks.find(t => t.id === id);
-		if (!dragTask) return false;
+		if (!dragTask) {
+			reopenDragged();
+			return false;
+		}
+	}
+
+	let collapsedId = null;
+	function reopenDragged() {
+		if (collapsedId === null) return;
+		api.exec("open-task", { id: collapsedId, mode: true });
+		collapsedId = null;
 	}
 
 	function endReorder({ id, top }) {
@@ -183,6 +197,7 @@
 				inProgress: false,
 			});
 		}
+		reopenDragged();
 		dragTask = null;
 	}
 

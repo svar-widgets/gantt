@@ -176,6 +176,28 @@ describe("get data", () => {
 		expect(calls.map(c => c.url)).to.deep.eq(["/tasks/7", "/links/7"]);
 	});
 
+	it("asks for the whole subtree when nested", async () => {
+		const { provider } = getProvider({
+			"GET /tasks/7?nested=true": [],
+			"GET /links/7?nested=true": [],
+			"GET /assignments/7?nested=true": [],
+		});
+		await provider.getData(7, { nested: true });
+
+		expect(calls.map(c => c.url)).to.deep.eq([
+			"/tasks/7?nested=true",
+			"/links/7?nested=true",
+		]);
+
+		calls.length = 0;
+		await provider.getData(7, { assignments: true, nested: true });
+		expect(calls.map(c => c.url)).to.deep.eq([
+			"/tasks/7?nested=true",
+			"/links/7?nested=true",
+			"/assignments/7?nested=true",
+		]);
+	});
+
 	it("loads resources for the root request only", async () => {
 		const { provider } = getProvider({
 			"GET /tasks": [],

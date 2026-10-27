@@ -900,6 +900,114 @@ describe("datastore", () => {
 			expect(tasks.byId(3).base_end).to.deep.eq(new Date(2024, 3, 7));
 			expect(tasks.byId(3).base_duration).to.eq(1);
 		});
+
+		test("adding a child into an empty lazy branch loads the siblings", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "Discussions",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+				],
+			});
+
+			const requested: number[] = [];
+			store.in.on("request-data", (ev: { id: number }) => {
+				requested.push(ev.id);
+			});
+
+			store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				show: true,
+				task: { id: 9, text: "New task", type: "task" },
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+			expect(requested).to.deep.eq([1]);
+			expect(tasks.byId(1).lazy).to.eq(true);
+			expect(tasks.byId(1).open).to.eq(true);
+			expect(tasks.byId(1).data?.map(t => t.id)).to.deep.eq([9]);
+
+			store.in.exec("provide-data", {
+				id: 1,
+				data: {
+					tasks: [
+						{
+							id: 2,
+							text: "Agenda",
+							type: "task",
+							parent: 1,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 4),
+						},
+						{
+							id: 3,
+							text: "Notes",
+							type: "task",
+							parent: 1,
+							start: new Date(2024, 3, 4),
+							end: new Date(2024, 3, 6),
+						},
+					],
+					links: [{ id: 5, source: 2, target: 3, type: "e2s" }],
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks: loaded, links } = store.getState();
+			expect(loaded.byId(1).lazy).to.eq(false);
+			expect(loaded.byId(1).data?.map(t => t.id)).to.deep.eq([9, 2, 3]);
+			expect(loaded.byId(9).text).to.eq("New task");
+			expect(links.map(l => l.id)).to.deep.eq([5]);
+		});
+
+		test("a child added to a lazy branch is requested before the add is sent on", async () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "Discussions",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+				],
+			});
+
+			const order: string[] = [];
+			store.in.on("request-data", () => {
+				order.push("request-data");
+			});
+			store.in.setNext({
+				exec: (name: string) => {
+					if (name === "add-task") order.push("add-task");
+				},
+			} as any);
+
+			await store.in.exec("add-task", {
+				target: 1,
+				mode: "child",
+				show: true,
+				task: { id: 9, text: "New task", type: "task" },
+			});
+
+			expect(order).to.deep.eq(["request-data", "add-task"]);
+		});
 	});
 
 	describe("update-task", () => {
@@ -1319,6 +1427,434 @@ describe("datastore", () => {
 
 			expect(tasks.byId(2).open).to.eq(true);
 			expect(tasks.toArray().length).to.eq(19);
+		});
+
+		test("id 0 with nested opens and closes every branch once", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "A",
+						type: "summary",
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+					{
+						id: 2,
+						text: "A1",
+						type: "summary",
+						open: false,
+						parent: 1,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 6),
+					},
+					{
+						id: 3,
+						text: "A1a",
+						type: "task",
+						parent: 2,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+					{
+						id: 4,
+						text: "B",
+						type: "summary",
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 6),
+					},
+					{
+						id: 5,
+						text: "B1",
+						type: "task",
+						parent: 4,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+				],
+			});
+			const { tasks } = store.getState();
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 4]);
+
+			store.in.exec("open-task", { id: 0, mode: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(1).open).to.eq(false);
+			expect(tasks.byId(4).open).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 4]);
+
+			store.in.exec("open-task", { id: 0, mode: true, nested: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3, 4, 5]);
+
+			store.in.exec("open-task", { id: 0, mode: false, nested: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 4]);
+			expect(tasks.byId(1).open).to.eq(false);
+			expect(tasks.byId(2).open).to.eq(false);
+		});
+
+		test("nested open of one branch leaves the other closed", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "A",
+						type: "summary",
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+					{
+						id: 2,
+						text: "A1",
+						type: "summary",
+						open: false,
+						parent: 1,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 6),
+					},
+					{
+						id: 3,
+						text: "A1a",
+						type: "task",
+						parent: 2,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+					{
+						id: 4,
+						text: "B",
+						type: "summary",
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 6),
+					},
+					{
+						id: 5,
+						text: "B1",
+						type: "task",
+						parent: 4,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+				],
+			});
+			const { tasks } = store.getState();
+
+			store.in.exec("open-task", { id: 1, mode: true, nested: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(1).open).to.eq(true);
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(4).open).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3, 4]);
+
+			store.in.exec("open-task", { id: 1, mode: false, nested: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(1).open).to.eq(false);
+			expect(tasks.byId(2).open).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 4]);
+
+			store.in.exec("open-task", { id: 1, mode: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(2).open).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 4]);
+
+			store.in.exec("open-task", { id: 2, mode: true, nested: true });
+			vi.advanceTimersByTime(1);
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(4).open).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3, 4]);
+		});
+
+		test("nested open waits for a lazy branch and stays out of undo", () => {
+			const tasksIn = [
+				{
+					id: 1,
+					text: "Plan",
+					type: "summary",
+					lazy: true,
+					open: false,
+					parent: 0,
+					start: new Date(2024, 3, 2),
+					end: new Date(2024, 3, 12),
+				},
+			];
+			resetState({
+				...getData(),
+				undo: true,
+				links: [],
+				tasks: tasksIn,
+			});
+
+			const requested: { id: number; nested?: boolean }[] = [];
+			store.in.on(
+				"request-data",
+				(ev: { id: number; nested?: boolean }) => {
+					requested.push({ id: ev.id, nested: ev.nested });
+				}
+			);
+
+			store.in.exec("open-task", { id: 1, mode: true, nested: true });
+			expect(requested).to.deep.eq([{ id: 1, nested: true }]);
+
+			const arrived = {
+				tasks: [
+					{
+						id: 2,
+						text: "Phase",
+						type: "summary",
+						open: false,
+						parent: 1,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 8),
+					},
+					{
+						id: 3,
+						text: "Draft",
+						type: "task",
+						parent: 2,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 4),
+					},
+					{
+						id: 4,
+						text: "Later",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 1,
+						start: new Date(2024, 3, 8),
+						end: new Date(2024, 3, 12),
+					},
+					{
+						id: 5,
+						text: "Note",
+						type: "task",
+						parent: 4,
+						start: new Date(2024, 3, 8),
+						end: new Date(2024, 3, 10),
+					},
+				],
+				links: [],
+			};
+
+			store.in.exec("provide-data", {
+				id: 1,
+				data: arrived,
+				nested: true,
+			});
+			vi.advanceTimersByTime(1);
+
+			let { tasks, history } = store.getState();
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(4).open).to.eq(true);
+			expect(tasks.byId(4).lazy).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3, 4, 5]);
+			expect(requested).to.deep.eq([{ id: 1, nested: true }]);
+			expect(history).to.deep.eq({ undo: 0, redo: 0 });
+
+			store.in.exec("update-task", {
+				id: 3,
+				task: { text: "Edited" },
+			});
+			vi.advanceTimersByTime(1);
+			expect(store.getState().history).to.deep.eq({ undo: 1, redo: 0 });
+
+			store.in.exec("undo");
+			vi.advanceTimersByTime(1);
+			({ tasks, history } = store.getState());
+			expect(tasks.byId(3).text).to.eq("Draft");
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(4).open).to.eq(true);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3, 4, 5]);
+			expect(history).to.deep.eq({ undo: 0, redo: 1 });
+		});
+
+		test("a plain response keeps loaded children closed and clears lazy", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "Plan",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+				],
+			});
+
+			const requested: number[] = [];
+			store.in.on("request-data", (ev: { id: number }) => {
+				requested.push(ev.id);
+			});
+
+			store.in.exec("open-task", { id: 1, mode: true });
+			store.in.exec("provide-data", {
+				id: 1,
+				data: {
+					tasks: [
+						{
+							id: 2,
+							text: "Phase",
+							type: "summary",
+							lazy: true,
+							open: false,
+							parent: 1,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 8),
+						},
+						{
+							id: 3,
+							text: "Draft",
+							type: "task",
+							parent: 2,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 4),
+						},
+					],
+					links: [],
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(1).open).to.eq(true);
+			expect(tasks.byId(2).open).to.eq(false);
+			expect(tasks.byId(2).lazy).to.eq(false);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2]);
+			expect(requested).to.deep.eq([1]);
+		});
+
+		test("closing before the load keeps the branch closed", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "Plan",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+				],
+			});
+
+			store.in.exec("open-task", { id: 1, mode: true, nested: true });
+			store.in.exec("open-task", { id: 1, mode: false });
+			store.in.exec("provide-data", {
+				id: 1,
+				nested: true,
+				data: {
+					tasks: [
+						{
+							id: 2,
+							text: "Phase",
+							type: "summary",
+							open: false,
+							parent: 1,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 8),
+						},
+						{
+							id: 3,
+							text: "Draft",
+							type: "task",
+							parent: 2,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 4),
+						},
+					],
+					links: [],
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(1).open).to.eq(false);
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(1).data?.map(t => t.id)).to.deep.eq([2]);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1]);
+		});
+
+		test("a nested open after a plain one asks again and opens the children", () => {
+			resetState({
+				...getData(),
+				links: [],
+				tasks: [
+					{
+						id: 1,
+						text: "Plan",
+						type: "summary",
+						lazy: true,
+						open: false,
+						parent: 0,
+						start: new Date(2024, 3, 2),
+						end: new Date(2024, 3, 12),
+					},
+				],
+			});
+
+			const requested: number[] = [];
+			store.in.on("request-data", (ev: { id: number }) => {
+				requested.push(ev.id);
+			});
+
+			store.in.exec("open-task", { id: 1, mode: true });
+			store.in.exec("open-task", { id: 1, mode: true, nested: true });
+			expect(requested).to.deep.eq([1, 1]);
+
+			store.in.exec("provide-data", {
+				id: 1,
+				nested: true,
+				data: {
+					tasks: [
+						{
+							id: 2,
+							text: "Phase",
+							type: "summary",
+							open: false,
+							parent: 1,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 8),
+						},
+						{
+							id: 3,
+							text: "Draft",
+							type: "task",
+							parent: 2,
+							start: new Date(2024, 3, 2),
+							end: new Date(2024, 3, 4),
+						},
+					],
+					links: [],
+				},
+			});
+			vi.advanceTimersByTime(1);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(1).open).to.eq(true);
+			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.toArray().map(t => t.id)).to.deep.eq([1, 2, 3]);
 		});
 	});
 
@@ -2441,12 +2977,12 @@ describe("datastore", () => {
 
 			const { tasks, links } = store.getState();
 
-			expect(tasks.toArray().length).to.eq(6);
+			expect(tasks.toArray().length).to.eq(2);
 			expect(tasks.byId(2).data?.length).to.eq(4);
 			expect(links.map(l => l).length).to.eq(4);
 
 			expect(tasks.byId(2).lazy).to.eq(false);
-			expect(tasks.byId(2).open).to.eq(true);
+			expect(tasks.byId(2).open).to.eq(false);
 		});
 	});
 
@@ -3053,7 +3589,10 @@ describe("datastore", () => {
 			store.in.exec("update-link", { id: 1, link: { lag: "" as any } });
 			vi.advanceTimersByTime(20);
 
-			expect(spy).toHaveBeenCalledWith(1, { link: 1, joinUndo: true });
+			expect(spy).toHaveBeenCalledWith(1, {
+				link: 1,
+				eventSource: "update-link",
+			});
 			expect(store.getState().links.byId(1).lag).to.eq(0);
 			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 6));
 			expect(tasks.byId(2).end).to.deep.eq(new Date(2024, 3, 8));
@@ -3554,6 +4093,72 @@ describe("datastore", () => {
 				.map(l => l.id);
 			expect(critLinks).to.deep.eq([1, 2]);
 		});
+		test("calculates the critical path when projectEnd is unset and a task is unscheduled", () => {
+			const day = (d: number) => new Date(2024, 3, d);
+			const tasks = [
+				{
+					id: 1,
+					text: "Scheduled",
+					type: "task",
+					parent: 0,
+					start: day(2),
+					duration: 3,
+				},
+				{
+					id: 2,
+					text: "No start",
+					type: "task",
+					parent: 0,
+					duration: 2,
+				},
+			];
+
+			const data = {
+				...getData(),
+				tasks,
+				links: [],
+				unscheduledTasks: true,
+				criticalPath: { type: "flexible" },
+			};
+
+			expect(() => resetState(data)).to.not.throw();
+
+			expect(store.getState().tasks.byId(1).critical).to.eq(true);
+			expect(store.getState().tasks.byId(2).unscheduled).to.eq(true);
+
+			store.init({
+				...data,
+				schedule: { auto: true },
+				projectEnd: day(20),
+			});
+
+			expect(() =>
+				store.init({
+					...data,
+					schedule: { auto: false },
+					projectEnd: null,
+				})
+			).to.not.throw();
+
+			expect(store.getState().tasks.byId(1).critical).to.eq(true);
+			expect(store.getState().tasks.byId(1).start).to.deep.eq(day(2));
+		});
+		test("recalculates after a copy, whose summary update is a child", () => {
+			resetState({
+				...getData("critical"),
+				criticalPath: { type: "flexible" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const cp = (store as any)._modules.get("criticalPath");
+			const calculate = vi.spyOn(cp, "calculate");
+
+			store.in.exec("copy-task", { id: 11, mode: "after", target: 12 });
+			vi.advanceTimersByTime(20);
+
+			expect(calculate).toHaveBeenCalled();
+		});
+
 		// no calendar: the slack bar is measured in raw days, so a bar that is
 		// not clamped to the project end spans exactly the computed slack
 		test("visible slack equals total slack without calendars", () => {
@@ -3615,6 +4220,34 @@ describe("datastore", () => {
 			});
 			vi.advanceTimersByTime(20);
 			check();
+		});
+		test("dragging a summary moves subtask slack bars", () => {
+			resetState({
+				...getData("critical"),
+				slack: true,
+			});
+			vi.advanceTimersByTime(20);
+
+			const { tasks } = store.getState();
+			const summary = tasks.byId(3);
+			const kids = [30, 31].map(id => tasks.byId(id));
+			const before = kids.map(kid => ({
+				x: kid.$x,
+				slackX: kid.$x_slack,
+				slackW: kid.$w_slack,
+			}));
+
+			kids.forEach(kid => expect(kid.$x_slack).to.be.a("number"));
+
+			const dx = 80;
+			store.in.exec("drag-task", { id: 3, left: summary.$x + dx });
+
+			kids.forEach((kid, i) => {
+				expect(kid.$x).to.eq(before[i].x + dx);
+				expect(kid.$x_slack).to.eq(before[i].slackX + dx);
+				expect(kid.$w_slack).to.eq(before[i].slackW);
+				expect(kid.$x_slack).to.eq(kid.$x + kid.$w);
+			});
 		});
 		test("clears published slack geometry after a link-only recalculation", () => {
 			resetState({

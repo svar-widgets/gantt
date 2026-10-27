@@ -10,6 +10,7 @@ import type {
 import type { IColumnEditor } from "@svar-ui/grid-store";
 import { setInclusiveEndColumn } from "./inclusiveEnd";
 import { isCommunity } from "./package";
+import { isManualSummary } from "./tasks";
 
 export function getColumnsBySection(
 	columns: IGanttColumn[],
@@ -41,10 +42,11 @@ export function getDateEditorButtons(
 	return ["today"];
 }
 
-function isCellEditable(task: ITask, columnId: string) {
+function isCellEditable(task: ITask, columnId: string, state: Partial<IData>) {
 	const { type, unscheduled } = task;
-	if (type === "summary") return !dateFields.includes(columnId);
-	else if (unscheduled || type === "milestone")
+	if (type === "summary" && !isManualSummary(task, state))
+		return !dateFields.includes(columnId);
+	else if ((state.unscheduledTasks && unscheduled) || type === "milestone")
 		return !["end", "duration"].includes(columnId);
 	return true;
 }
@@ -66,11 +68,13 @@ function processEditor(
 
 	return (task, column) => {
 		const columnId = String(column?.id ?? "");
-		if (!task || !isCellEditable(task, columnId)) return null;
+		if (!task) return null;
+		const state = stateGetter();
+		if (!isCellEditable(task, columnId, state)) return null;
 		if (obj.type === "datepicker") {
 			config.buttons = getDateEditorButtons(
 				columnId,
-				!task.$placeholder && stateGetter().unscheduledTasks
+				!task.$placeholder && state.unscheduledTasks
 			);
 		}
 		return obj;

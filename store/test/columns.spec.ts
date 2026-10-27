@@ -182,6 +182,44 @@ describe("columns", () => {
 			]);
 		});
 	});
+
+	describe("summary date cells", () => {
+		const dateColumns: IGanttColumn[] = [
+			...gridColumns,
+			{ id: "duration", header: "Duration", editor: "text" },
+		];
+		const editable = (task: Partial<ITask>, auto: boolean) => {
+			const columns = normalizeColumns(dateColumns, () => ({
+				unscheduledTasks: true,
+				schedule: { auto },
+			}));
+			return columns
+				.filter(c =>
+					(c.editor as (t: ITask, c: IGanttColumn) => unknown)(
+						task as ITask,
+						c
+					)
+				)
+				.map(c => c.id);
+		};
+		const summary = { type: "summary", manual: true } as const;
+
+		test("are read-only for a derived summary", () => {
+			expect(editable({ type: "summary" }, true)).to.deep.eq([]);
+			expect(editable(summary, false)).to.deep.eq([]);
+		});
+
+		test("are editable for a manual summary like a task", () => {
+			expect(editable(summary, true)).to.deep.eq([
+				"start",
+				"end",
+				"duration",
+			]);
+			expect(
+				editable({ ...summary, unscheduled: true }, true)
+			).to.deep.eq(["start"]);
+		});
+	});
 });
 
 describe("store columns", () => {

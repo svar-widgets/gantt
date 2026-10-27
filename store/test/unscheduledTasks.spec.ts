@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import { DataStore, normalizeLinks } from "../src/index";
 import { writable } from "svelte/store";
 import { getData } from "./stubs/data";
@@ -28,15 +28,15 @@ describe("unscheduledTasks", () => {
 			);
 
 			expect(task.unscheduled).to.eq(true);
-			expect(task.start).to.be.undefined;
+			expect(task.start).to.eq(null);
 		});
 
-		test("does not mark summary task as unscheduled without start", () => {
+		test("marks summary task without start as unscheduled", () => {
 			const task: Partial<ITask> = { type: "summary" };
 
 			deriveUnscheduled(task);
 
-			expect(task.unscheduled).to.eq(false);
+			expect(task.unscheduled).to.eq(true);
 		});
 
 		test("takes start and type from the previous task for partial updates", () => {
@@ -121,9 +121,8 @@ describe("unscheduledTasks", () => {
 			expect(scheduled?.$skip).to.not.eq(true);
 		});
 
-		test("keeps end and duration when start is cleared on update-task", () => {
+		test("clears end and keeps duration when start is cleared on update-task", () => {
 			const { tasks } = store.getState();
-			const end = tasks.byId(1).end;
 			const duration = tasks.byId(1).duration;
 
 			store.in.exec("update-task", {
@@ -133,7 +132,7 @@ describe("unscheduledTasks", () => {
 
 			expect(tasks.byId(1).unscheduled).to.eq(true);
 			expect(tasks.byId(1).start).to.eq(null);
-			expect(tasks.byId(1).end).to.deep.eq(end);
+			expect(tasks.byId(1).end).to.eq(null);
 			expect(tasks.byId(1).duration).to.eq(duration);
 		});
 
@@ -183,7 +182,7 @@ describe("unscheduledTasks", () => {
 
 			expect(tasks.byId(2).progress).to.eq(50);
 			expect(tasks.byId(2).unscheduled).to.eq(true);
-			expect(tasks.byId(2).start).to.be.undefined;
+			expect(tasks.byId(2).start).to.eq(null);
 		});
 
 		test("keeps dates when a grouped field changes", () => {
@@ -225,7 +224,7 @@ describe("unscheduledTasks", () => {
 			});
 
 			expect(tasks.byId(5).unscheduled).to.eq(true);
-			expect(tasks.byId(5).start).to.be.undefined;
+			expect(tasks.byId(5).start).to.eq(null);
 		});
 	});
 
@@ -273,7 +272,7 @@ describe("unscheduledTasks", () => {
 			});
 
 			expect(tasks.byId(2).start).to.deep.eq(new Date(2024, 3, 4));
-			expect(tasks.byId(3).start).to.be.undefined;
+			expect(tasks.byId(3).start).to.eq(null);
 			expect(tasks.byId(3).duration).to.eq(2);
 			expect(tasks.byId(3).unscheduled).to.eq(true);
 		});
@@ -340,6 +339,288 @@ describe("unscheduledTasks", () => {
 			expect(tasks.byId(1).unscheduled).to.eq(false);
 			expect(tasks.byId(1).start).to.deep.eq(new Date(2024, 3, 2));
 			expect(tasks.byId(1).end).to.deep.eq(new Date(2024, 3, 5));
+		});
+
+		const progressStore = (tasks: any[], config: any = {}) =>
+			getDataStore({
+				...getData(),
+				unscheduledTasks: true,
+				summary: { autoProgress: true },
+				links: [],
+				tasks,
+				...config,
+			});
+
+		test("leaves unscheduled members out of the rollup", () => {
+			const store = progressStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{
+					id: 2,
+					type: "task",
+					parent: 1,
+					start: new Date(2024, 3, 2),
+					duration: 2,
+					progress: 0,
+				},
+				{ id: 3, type: "task", parent: 1, duration: 8, progress: 0 },
+				{ id: 4, type: "task", parent: 1, progress: 0 },
+			]);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { progress: 100 } });
+			expect(tasks.byId(1).progress).to.eq(100);
+
+			store.in.exec("update-task", { id: 4, task: { progress: 50 } });
+			expect(tasks.byId(1).progress).to.eq(100);
+		});
+
+		test("recalculates after a task becomes a summary and back", () => {
+			const store = progressStore(
+				[
+					{ id: 1, type: "summary", parent: 0, manual: true },
+					{
+						id: 2,
+						type: "task",
+						parent: 1,
+						duration: 2,
+						manual: true,
+					},
+				],
+				{ schedule: { auto: true } }
+			);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { type: "summary" } });
+			store.in.exec("update-task", { id: 2, task: { type: "task" } });
+			store.in.exec("update-task", { id: 2, task: { progress: 50 } });
+
+			expect(tasks.byId(1).progress).to.eq(0);
+		});
+	});
+
+	describe("summary", () => {
+		const day = (d: number) => new Date(2024, 3, d);
+		const summaryStore = (tasks: any[], config: any = {}) =>
+			getDataStore({
+				...getData(),
+				unscheduledTasks: true,
+				links: [],
+				tasks,
+				...config,
+			});
+		const expectUnscheduled = (task: ITask) => {
+			expect(task.unscheduled).to.eq(true);
+			expect(task.start).to.eq(null);
+			expect(task.end).to.eq(null);
+			expect(task.duration).to.eq(null);
+		};
+
+		test("is unscheduled on load when all members are unscheduled", () => {
+			const store = summaryStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{ id: 2, type: "task", parent: 1, duration: 2 },
+			]);
+			const { tasks, _tasks } = store.getState();
+
+			expectUnscheduled(tasks.byId(1));
+			expect(_tasks.find(t => t.id === 1)?.$skip).to.eq(true);
+		});
+
+		test("clears its dates when the last scheduled member is unscheduled", () => {
+			const store = summaryStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{ id: 2, type: "task", parent: 1, start: day(2), duration: 3 },
+				{ id: 3, type: "task", parent: 1, duration: 2 },
+			]);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { start: null } });
+			expectUnscheduled(tasks.byId(1));
+
+			store.in.exec("update-task", { id: 3, task: { start: day(4) } });
+			expect(tasks.byId(1).unscheduled).to.eq(false);
+			expect(tasks.byId(1).start).to.deep.eq(day(4));
+			expect(tasks.byId(1).end).to.deep.eq(day(6));
+		});
+
+		test("sends the cleared dates of a summary to the server", () => {
+			const store = summaryStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{ id: 2, type: "task", parent: 1, start: day(2), duration: 3 },
+			]);
+			const updates: any[] = [];
+			store.in.on("update-task", (ev: any) => updates.push(ev));
+
+			store.in.exec("update-task", { id: 2, task: { start: null } });
+			const sent = (id: number) =>
+				JSON.parse(
+					JSON.stringify(updates.find(ev => ev.id === id).task)
+				);
+			expect(sent(1)).to.include({
+				start: null,
+				end: null,
+				duration: null,
+			});
+			expect(sent(2)).to.include({ start: null, end: null });
+		});
+
+		test("clears its dates when the last scheduled member is deleted", () => {
+			const store = summaryStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{ id: 2, type: "milestone", parent: 1, start: day(2) },
+				{ id: 3, type: "task", parent: 1, duration: 2 },
+			]);
+
+			store.in.exec("delete-task", { id: 2 });
+			expectUnscheduled(store.getState().tasks.byId(1));
+		});
+
+		test("passes the unscheduled state up to a parent summary", () => {
+			const store = summaryStore([
+				{ id: 1, type: "summary", parent: 0 },
+				{ id: 2, type: "summary", parent: 1 },
+				{ id: 3, type: "task", parent: 2, start: day(2), duration: 3 },
+				{ id: 4, type: "task", parent: 1, duration: 2 },
+			]);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 3, task: { start: null } });
+			expectUnscheduled(tasks.byId(2));
+			expectUnscheduled(tasks.byId(1));
+		});
+
+		test("keeps the dates of a manual summary", () => {
+			const store = summaryStore(
+				[
+					{
+						id: 1,
+						type: "summary",
+						parent: 0,
+						manual: true,
+						start: day(1),
+						end: day(10),
+					},
+					{
+						id: 2,
+						type: "task",
+						parent: 1,
+						start: day(2),
+						duration: 3,
+					},
+				],
+				{ schedule: { auto: true } }
+			);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { start: null } });
+			expect(tasks.byId(1).unscheduled).to.eq(false);
+			expect(tasks.byId(1).start).to.deep.eq(day(1));
+			expect(tasks.byId(1).end).to.deep.eq(day(10));
+		});
+
+		describe("manual without dates", () => {
+			const manualTasks = () => [
+				{ id: 1, type: "summary", parent: 0, manual: true },
+				{ id: 2, type: "task", parent: 1, duration: 2 },
+			];
+			const auto = { schedule: { auto: true } };
+
+			test("stays unscheduled when a member is scheduled", () => {
+				const store = summaryStore(manualTasks(), auto);
+				const { tasks } = store.getState();
+				expectUnscheduled(tasks.byId(1));
+
+				store.in.exec("update-task", {
+					id: 2,
+					task: { start: day(4) },
+				});
+				expectUnscheduled(tasks.byId(1));
+			});
+
+			test("is not derived on load from scheduled members", () => {
+				const data = manualTasks();
+				data[1] = { ...data[1], start: day(4) } as any;
+				const store = summaryStore(data, auto);
+
+				expectUnscheduled(store.getState().tasks.byId(1));
+			});
+
+			test("is scheduled and unscheduled through its own dates", () => {
+				const store = summaryStore(manualTasks(), auto);
+				const { tasks } = store.getState();
+
+				store.in.exec("update-task", {
+					id: 1,
+					task: { start: day(2), duration: 7 },
+				});
+				expect(tasks.byId(1).unscheduled).to.eq(false);
+				expect(tasks.byId(1).start).to.deep.eq(day(2));
+				expect(tasks.byId(1).end).to.deep.eq(day(9));
+
+				store.in.exec("update-task", { id: 1, task: { start: null } });
+				expect(tasks.byId(1).unscheduled).to.eq(true);
+				expect(tasks.byId(1).start).to.eq(null);
+				expect(tasks.byId(1).end).to.eq(null);
+			});
+		});
+
+		test("stays unscheduled after autoConvert until its child is scheduled", () => {
+			vi.useFakeTimers();
+			const store = summaryStore([], { summary: { autoConvert: true } });
+			const { tasks } = store.getState();
+
+			store.in.exec("add-task", {
+				id: "A",
+				task: { id: "A", text: "A" },
+			});
+			store.in.exec("add-task", {
+				id: "B",
+				target: "A",
+				mode: "child",
+				task: { id: "B", text: "B" },
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId("A").type).to.eq("summary");
+			expectUnscheduled(tasks.byId("A"));
+			const bar = store.getState()._tasks.find(t => t.id === "A");
+			expect(bar?.$skip).to.eq(true);
+
+			store.in.exec("update-task", {
+				id: "B",
+				task: { start: day(8), duration: 2 },
+			});
+			vi.advanceTimersByTime(1);
+
+			expect(tasks.byId("A").unscheduled).to.eq(false);
+			expect(tasks.byId("A").start).to.deep.eq(day(8));
+			expect(tasks.byId("A").end).to.deep.eq(day(10));
+			vi.useRealTimers();
+		});
+
+		test("restores its dates on undo", () => {
+			const store = summaryStore(
+				[
+					{ id: 1, type: "summary", parent: 0 },
+					{
+						id: 2,
+						type: "task",
+						parent: 1,
+						start: day(2),
+						duration: 3,
+					},
+				],
+				{ undo: true }
+			);
+			const { tasks } = store.getState();
+
+			store.in.exec("update-task", { id: 2, task: { start: null } });
+			expectUnscheduled(tasks.byId(1));
+
+			store.in.exec("undo");
+			expect(tasks.byId(1).unscheduled).to.eq(false);
+			expect(tasks.byId(1).start).to.deep.eq(day(2));
+			expect(tasks.byId(1).end).to.deep.eq(day(5));
 		});
 	});
 });

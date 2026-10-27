@@ -1571,6 +1571,44 @@ describe("calendars", () => {
 			expect(task.end).toEqual(wednesdayOffEnd);
 		});
 
+		test("add-assignment re-derives the summary and schedules successors", () => {
+			initStore({
+				calendar: "default",
+				schedule: { resourceCalendars: true, auto: true },
+				resources,
+				assignments: [],
+				tasks: [
+					{
+						id: 5,
+						text: "S",
+						type: "summary",
+						parent: 0,
+						open: true,
+					},
+					{ ...leafTask, parent: 5 },
+					{
+						id: 3,
+						text: "C",
+						start: defaultEnd,
+						duration: 2,
+						type: "task",
+						parent: 0,
+					},
+				],
+				links: [{ id: 1, source: 1, target: 3, type: "e2s" }],
+			});
+
+			store.in.exec("add-assignment", {
+				assignment: { task: 1, resource: "r2" },
+			});
+			vi.advanceTimersByTime(20);
+
+			const { tasks } = store.getState();
+			expect(tasks.byId(1).end).toEqual(wednesdayOffEnd);
+			expect(tasks.byId(5).end).toEqual(wednesdayOffEnd);
+			expect(tasks.byId(3).start).toEqual(wednesdayOffEnd);
+		});
+
 		test("delete-assignment recomputes end against the task calendar", () => {
 			initStore({
 				calendar: "default",

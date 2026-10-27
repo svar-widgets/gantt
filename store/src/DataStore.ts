@@ -11,6 +11,7 @@ import type { TDataConfig, TWritableCreator, TID } from "@svar-ui/lib-state";
 import { createFilter, IFilterColumn } from "@svar-ui/grid-store";
 
 import GanttDataTree from "./GanttDataTree";
+import { isChild, isRecord, isRemote } from "./eventSource";
 import {
 	calcScales,
 	resetScales,
@@ -521,6 +522,8 @@ export default class DataStore extends Store<IData> {
 								{ tasks, durationUnit, _scales },
 								this.getCalendar()
 							);
+						// hidden tasks stay at $y 0, so their links drop
+						tree.forEach(task => (task.$y = 0));
 						// full, absent, or unpatchable state rebuilds every task
 						const _tasks = arr.map((task, i) =>
 							updateTask(task as IGanttTask, i, opts)
@@ -711,7 +714,7 @@ export default class DataStore extends Store<IData> {
 		// a remote event is already saved; the flag stops it before the provider's queue
 		REMOTE_ACTIONS.forEach(action =>
 			inBus.intercept(action, (ev: TMethodsConfig[typeof action]) => {
-				if (this.isRemote(ev.eventSource)) ev.skipProvider = true;
+				if (isRemote(ev.eventSource)) ev.skipProvider = true;
 			})
 		);
 
@@ -855,8 +858,8 @@ export default class DataStore extends Store<IData> {
 			const { tasks, tree } = this.getState();
 			let { mode, target } = ev;
 			const { id, inProgress } = ev;
-			// a remote move changes the saved tree; grouping only changes the view
-			if (this.isRemote(ev.eventSource)) {
+			// a record moves the saved tree; grouping only changes the view
+			if (isRecord(ev.eventSource)) {
 				ev.source = tasks.byId(id).parent;
 				tasks.move(id, mode, target);
 				this.setStateAsync({ tasks });
@@ -884,8 +887,6 @@ export default class DataStore extends Store<IData> {
 							id: sid,
 							task: { ...t },
 							eventSource: "move-task",
-							joinUndo: true,
-							skipUndo: true,
 						});
 				});
 				dragged.clear();
@@ -946,6 +947,7 @@ export default class DataStore extends Store<IData> {
 										inBus.exec("open-task", {
 											id: targetTask.id,
 											mode: true,
+											eventSource: "move-task",
 										});
 
 									targetTask =
@@ -991,6 +993,7 @@ export default class DataStore extends Store<IData> {
 								inBus.exec("open-task", {
 									id: targetParent.id,
 									mode: true,
+									eventSource: "move-task",
 								});
 						}
 					}
@@ -1027,6 +1030,7 @@ export default class DataStore extends Store<IData> {
 						inBus.exec("open-task", {
 							id: tobj.id,
 							mode: true,
+							eventSource: "move-task",
 						});
 						tobj = tasks.byId(tobj.parent);
 					}
@@ -1065,8 +1069,15 @@ export default class DataStore extends Store<IData> {
 
 		inBus.on("drag-task", (ev: TMethodsConfig["drag-task"]) => {
 			const state = this.getState();
-			const { tree, _tasks, _selected, rollups, slack, inactiveTasks } =
-				state;
+			const {
+				tree,
+				_tasks,
+				_selected,
+				rollups,
+				slack,
+				inactiveTasks,
+				unscheduledTasks,
+			} = state;
 			const autoSchedule = !!state.schedule?.auto;
 			const task = tree.byId(ev.id);
 			const { left, top, width, inProgress } = ev;
@@ -1078,16 +1089,28 @@ export default class DataStore extends Store<IData> {
 
 			if (typeof width !== "undefined") {
 				task.$w = width;
-				dragSummary(tree, task, inactiveTasks, autoSchedule);
+				dragSummary(
+					tree,
+					task,
+					inactiveTasks,
+					autoSchedule,
+					unscheduledTasks
+				);
 			}
 
 			if (typeof left !== "undefined") {
 				if (task.type === "summary" && !isManualSummary(task, state)) {
 					const dx = left - task.$x;
-					dragSummaryKids(task, dx, !!rollups, autoSchedule);
+					dragSummaryKids(task, dx, !!rollups, autoSchedule, !!slack);
 				}
 				task.$x = left;
-				dragSummary(tree, task, inactiveTasks, autoSchedule);
+				dragSummary(
+					tree,
+					task,
+					inactiveTasks,
+					autoSchedule,
+					unscheduledTasks
+				);
 			}
 			if (typeof top !== "undefined") {
 				task.$y = top + 4;
@@ -1116,10 +1139,7 @@ export default class DataStore extends Store<IData> {
 		]);
 
 		inBus.on("update-task", (ev: TMethodsConfig["update-task"]) => {
-			const { id, segmentIndex, diff, eventSource } = ev;
-			// a replay restores the recorded task; recomputing it would read
-			// calendars as they stand mid-batch, not as they were recorded
-			const replay = this.isHistorySource(eventSource);
+			const { id, segmentIndex, diff, eventSource, derive } = ev;
 			const payload = ev.task;
 			let { task } = ev;
 			const state = this.getState();
@@ -1135,8 +1155,8 @@ export default class DataStore extends Store<IData> {
 			const update: Partial<IData> = { tasks };
 			const t = tasks.byId(id);
 
-			// a remote record is already calculated and saved: write it, and follow up with nothing
-			if (this.isRemote(eventSource)) {
+			// a record (remote, undo, redo) is already calculated: write it, and follow up with nothing
+			if (isRecord(eventSource)) {
 				tasks.update(id, task);
 				dropUndefined(tasks.byId(id), payload);
 				this.markGeometry(
@@ -1158,15 +1178,7 @@ export default class DataStore extends Store<IData> {
 				unscheduledTasks,
 			};
 
-			if (
-				eventSource === "add-task" ||
-				eventSource === "copy-task" ||
-				eventSource === "move-task" ||
-				eventSource === "update-task" ||
-				eventSource === "delete-task" ||
-				eventSource === "provide-data" ||
-				eventSource === "schedule-tasks"
-			) {
+			if (!derive && isChild(eventSource)) {
 				if (eventSource === "schedule-tasks") {
 					// publish only after the complete scheduling cascade has mutated the tree
 					tasks.update(id, task);
@@ -1256,7 +1268,7 @@ export default class DataStore extends Store<IData> {
 				!!task.inactive !== !!t.inactive;
 
 			// adjust start date to nearest working day based on drag direction
-			if (calendar && task.start && !replay)
+			if (calendar && task.start)
 				task.start = adjustToWorkingDay(task.start, diff, calendar);
 
 			if (task.start && task.end) {
@@ -1264,7 +1276,7 @@ export default class DataStore extends Store<IData> {
 					!isEqual(task.start, t.start) ||
 					!isEqual(task.end, t.end)
 				) {
-					if (isSummary && hasKids && !manualSummary && !replay) {
+					if (isSummary && hasKids && !manualSummary) {
 						let shift = diff || differ(task.start, t.start);
 						if (calendar) {
 							//recalculate real diff
@@ -1295,7 +1307,7 @@ export default class DataStore extends Store<IData> {
 				}
 			}
 
-			if (!replay) normalizeDates(task, stateOptions, calendar, t);
+			normalizeDates(task, stateOptions, calendar, t);
 
 
 			tasks.update(id, task);
@@ -1357,8 +1369,8 @@ export default class DataStore extends Store<IData> {
 				ind = ev.index >= 0 && ev.index < len ? ev.index : -1;
 			}
 
-			// a remote record is already calculated and saved: place it, and follow up with nothing
-			if (this.isRemote(ev.eventSource)) {
+			// a record (remote, undo, redo) is already calculated: place it, and follow up with nothing
+			if (isRecord(ev.eventSource)) {
 				const newTask = tasks.add(task, ind);
 				this.setStateAsync({ tasks });
 				ev.id = newTask.id;
@@ -1406,6 +1418,7 @@ export default class DataStore extends Store<IData> {
 					inBus.exec("open-task", {
 						id: parent.id,
 						mode: true,
+						eventSource: "add-task",
 					});
 					parent = tree.byId(parent.parent);
 				}
@@ -1475,7 +1488,7 @@ export default class DataStore extends Store<IData> {
 
 			tasks.remove(id);
 
-			if (summary && !this.isRemote(ev.eventSource)) {
+			if (summary && !isRecord(ev.eventSource)) {
 				this.resetSummaryDates(summary, "delete-task");
 			}
 
@@ -1496,6 +1509,7 @@ export default class DataStore extends Store<IData> {
 							id,
 							mode: "child",
 							target: targetTask.id,
+							eventSource: "indent-task",
 						});
 				} else {
 					// Decrease indentation
@@ -1507,6 +1521,7 @@ export default class DataStore extends Store<IData> {
 							id,
 							mode: "after",
 							target: task.parent,
+							eventSource: "indent-task",
 						});
 				}
 			}
@@ -1581,7 +1596,6 @@ export default class DataStore extends Store<IData> {
 					id: newId,
 					lazy: !!copy.lazy,
 					eventSource: "copy-task",
-					joinUndo: true,
 					target: copy.parent,
 					mode: "child",
 					index: siblings?.findIndex(
@@ -1596,8 +1610,6 @@ export default class DataStore extends Store<IData> {
 				inBus.exec("add-link", {
 					link: { ...link, id: undefined },
 					eventSource: "copy-task",
-					joinUndo: true,
-					skipUndo: true,
 				});
 			});
 
@@ -1605,16 +1617,23 @@ export default class DataStore extends Store<IData> {
 			this.setStateAsync({ tasks });
 		});
 
-		inBus.on("open-task", ({ id, mode }: TMethodsConfig["open-task"]) => {
-			const { tree } = this.getState();
-			const task = tree.byId(id);
-
-			if (task.lazy) inBus.exec("request-data", { id: task.id });
-			else {
-				tree.toArray().forEach(t => (t.$y = 0));
-				tree.update(id, { open: mode });
-				this.setState({ tree });
+		inBus.on("open-task", (ev: TMethodsConfig["open-task"]) => {
+			const { id, mode, nested } = ev;
+			const { tasks, tree } = this.getState();
+			// a record opens the saved tree; grouping only changes the view
+			if (isRecord(ev.eventSource)) {
+				if (!tasks.byId(id)) return;
+				tasks.update(id, { open: mode });
+				this.setState({ tasks });
+				return;
 			}
+
+			if (!tree.byId(id)) return;
+
+			if (id) this.applyOpen(tree.byId(id), mode, !!nested);
+			if (nested)
+				tree.eachChild(node => this.applyOpen(node, mode, nested), id);
+			this.setState({ tree });
 		});
 
 		inBus.on(
@@ -1680,13 +1699,13 @@ export default class DataStore extends Store<IData> {
 				splitTasks,
 				unscheduledTasks,
 				inactiveTasks,
+				schedule,
 			} = this.getState();
 			const parent = tasks.byId(ev.id);
 
-			if (parent.lazy) {
-				parent.lazy = false;
-				parent.open = true;
-			} else parent.data = [];
+			// open stays as the last open-task left it
+			if (parent.lazy) parent.lazy = false;
+			else parent.data = [];
 
 			tasks.parse(ev.data.tasks, ev.id);
 
@@ -1697,6 +1716,7 @@ export default class DataStore extends Store<IData> {
 					splitTasks,
 					unscheduledTasks,
 					inactiveTasks,
+					schedule,
 				},
 				task => this.getTaskCalendar(task),
 				ev.id
@@ -1707,6 +1727,11 @@ export default class DataStore extends Store<IData> {
 					? parent.id
 					: tasks.getSummaryId(parent.id);
 			if (owner) this.resetSummaryDates(owner, "provide-data");
+			tasks.eachChild(node => {
+				if (!node.data?.length) return;
+				node.lazy = false;
+				if (ev.nested) node.open = true;
+			}, ev.id);
 			const provided = (normalizeLinks(ev.data.links) || []).filter(
 				l => tasks.byId(l.source) && tasks.byId(l.target)
 			);
@@ -2112,6 +2137,7 @@ export default class DataStore extends Store<IData> {
 		const inclusiveEndChanged = this.changed(state, "inclusiveEnd");
 		this.resolveCalendars(state, prev, tasksChanged);
 
+		const schedule = "schedule" in state ? state.schedule : prev.schedule;
 
 		if (this.changed(state, ...TRIGGERS.geometry)) this.markGeometry("all");
 
@@ -2136,6 +2162,7 @@ export default class DataStore extends Store<IData> {
 					splitTasks: state.splitTasks,
 					unscheduledTasks: state.unscheduledTasks,
 					inactiveTasks: state.inactiveTasks,
+					schedule,
 				},
 				task => this.resolveTaskCalendar(task, calendars)
 			);
@@ -2172,13 +2199,6 @@ export default class DataStore extends Store<IData> {
 
 	}
 
-	private isHistorySource(eventSource?: string): boolean {
-		return eventSource === "undo" || eventSource === "redo";
-	}
-
-	private isRemote(eventSource?: string): boolean {
-		return eventSource === "remote";
-	}
 
 	private resetDatasetState(
 		tasks: boolean,
@@ -2468,13 +2488,16 @@ export default class DataStore extends Store<IData> {
 		return false;
 	}
 
-	private isScheduled(data: ITask[]) {
-		if (!this.getState().unscheduledTasks) return true;
-
-		const result = data.some((kid: ITask) => {
-			return !kid.unscheduled || (kid.data && this.isScheduled(kid.data));
-		});
-		return result;
+	private applyOpen(node: IParsedTask, mode: boolean, nested: boolean) {
+		if (!node) return;
+		if (node.lazy) {
+			node.open = mode;
+			if (mode)
+				this.in.exec("request-data", {
+					id: node.id,
+					...(nested ? { nested: true } : null),
+				});
+		} else if (node.data?.length) node.open = mode;
 	}
 
 	private resetSummaryDates(
@@ -2505,8 +2528,7 @@ export default class DataStore extends Store<IData> {
 		const obj = tasks.byId(id);
 		const kids = obj.data;
 		if (obj.type !== "summary" || !kids?.length) return false;
-		const holdsSpan =
-			isManualSummary(obj, { schedule }) && !!(obj.start && obj.end);
+		const holdsSpan = isManualSummary(obj, { schedule });
 
 		const task = setSummaryDates(
 			{
@@ -2521,9 +2543,9 @@ export default class DataStore extends Store<IData> {
 
 		const spanChanged =
 			!holdsSpan &&
-			!!task.start &&
-			this.isScheduled(kids) &&
-			(!isEqual(obj.start, task.start) || !isEqual(obj.end, task.end));
+			(task.start
+				? !isEqual(obj.start, task.start) || !isEqual(obj.end, task.end)
+				: unscheduledTasks && !!obj.start);
 		const inactiveChanged = !!task.inactive !== !!obj.inactive;
 
 		if (!spanChanged && !inactiveChanged) return false;
@@ -2555,8 +2577,6 @@ export default class DataStore extends Store<IData> {
 				id,
 				task,
 				eventSource,
-				joinUndo: true,
-				skipUndo: true,
 				...(drag ? { inProgress: true, skipProvider: true } : {}),
 			});
 		}
@@ -2579,7 +2599,6 @@ export default class DataStore extends Store<IData> {
 					id: kid.id,
 					task: { start: move(kid.start, kid) },
 					eventSource,
-					joinUndo: true,
 				});
 			}
 
@@ -2678,10 +2697,16 @@ export type IDataMethodsConfig = CombineTypes<
 			diff?: number;
 			inProgress?: boolean;
 			eventSource?: string;
+			derive?: boolean;
 			skipUndo?: boolean;
 		};
 		["delete-task"]: { id: TID; source?: TID };
-		["open-task"]: { id: TID; mode: boolean };
+		["open-task"]: {
+			id: TID;
+			mode: boolean;
+			nested?: boolean;
+			eventSource?: string;
+		};
 		["select-task"]: {
 			id: TID;
 			toggle?: boolean;
@@ -2737,6 +2762,7 @@ export type IDataMethodsConfig = CombineTypes<
 		["render-data"]: IVisibleArea;
 		["request-data"]: {
 			id: TID;
+			nested?: boolean;
 		};
 		["provide-data"]: {
 			id: TID;
@@ -2745,6 +2771,7 @@ export type IDataMethodsConfig = CombineTypes<
 				links?: Array<ILink>;
 				assignments?: Array<IAssignment>;
 			};
+			nested?: boolean;
 		};
 
 		["zoom-scale"]: {
@@ -2812,7 +2839,6 @@ export type IDataMethodsConfig = CombineTypes<
 	{
 		skipProvider?: boolean;
 		skipUndo?: boolean;
-		joinUndo?: boolean;
 		[key: string]: any;
 	}
 >;
