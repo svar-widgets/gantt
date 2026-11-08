@@ -1,0 +1,52 @@
+<script lang="ts">
+	import { Gantt, ContextMenu, Editor } from "@svar-ui/svelte-gantt";
+	import type { IApi, ILink, ITask } from "@svar-ui/svelte-gantt";
+
+	const server = "https://gantt-backend.svar.dev";
+
+	let api = $state<IApi>();
+	let tasks = $state<ITask[]>([]);
+	let links = $state<ILink[]>([]);
+
+	Promise.all([
+		fetch(server + "/tasks")
+			.then(res => res.json())
+			.then(arr => parseDates(arr)),
+		fetch(server + "/links").then(res => res.json()),
+	]).then(([t, l]) => {
+		tasks = t;
+		links = l;
+	});
+
+	function parseDates(data: ITask[]) {
+		data.forEach(item => {
+			item.start = new Date(item.start!);
+			if (item.end) item.end = new Date(item.end);
+		});
+		return data;
+	}
+
+	function init(api: IApi) {
+		api.on("request-data", ev => {
+			Promise.all([
+				fetch(server + `/tasks/${ev.id}`)
+					.then(res => res.json())
+					.then(arr => parseDates(arr)),
+				fetch(server + `/links/${ev.id}`).then(res => res.json()),
+			]).then(([tasks, links]) => {
+				api.exec("provide-data", {
+					id: ev.id,
+					data: {
+						tasks,
+						links,
+					},
+				});
+			});
+		});
+	}
+</script>
+
+<ContextMenu {api}>
+	<Gantt bind:this={api} {init} {tasks} {links} />
+</ContextMenu>
+<Editor {api} />

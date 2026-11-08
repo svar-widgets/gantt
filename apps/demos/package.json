@@ -1,0 +1,43 @@
+{
+	"name": "@svar-ui/svelte-gantt-demos",
+	"version": "2.8.3",
+	"private": true,
+	"homepage": "https://svar.dev/svelte/gantt/",
+	"bugs": {
+		"url": "https://forum.svar.dev"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/svar-widgets/gantt.git"
+	},
+	"type": "module",
+	"scripts": {
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"build": "vp build",
+		"start": "vp dev --open"
+	},
+	"dependencies": {
+		"@svar-ui/core-locales": "catalog:",
+		"@svar-ui/gantt-data-provider": "workspace:*",
+		"@svar-ui/gantt-locales": "workspace:*",
+		"@svar-ui/gantt-store": "workspace:*",
+		"@svar-ui/lib-dom": "catalog:",
+		"@svar-ui/svelte-comments": "catalog:",
+		"@svar-ui/svelte-core": "catalog:",
+		"@svar-ui/svelte-excel-import": "catalog:",
+		"@svar-ui/svelte-filter": "catalog:",
+		"@svar-ui/svelte-gantt": "workspace:*",
+		"@svar-ui/svelte-grid": "catalog:",
+		"@svar-ui/svelte-menu": "catalog:",
+		"@svar-ui/svelte-tasklist": "catalog:",
+		"@svar-ui/svelte-toolbar": "catalog:",
+		"date-fns": "catalog:",
+		"svelte-spa-router": "catalog:"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "catalog:",
+		"svelte": "catalog:",
+		"svelte-check": "catalog:"
+	}
+}

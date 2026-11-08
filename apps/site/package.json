@@ -1,0 +1,30 @@
+{
+	"name": "@svar-ui/svelte-gantt-site",
+	"version": "2.8.3",
+	"private": true,
+	"homepage": "https://svar.dev/svelte/gantt/",
+	"bugs": {
+		"url": "https://forum.svar.dev"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/svar-widgets/gantt.git"
+	},
+	"type": "module",
+	"scripts": {
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"build": "vp build",
+		"start": "vp dev --open"
+	},
+	"dependencies": {
+		"@svar-ui/svelte-core": "2.6.0",
+		"@svar-ui/svelte-gantt": "workspace:*",
+		"date-fns": "catalog:"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "catalog:",
+		"svelte": "catalog:",
+		"svelte-check": "catalog:"
+	}
+}

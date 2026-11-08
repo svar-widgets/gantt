@@ -1,0 +1,54 @@
+<script lang="ts">
+	import { getContext } from "svelte";
+	import { getData } from "../data";
+	import {
+		Gantt,
+		Toolbar,
+		Editor,
+		getToolbarButtons,
+	} from "@svar-ui/svelte-gantt";
+	import type { IDemoHelpers, IDemoProps } from "../types";
+	import type { IApi } from "@svar-ui/svelte-gantt";
+
+	const helpers = getContext<IDemoHelpers>("wx-helpers");
+	let { skinSettings }: IDemoProps = $props();
+	let api = $state<IApi>();
+
+	const data = getData();
+
+	//remove indentation buttons
+	const items = getToolbarButtons().filter(b => {
+		return b.id?.indexOf("indent") === -1;
+	});
+
+	//add custom button
+	items.push({
+		id: "my-action",
+		comp: "icon",
+		icon: "wxi-cat",
+		handler: actionHandler,
+	});
+
+	function actionHandler() {
+		helpers.showNotice({ text: "'My action' clicked" });
+	}
+</script>
+
+<Toolbar {api} {items} />
+<div class="gtcell">
+	<Gantt
+		{...skinSettings}
+		bind:this={api}
+		tasks={data.tasks}
+		links={data.links}
+		scales={data.scales}
+	/>
+	<Editor {api} />
+</div>
+
+<style>
+	.gtcell {
+		height: calc(100% - 50px);
+		border-top: var(--wx-gantt-border);
+	}
+</style>

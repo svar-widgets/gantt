@@ -1,0 +1,43 @@
+packages:
+  - apps/*
+  - packages/*
+
+catalog:
+  "@playwright/test": 1.60.0
+  "@sveltejs/package": ^2.5.7
+  "@sveltejs/vite-plugin-svelte": ^7.1.2
+  "@svar-ui/core-locales": "2.6.2"
+  "@svar-ui/grid-store": "2.7.6"
+  "@svar-ui/lib-data-provider": "1.7.4"
+  "@svar-ui/lib-dom": "0.14.2"
+  "@svar-ui/lib-state": "1.10.1"
+  "@svar-ui/lib-svelte": "0.5.3"
+  "@svar-ui/svelte-comments": "2.6.2"
+  "@svar-ui/svelte-core": "2.6.2"
+  "@svar-ui/svelte-editor": "2.7.1"
+  "@svar-ui/svelte-excel-import": "2.7.1"
+  "@svar-ui/svelte-filter": "2.6.2"
+  "@svar-ui/svelte-grid": "2.7.6"
+  "@svar-ui/svelte-menu": "2.6.2"
+  "@svar-ui/svelte-tasklist": "2.6.2"
+  "@svar-ui/svelte-toolbar": "2.6.2"
+  "@types/node": ^24
+  "@typescript/native-preview": "7.0.0-dev.20260316.1"
+  date-fns: "3.6.0"
+  glob: ^13.0.6
+  playwright: 1.60.0
+  svelte: 5.56.9
+  svelte-check: ^4.4.6
+  svelte-spa-router: 4.0.1
+  typescript: "^5.9.3"
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vite-plus: 1.1.0
+
+catalogMode: prefer
+overrides:
+  vite@*: "catalog:"
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"

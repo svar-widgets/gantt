@@ -1,5 +1,5 @@
 <div align="center">
-	
+
 # SVAR Svelte Gantt Chart
 
 </div>
@@ -31,76 +31,85 @@ The component can be easily integrated with SvelteKit apps - check the [Gantt de
 SVAR Svelte Gantt gives you a solid foundation for task management and flexible timelines, with a grid, backend support, and customization options built in.
 
 **Timeline**
--   Interactive drag-and-drop interface
--   Tasks and dependencies visualization
--   Task progress shown on taskbars
--   Configurable timeline with flexible time units
--   Custom time scales: define custom periods like sprints or stages
--   Weekends/holidays highlights
--   Zooming with scroll
--   Drag tasks from a backlog
+
+- Interactive drag-and-drop interface
+- Tasks and dependencies visualization
+- Task progress shown on taskbars
+- Configurable timeline with flexible time units
+- Custom time scales: define custom periods like sprints or stages
+- Weekends/holidays highlights
+- Zooming with scroll
+- Drag tasks from a backlog
 
 **Grid**
--   Sorting tasks in the grid
--   Reorder tasks in the grid
--   Filtering (including natural language search)
--   Custom HTML in grid cells
--   In-cell editing of task details in grid
+
+- Sorting tasks in the grid
+- Reorder tasks in the grid
+- Filtering (including natural language search)
+- Custom HTML in grid cells
+- In-cell editing of task details in grid
 
 **Task interaction**
--   Intuitive and customizable task edit form
--   Toolbar and context menu
--   Tooltips for taskbars and links
--   Hotkeys support for common actions
+
+- Intuitive and customizable task edit form
+- Toolbar and context menu
+- Tooltips for taskbars and links
+- Hotkeys support for common actions
 
 **Backend & data**
--   Virtualization for large data sets
--   Real-time updates from the server
+
+- Virtualization for large data sets
+- Real-time updates from the server
 
 **Customization**
--   Localization
--   Light and dark skins
--   Full TypeScript support
+
+- Localization
+- Light and dark skins
+- Full TypeScript support
 
 ### 🚀 PRO Edition
 
 SVAR Svelte Gantt is available in open-source and [PRO editions](https://svar.dev/svelte/gantt/#pro). The PRO edition offers additional features and automation logic:
 
 **Scheduling & constraints**
--   Auto-scheduling: FS, SS, FF, SF, and lag
--   Constraints (6 types)
--   Critical path and deadlines
--   Manual and inactive tasks
+
+- Auto-scheduling: FS, SS, FF, SF, and lag
+- Constraints (6 types)
+- Critical path and deadlines
+- Manual and inactive tasks
 
 **Calendars & resources**
--   Working-time calendars (including individual tasks and resources)
--   Resource-driven scheduling
--   Resource load chart and histogram
--   Drag-and-drop resources assignment
+
+- Working-time calendars (including individual tasks and resources)
+- Resource-driven scheduling
+- Resource load chart and histogram
+- Drag-and-drop resources assignment
 
 **Tracking**
--   Baselines, progress line, and S-curve
--   Slack (float) visualization
+
+- Baselines, progress line, and S-curve
+- Slack (float) visualization
 
 **Advanced task management**
--   Task grouping
--   Rollups
--   Split tasks
--   Summary tasks automation
--   Unscheduled tasks
--   WBS codes support
+
+- Task grouping
+- Rollups
+- Split tasks
+- Summary tasks automation
+- Unscheduled tasks
+- WBS codes support
 
 **Layout & data**
--   Sub-grid panel and placeholder row
--   Undo/redo
--   Vertical markers
--   Export to PDF, PNG, Excel
--   MS Project import/export
+
+- Sub-grid panel and placeholder row
+- Undo/redo
+- Vertical markers
+- Export to PDF, PNG, Excel
+- MS Project import/export
 
 Visit the [pricing page](https://svar.dev/svelte/gantt/pricing/) for full feature comparison, licensing details, and **free trial**.
 
 👉 [Check the live demo](https://svar.dev/demos/gantt/) to see SVAR Svelte Gantt chart in action.
-
 
 ### 🔧 Svelte 4 and Svelte 5 versions
 
@@ -155,21 +164,10 @@ For further instructions, follow the detailed [how-to-start guide](https://docs.
 
 Typically, you don't need to modify the code. However, if you wish to do so, follow these steps:
 
-1. Run `yarn` to install dependencies. Note that this project is a monorepo using `yarn` workspaces, so npm will not work
-2. Start the project in development mode with `yarn start`
-
-### Run Tests
-
-To run the test:
-
-1. Start the test examples with:
-    ```sh
-    yarn start:tests
-    ```
-2. In a separate console, run the end-to-end tests with:
-    ```sh
-    yarn test:cypress
-    ```
+1. Install [vite-plus](https://vite.plus) (`curl -fsSL https://vite.plus | bash` on Mac/Linux, `irm https://vite.plus/ps1 | iex` on Windows). The project uses `pnpm` workspaces under the hood, so plain `npm` will not work.
+2. Run `vp i` from the project root to install dependencies.
+3. Run `vp run build` to build all packages.
+4. Start the demo app in development mode with `vp run start`.
 
 ### ⭐ Show Your Support
 

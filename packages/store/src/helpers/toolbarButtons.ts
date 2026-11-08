@@ -1,0 +1,126 @@
+import { assignChecks } from "./menuOptions";
+import type {
+	IData,
+	IDataHash,
+	IParsedTask,
+	IHistory,
+	IDataConfig,
+	ICalendar,
+} from "../types";
+import type { TID } from "@svar-ui/lib-state";
+
+const groupedToolbarButtons = new Set<TID>([
+	"add-task",
+	"delete-task",
+	"edit-task",
+	"undo",
+	"redo",
+	"show-conflicts",
+]);
+
+export function getToolbarButtons(
+	config?: Partial<Omit<IDataConfig, "conflicts">> & {
+		group?: boolean;
+		conflicts?: boolean;
+	}
+) {
+	let buttons = [...defaultToolbarButtons];
+
+	return buttons;
+}
+
+export interface IButtonConfig {
+	id?: string;
+	comp: string;
+	text?: string;
+	icon?: string;
+	type?: string;
+	menuText?: string;
+	handler?: (item: any, value?: any) => void;
+	isDisabled?:
+		| ((
+				task: IParsedTask,
+				state?: IData,
+				calendar?: ICalendar,
+				target?: TID | IDataHash
+		  ) => boolean)
+		| ((history: IHistory) => boolean);
+	isHidden?: (
+		task: IParsedTask | null,
+		state: IData,
+		target?: TID | IDataHash
+	) => boolean;
+}
+
+export const defaultToolbarButtons: IButtonConfig[] =
+	assignChecks<IButtonConfig>([
+		{
+			id: "add-task",
+			comp: "button",
+			icon: "wxi-plus",
+			text: "New task",
+			type: "primary",
+		},
+		{
+			id: "edit-task",
+			comp: "icon",
+			icon: "wxi-edit",
+			menuText: "Edit",
+			text: "Ctrl+E",
+		},
+		{
+			id: "delete-task",
+			comp: "icon",
+			icon: "wxi-delete",
+			menuText: "Delete",
+			text: "Ctrl+D, Backspace",
+		},
+		{ comp: "separator" },
+		{
+			id: "move-task:up",
+			comp: "icon",
+			icon: "wxi-angle-up",
+			menuText: "Move up",
+		},
+		{
+			id: "move-task:down",
+			comp: "icon",
+			icon: "wxi-angle-down",
+			menuText: "Move down",
+		},
+		{ comp: "separator" },
+		{
+			id: "copy-task",
+			comp: "icon",
+			icon: "wxi-content-copy",
+			menuText: "Copy",
+			text: "Ctrl+V",
+		},
+		{
+			id: "cut-task",
+			comp: "icon",
+			icon: "wxi-content-cut",
+			menuText: "Cut",
+			text: "Ctrl+X",
+		},
+		{
+			id: "paste-task",
+			comp: "icon",
+			icon: "wxi-content-paste",
+			menuText: "Paste",
+			text: "Ctrl+V",
+		},
+		{ comp: "separator" },
+		{
+			id: "indent-task:add",
+			comp: "icon",
+			icon: "wxi-indent",
+			menuText: "Indent",
+		},
+		{
+			id: "indent-task:remove",
+			comp: "icon",
+			icon: "wxi-unindent",
+			menuText: "Outdent",
+		},
+	]);

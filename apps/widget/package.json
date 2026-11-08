@@ -1,0 +1,75 @@
+{
+	"name": "@svar-ui/svelte-gantt",
+	"version": "2.8.3",
+	"description": "Interactive and customizable Svelte Gantt chart component",
+	"keywords": [
+		"gantt",
+		"gantt chart",
+		"gantt-chart",
+		"gantt-chart-component",
+		"gantt-diagram",
+		"svar gantt",
+		"svar widgets",
+		"svelte",
+		"svelte-gantt",
+		"svelte-gantt-chart",
+		"svelte-gantt-component",
+		"timeline"
+	],
+	"homepage": "https://svar.dev/svelte/gantt/",
+	"bugs": {
+		"url": "https://forum.svar.dev"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/svar-widgets/gantt.git"
+	},
+	"files": [
+		"dist",
+		"licenses",
+		"readme.md",
+		"whatsnew.md",
+		"license.txt"
+	],
+	"type": "module",
+	"types": "./dist/index.d.ts",
+	"svelte": "./dist/index.js",
+	"exports": {
+		".": {
+			"svelte": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"build": "svelte-package -i ./src",
+		"dev": "svelte-package -i ./src --watch"
+	},
+	"dependencies": {
+		"@svar-ui/core-locales": "catalog:",
+		"@svar-ui/gantt-data-provider": "workspace:*",
+		"@svar-ui/gantt-locales": "workspace:*",
+		"@svar-ui/gantt-store": "workspace:*",
+		"@svar-ui/grid-store": "catalog:",
+		"@svar-ui/lib-dom": "catalog:",
+		"@svar-ui/lib-state": "catalog:",
+		"@svar-ui/lib-svelte": "catalog:",
+		"@svar-ui/svelte-core": "catalog:",
+		"@svar-ui/svelte-editor": "catalog:",
+		"@svar-ui/svelte-grid": "catalog:",
+		"@svar-ui/svelte-menu": "catalog:",
+		"@svar-ui/svelte-toolbar": "catalog:"
+	},
+	"devDependencies": {
+		"@sveltejs/package": "catalog:",
+		"@sveltejs/vite-plugin-svelte": "catalog:",
+		"svelte": "catalog:",
+		"svelte-check": "catalog:"
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"productTag": "gantt"
+}

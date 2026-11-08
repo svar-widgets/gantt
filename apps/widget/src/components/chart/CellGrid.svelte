@@ -1,0 +1,30 @@
+<script lang="ts">
+	import { getContext } from "svelte";
+	import { grid } from "@svar-ui/gantt-store";
+	import type { IInnerApi } from "../../types";
+
+	const api = getContext<IInnerApi>("gantt-store");
+	const { cellWidth, cellHeight, cellBorders } = api.getReactiveState();
+
+	let node: HTMLElement;
+	let color = $state("#e4e4e4");
+	$effect(() => {
+		if (typeof getComputedStyle !== "undefined") {
+			const border =
+				getComputedStyle(node).getPropertyValue("--wx-gantt-border");
+			color = border
+				? border.substring(border.indexOf("#"))
+				: "#1d1e261a";
+		}
+	});
+</script>
+
+<div
+	bind:this={node}
+	style="width:100%; height:100%; background:url({grid(
+		$cellWidth!,
+		$cellHeight!,
+		color,
+		$cellBorders!
+	)}); position: absolute;"
+></div>
